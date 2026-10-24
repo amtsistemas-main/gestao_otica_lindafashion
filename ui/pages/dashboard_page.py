@@ -31,8 +31,8 @@ def make_card(title: str, parent: QWidget | None = None) -> tuple[QFrame, QVBoxL
     card.setObjectName("analyticsCard")
     card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
     layout = QVBoxLayout(card)
-    layout.setContentsMargins(18, 16, 18, 16)
-    layout.setSpacing(12)
+    layout.setContentsMargins(20, 18, 20, 18)
+    layout.setSpacing(14)
     layout.addWidget(label(title, "cardTitle"))
     return card, layout
 
@@ -198,7 +198,7 @@ class DashboardPage(QWidget):
         self.setObjectName("dashboardPage")
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(12)
+        root.setSpacing(16)
 
         root.addWidget(WelcomeBanner(preview_mode))
 
@@ -231,8 +231,8 @@ class DashboardPage(QWidget):
         root.addWidget(actions)
 
         columns = QGridLayout()
-        columns.setHorizontalSpacing(14)
-        columns.setVerticalSpacing(12)
+        columns.setHorizontalSpacing(18)
+        columns.setVerticalSpacing(16)
         columns.setColumnStretch(0, 7)
         columns.setColumnStretch(1, 4)
         main = QWidget()
@@ -252,8 +252,8 @@ class DashboardPage(QWidget):
         metric_header.addWidget(label("Prévia ilustrativa" if preview_mode else "Dados da operação", "muted"))
         main_layout.addLayout(metric_header)
         metrics = QGridLayout()
-        metrics.setHorizontalSpacing(12)
-        metrics.setVerticalSpacing(10)
+        metrics.setHorizontalSpacing(14)
+        metrics.setVerticalSpacing(12)
         cards = [
             ("fa5s.box","Produtos Cadastrados","248" if preview_mode else "—","↑ +12%   vs. mês anterior" if preview_mode else "Aguardando integração","#2165F5"),
             ("fa5s.shopping-cart","Vendas no Mês","R$ 18.742,90" if preview_mode else "—","↑ +8%   vs. mês anterior" if preview_mode else "Aguardando integração","#F0A52B"),
