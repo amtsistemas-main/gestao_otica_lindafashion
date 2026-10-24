@@ -60,7 +60,49 @@ class InventoryPage(QDialog):
             QTabWidget QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; }
             QTabBar::tab { background:#EAF0F9; color:#526782; padding:10px 18px; margin-right:4px; border-top-left-radius:7px; border-top-right-radius:7px; }
             QTabBar::tab:selected { background:#FFFFFF; color:#2457D6; font-weight:750; }
-        """)
+        
+            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
+            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                selection-background-color: #DCE8FF;
+                selection-color: #17365D;
+                outline: 0;
+            }
+            QComboBox QAbstractItemView::item, QComboBox QListView::item {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                min-height: 24px;
+                padding: 5px 8px;
+            }
+            QComboBox QAbstractItemView::item:selected,
+            QComboBox QAbstractItemView::item:selected:active,
+            QComboBox QAbstractItemView::item:selected:!active,
+            QComboBox QListView::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                padding: 4px;
+            }
+            QMenu::item {
+                background-color: transparent;
+                color: #172B4D;
+                padding: 7px 28px 7px 10px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu::item:disabled {
+                color: #8793A6;
+            }
+""")
         self._client = None
         self._organization_id = None
         self._products: list[dict] = []
