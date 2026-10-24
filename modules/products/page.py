@@ -10,7 +10,7 @@ from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequ
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QGridLayout, QHeaderView, QScrollArea,
     QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
-    QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
+    QFrame, QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
 
 from config.settings import get_settings
@@ -378,6 +378,19 @@ class ProductsPage(QDialog):
         self.setWindowTitle("Produtos — Ótica Linda Fashion")
         self.resize(1120, 720)
         self.setMinimumSize(860, 600)
+        self.setStyleSheet("""
+            QDialog { background:#F3F5F8; color:#24334B; font-family:"Arial"; font-size:10pt; }
+            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
+            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
+            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
+            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; border-right:1px solid #28456F; padding:11px 8px; min-height:22px; font-weight:700; }
+            QLabel#muted { color:#7184A1; }
+            QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit { background:#FFFFFF; color:#172B4D; border:1px solid #D9E3F1; border-radius:8px; padding:8px; }
+            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
+            QPushButton:hover { background:#F0F5FF; }
+            QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
+            QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
+        """)
 
         if preview_mode:
             repository = MemoryProductRepository()
@@ -400,15 +413,20 @@ class ProductsPage(QDialog):
         root.setSpacing(16)
 
         header = QHBoxLayout()
-        headings = QVBoxLayout()
+        title_bar = QFrame()
+        title_bar.setObjectName("windowTitleBar")
+        title_layout = QVBoxLayout(title_bar)
+        title_layout.setContentsMargins(18, 13, 18, 13)
+        title_layout.setSpacing(4)
         title = QLabel("Produtos")
-        title.setObjectName("pageTitle")
+        title.setObjectName("windowTitle")
+        title.setWordWrap(True)
         subtitle = QLabel("Catálogo, preços, descontos e identificação por código de barras")
-        subtitle.setObjectName("muted")
-        headings.addWidget(title)
-        headings.addWidget(subtitle)
-        header.addLayout(headings)
-        header.addStretch()
+        subtitle.setObjectName("windowSubtitle")
+        subtitle.setWordWrap(True)
+        title_layout.addWidget(title)
+        title_layout.addWidget(subtitle)
+        header.addWidget(title_bar, 1)
         self.export_button = QPushButton("Exportar catálogo PDF")
         self.export_button.setObjectName("secondaryQuickAction")
         self.export_button.clicked.connect(self._export_pdf)
