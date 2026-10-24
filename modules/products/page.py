@@ -385,7 +385,11 @@ class ProductsPage(QDialog):
             QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
             QHeaderView::section { background:#102957; color:#FFFFFF; border:none; border-right:1px solid #28456F; padding:11px 8px; min-height:22px; font-weight:700; }
             QLabel#muted { color:#7184A1; }
-            QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit { background:#FFFFFF; color:#172B4D; border:1px solid #D9E3F1; border-radius:8px; padding:8px; }
+            QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit, QSpinBox, QDoubleSpinBox {
+                background:#FFFFFF; color:#172B4D; border:1px solid #CFD9E8;
+                border-radius:8px; padding:8px 10px; min-height:20px;
+                selection-background-color:#315FE8; selection-color:#FFFFFF;
+            }
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
             QPushButton:hover { background:#F0F5FF; }
             QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
