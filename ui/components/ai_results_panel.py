@@ -171,6 +171,7 @@ class AIResultsPanel(QWidget):
         self.text_editor.setObjectName("aiEditableText")
         self.text_editor.setPlaceholderText("Recomendações e observações da análise…")
         self.text_editor.setMinimumHeight(110)
+        self.text_editor.setReadOnly(True)
         self.text_editor.hide()
         results_layout.addWidget(self.text_editor)
 
@@ -311,7 +312,8 @@ class AIResultsPanel(QWidget):
         if isinstance(recommendations, (list, tuple)):
             recommendations = "\n".join(f"• {item}" for item in recommendations)
         self.text_editor.setPlainText(str(recommendations or ""))
-        self.text_editor.hide()
+        self.text_editor.setReadOnly(True)
+        self.text_editor.setVisible(bool(recommendations))
         self._editing = False
         self.edit_button.setText("Editar texto")
         self.results_card.show()
@@ -355,7 +357,8 @@ class AIResultsPanel(QWidget):
 
     def toggle_edit(self) -> None:
         self._editing = not self._editing
-        self.text_editor.setVisible(self._editing)
+        self.text_editor.setReadOnly(not self._editing)
+        self.text_editor.setVisible(self._editing or bool(self.text_editor.toPlainText().strip()))
         if self._editing:
             recommendations = self.text_editor.toPlainText()
             if not recommendations:
