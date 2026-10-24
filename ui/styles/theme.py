@@ -1273,3 +1273,41 @@ QPushButton#primaryButton:hover {
 }
 
 """
+
+
+/* Shared window standard: blue title band, white text and readable table headers. */
+QFrame#windowTitleBar {
+    background: #102957;
+    border: 1px solid #203D68;
+    border-radius: 8px;
+}
+QLabel#windowTitle {
+    background: transparent;
+    color: #FFFFFF;
+    font-family: "Arial";
+    font-size: 16pt;
+    font-weight: 700;
+}
+QLabel#windowSubtitle {
+    background: transparent;
+    color: #DCE7F7;
+    font-family: "Arial";
+    font-size: 9pt;
+}
+QHeaderView::section {
+    background: #102957;
+    color: #FFFFFF;
+    border: none;
+    border-right: 1px solid #28456F;
+    border-bottom: 1px solid #28456F;
+    padding: 11px 8px;
+    min-height: 22px;
+    font-weight: 700;
+}
+QTableWidget::item {
+    padding: 7px 8px;
+}
+QTableWidget::item:selected {
+    background: #E8F0FF;
+    color: #102957;
+}
