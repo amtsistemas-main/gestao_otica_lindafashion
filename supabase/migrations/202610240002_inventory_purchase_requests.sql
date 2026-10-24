@@ -128,6 +128,10 @@ drop policy if exists stock_movements_member_read on public.stock_movements;
 create policy stock_movements_member_read on public.stock_movements for select to authenticated
 using (exists (select 1 from public.organization_members m where m.organization_id=stock_movements.organization_id and m.user_id=(select auth.uid()) and m.active=true));
 
+drop policy if exists stock_movements_member_insert on public.stock_movements;
+create policy stock_movements_member_insert on public.stock_movements for insert to authenticated
+with check (exists (select 1 from public.organization_members m where m.organization_id=stock_movements.organization_id and m.user_id=(select auth.uid()) and m.active=true));
+
 drop policy if exists purchase_requests_member_all on public.purchase_requests;
 create policy purchase_requests_member_all on public.purchase_requests for all to authenticated
 using (exists (select 1 from public.organization_members m where m.organization_id=purchase_requests.organization_id and m.user_id=(select auth.uid()) and m.active=true))
@@ -139,7 +143,7 @@ using (exists (select 1 from public.organization_members m where m.organization_
 with check (exists (select 1 from public.organization_members m where m.organization_id=purchase_request_items.organization_id and m.user_id=(select auth.uid()) and m.active=true));
 
 grant select, insert, update on public.suppliers to authenticated;
-grant select on public.stock_movements to authenticated;
+grant select, insert on public.stock_movements to authenticated;
 grant select, insert, update on public.purchase_requests to authenticated;
 grant select, insert, update, delete on public.purchase_request_items to authenticated;
 grant execute on function public.record_stock_movement(uuid,text,integer,text,text) to authenticated;
