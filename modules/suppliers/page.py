@@ -43,12 +43,21 @@ class SupplierFormDialog(QDialog):
         self._supplier = supplier or {}
         self.fields: dict[str, QWidget] = {}
         root = QVBoxLayout(self)
-        title = QLabel("Cadastro completo do fornecedor")
-        title.setStyleSheet("font-size:20pt;font-weight:800;color:#102957;")
-        root.addWidget(title)
+        root.setContentsMargins(24, 22, 24, 22)
+        root.setSpacing(14)
+        title_bar = QFrame()
+        title_bar.setObjectName("windowTitleBar")
+        title_layout = QVBoxLayout(title_bar)
+        title_layout.setContentsMargins(18, 13, 18, 13)
+        title_layout.setSpacing(4)
+        title = QLabel("Cadastro do fornecedor")
+        title.setObjectName("windowTitle")
         subtitle = QLabel("Dados cadastrais, fiscais, contato, endereço e condições comerciais.")
-        subtitle.setStyleSheet("color:#7184A1;")
-        root.addWidget(subtitle)
+        subtitle.setObjectName("windowSubtitle")
+        subtitle.setWordWrap(True)
+        title_layout.addWidget(title)
+        title_layout.addWidget(subtitle)
+        root.addWidget(title_bar)
         tabs = QTabWidget()
         root.addWidget(tabs, 1)
         groups = [
@@ -98,9 +107,25 @@ class SupplierFormDialog(QDialog):
         root.addWidget(self.active)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save)
         buttons.button(QDialogButtonBox.StandardButton.Save).setText("Salvar fornecedor")
+        buttons.button(QDialogButtonBox.StandardButton.Save).setObjectName("primaryButton")
         buttons.accepted.connect(self._validate)
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
+        self.setStyleSheet("""
+            QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; font-size:10pt; }
+            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
+            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
+            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
+            QLineEdit, QTextEdit { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:8px; padding:8px; selection-background-color:#2165F5; selection-color:#FFFFFF; }
+            QLineEdit:focus, QTextEdit:focus { border:1px solid #2165F5; }
+            QTabWidget::pane { border:1px solid #E4EAF5; border-radius:8px; background:#FFFFFF; }
+            QTabBar::tab { background:#FFFFFF; color:#4B5675; padding:10px 16px; border:1px solid #E4EAF5; }
+            QTabBar::tab:selected { color:#FFFFFF; background:#2165F5; }
+            QCheckBox { spacing:8px; padding:5px; color:#102957; }
+            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 14px; font-weight:650; }
+            QPushButton:hover { background:#F3F7FF; }
+            QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
+        """)
 
     def _validate(self) -> None:
         name = self.fields["name"].text().strip()
