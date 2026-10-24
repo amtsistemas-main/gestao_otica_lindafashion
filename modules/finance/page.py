@@ -169,8 +169,11 @@ class FinancePage(QDialog):
             QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
             QHeaderView::section { background:#102957; color:#FFFFFF; border:none; border-right:1px solid #28456F; padding:11px 8px; min-height:22px; font-weight:700; }
             QTabWidget::pane { border:1px solid #DFE7F3; background:#FFFFFF; border-radius:10px; }
-            QTabBar::tab { background:#EAF0F9; color:#526782; padding:10px 18px; margin-right:4px; border-top-left-radius:7px; border-top-right-radius:7px; }
-            QTabBar::tab:selected { background:#FFFFFF; color:#2457D6; font-weight:750; }
+            QTabBar { background:transparent; }
+            QTabBar::tab { background:#EAF0F9; color:#526782; padding:10px 18px; margin-right:4px; border:1px solid #DCE5F5; border-top-left-radius:7px; border-top-right-radius:7px; }
+            QTabBar::tab:hover { background:#DCE7F8; color:#244BAA; }
+            QTabBar::tab:selected { background:#245DE0; color:#FFFFFF; border-color:#245DE0; font-weight:750; }
+            QTabBar::tab:!selected { margin-top:2px; }
         """)
         self._client = None
         self._organization_id: str | None = None
