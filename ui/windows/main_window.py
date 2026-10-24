@@ -62,36 +62,30 @@ class MainWindow(QMainWindow):
         side_layout.setContentsMargins(18, 22, 18, 18)
         side_layout.setSpacing(8)
 
-        brand_row = QHBoxLayout()
-        brand_row.setSpacing(10)
+        # The transparent brand artwork is the visual anchor of the sidebar.
         logo = QLabel()
-        logo.setFixedSize(48, 48)
+        logo.setObjectName("sidebarLogo")
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo.setMinimumHeight(112)
+        logo.setMaximumHeight(124)
         if LOGO_PATH.is_file():
             pixmap = QPixmap(str(LOGO_PATH))
             if not pixmap.isNull():
                 logo.setPixmap(
                     pixmap.scaled(
-                        46, 46,
+                        188, 118,
                         Qt.AspectRatioMode.KeepAspectRatio,
                         Qt.TransformationMode.SmoothTransformation,
                     )
                 )
         if logo.pixmap() is None or logo.pixmap().isNull():
-            logo.setText("LF")
+            logo.setText("ÓTICA\nLINDA FASHION")
             logo.setObjectName("logoFallback")
-        brand_copy = QVBoxLayout()
-        brand_copy.setSpacing(2)
-        brand_name = QLabel(APP_NAME)
-        brand_name.setObjectName("sidebarBrand")
-        brand_name.setWordWrap(True)
-        brand_subtitle = QLabel("GESTÃO INTELIGENTE")
+        side_layout.addWidget(logo)
+        brand_subtitle = QLabel("VISÃO  •  ESTILO  •  VOCÊ")
         brand_subtitle.setObjectName("sidebarEyebrow")
-        brand_copy.addWidget(brand_name)
-        brand_copy.addWidget(brand_subtitle)
-        brand_row.addWidget(logo)
-        brand_row.addLayout(brand_copy, 1)
-        side_layout.addLayout(brand_row)
+        brand_subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        side_layout.addWidget(brand_subtitle)
 
         side_layout.addSpacing(26)
         nav_label = QLabel("MENU PRINCIPAL")
@@ -123,32 +117,54 @@ class MainWindow(QMainWindow):
         topbar.setObjectName("topbar")
         topbar.setFixedHeight(76)
         topbar_layout = QHBoxLayout(topbar)
-        topbar_layout.setContentsMargins(28, 10, 28, 10)
+        topbar_layout.setContentsMargins(20, 10, 24, 10)
         topbar_layout.setSpacing(12)
+
+        menu_button = QPushButton("☰")
+        menu_button.setObjectName("topbarIconButton")
+        menu_button.setFixedSize(36, 36)
+        menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        menu_button.clicked.connect(lambda: self._scroll.verticalScrollBar().setValue(0))
+        topbar_layout.addWidget(menu_button)
 
         search_box = QLineEdit()
         search_box.setObjectName("dashboardSearch")
         search_box.setPlaceholderText("⌕   Buscar no sistema...")
         search_box.setClearButtonEnabled(True)
-        search_box.setMinimumHeight(42)
-        search_box.setMaximumWidth(440)
+        search_box.setMinimumHeight(40)
+        search_box.setMaximumWidth(420)
         topbar_layout.addWidget(search_box, 1)
         topbar_layout.addStretch()
 
+        notifications = QPushButton("♧")
+        notifications.setObjectName("topbarIconButton")
+        notifications.setFixedSize(38, 38)
+        notifications.setToolTip("Notificações")
+        topbar_layout.addWidget(notifications)
+
+        avatar = QLabel("●")
+        avatar.setObjectName("accountAvatar")
+        avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        avatar.setFixedSize(40, 40)
+        topbar_layout.addWidget(avatar)
+
+        profile_box = QVBoxLayout()
+        profile_box.setSpacing(1)
         if preview_mode:
-            account_label = QLabel("PRÉ-VISUALIZAÇÃO")
-            account_label.setObjectName("previewBadge")
-            topbar_layout.addWidget(account_label)
+            profile_name, profile_role = "Ana Silva", "Administrador"
         else:
-            user_email = session_manager.current.email if session_manager.current else ""
-            account_label = QLabel(user_email)
-            account_label.setObjectName("accountLabel")
-            account_label.setToolTip(user_email)
-            topbar_layout.addWidget(account_label)
-            logout_button = QPushButton("Sair")
-            logout_button.setObjectName("logoutButton")
-            logout_button.clicked.connect(self._logout)
-            topbar_layout.addWidget(logout_button)
+            profile_name = session_manager.current.email if session_manager.current else "Usuário"
+            profile_role = "Conta conectada"
+        profile_box.addWidget(QLabel(profile_name))
+        role_label = QLabel(profile_role)
+        role_label.setObjectName("profileRole")
+        profile_box.addWidget(role_label)
+        topbar_layout.addLayout(profile_box)
+
+        profile_menu = QPushButton("⌄")
+        profile_menu.setObjectName("topbarIconButton")
+        profile_menu.setFixedSize(28, 36)
+        topbar_layout.addWidget(profile_menu)
 
         workspace_layout.addWidget(topbar)
 
