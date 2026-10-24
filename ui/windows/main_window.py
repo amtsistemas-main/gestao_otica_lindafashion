@@ -50,8 +50,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._preview_mode = preview_mode
         self.setWindowTitle(f"{WINDOW_TITLE} — Pré-visualização" if preview_mode else WINDOW_TITLE)
-        self.resize(1360, 900)
-        self.setMinimumSize(1000, 680)
+        self.resize(1440, 920)
+        self.setMinimumSize(1120, 720)
         self._auth_service = AuthService()
         self._products_window: ProductsPage | None = None
         self._nav_buttons: dict[str, QPushButton] = {}
@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
 
         sidebar = QFrame()
         sidebar.setObjectName("appSidebar")
-        sidebar.setFixedWidth(226)
+        sidebar.setFixedWidth(238)
         side_layout = QVBoxLayout(sidebar)
         side_layout.setContentsMargins(18, 22, 18, 18)
         side_layout.setSpacing(8)
@@ -124,7 +124,7 @@ class MainWindow(QMainWindow):
 
         topbar = QFrame()
         topbar.setObjectName("topbar")
-        topbar.setFixedHeight(76)
+        topbar.setFixedHeight(72)
         topbar_layout = QHBoxLayout(topbar)
         topbar_layout.setContentsMargins(20, 10, 24, 10)
         topbar_layout.setSpacing(12)
@@ -144,7 +144,7 @@ class MainWindow(QMainWindow):
         search_box.addAction(qta.icon("fa5s.search", color="#7A8EAF"), QLineEdit.ActionPosition.LeadingPosition)
         search_box.setClearButtonEnabled(True)
         search_box.setMinimumHeight(40)
-        search_box.setMaximumWidth(420)
+        search_box.setMaximumWidth(360)
         topbar_layout.addWidget(search_box, 1)
         topbar_layout.addStretch()
 
@@ -201,7 +201,7 @@ class MainWindow(QMainWindow):
         self._scroll.setWidget(self._dashboard)
         scroll_host = QWidget()
         scroll_layout = QVBoxLayout(scroll_host)
-        scroll_layout.setContentsMargins(28, 26, 28, 22)
+        scroll_layout.setContentsMargins(30, 28, 30, 24)
         scroll_layout.addWidget(self._scroll)
         workspace_layout.addWidget(scroll_host, 1)
 
