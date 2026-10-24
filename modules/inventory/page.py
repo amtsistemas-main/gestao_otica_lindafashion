@@ -247,6 +247,9 @@ class InventoryPage(QDialog):
         movement_type.addItem("Ajuste para quantidade exata", "ajuste")
         quantity = QSpinBox()
         quantity.setRange(1, 2_000_000_000)
+        movement_type.currentIndexChanged.connect(
+            lambda _index: quantity.setMinimum(0 if movement_type.currentData() == "ajuste" else 1)
+        )
         reason = QLineEdit()
         reason.setPlaceholderText("Ex.: compra, venda, avaria, inventário")
         reference = QLineEdit()
@@ -440,7 +443,7 @@ class InventoryPage(QDialog):
                 "receive_purchase_request_item",
                 {
                     "p_purchase_request_item_id": item_combo.currentData(),
-                    "p_quantity_to_receive": quantity.value(),
+                    "p_quantity": quantity.value(),\n                    "p_reason": "Recebimento de compra",
                     "p_reference": reference.text().strip(),
                 },
             ).execute()
@@ -451,14 +454,14 @@ class InventoryPage(QDialog):
                 self,
                 "Recebimento registrado",
                 f"Entrada de {quantity.value()} unidade(s) registrada. "
-                f"Saldo atualizado de {data.get('stock_before', '—')} para {data.get('stock_after', '—')}. "
+                f"Saldo atualizado de {data.get('stock_quantity', '—')} para {data.get('stock_quantity', '—')}. "
                 f"Status da solicitação: {data.get('request_status', 'atualizado')}.",
             )
         except Exception as exc:
             QMessageBox.critical(
                 self,
                 "Falha no recebimento",
-                f"{exc}\\n\\nConfirme se a migration 202610240003_purchase_receiving.sql foi aplicada no Supabase.",
+                f"{exc}\\n\\nConfirme se a migration 202610240003_receive_purchase_items.sql foi aplicada no Supabase.",
             )
 
     def _show_request_details(self) -> None:
