@@ -36,12 +36,12 @@ class ProductFormDialog(QDialog):
         self.setWindowState(self.windowState() | Qt.WindowState.WindowMaximized)
         self.setStyleSheet("""
             QDialog {
-                background: #f4f7fb;
+                background: #ffffff;
                 color: #172b4d;
                 font-family: "Segoe UI";
                 font-size: 10pt;
             }
-            QWidget#productFormContent { background: #f4f7fb; }
+            QWidget#productFormContent { background: #ffffff; }
             QLabel#pageTitle {
                 color: #142b4e;
                 font-size: 23pt;
@@ -111,11 +111,11 @@ class ProductFormDialog(QDialog):
             }
             QCheckBox::indicator:checked { background: #2457d6; border-color: #2457d6; }
             QScrollArea { background: transparent; border: none; }
-            QScrollBar:vertical { background: #e9eef5; width: 10px; margin: 2px; border-radius: 5px; }
-            QScrollBar::handle:vertical { background: #bdcadd; min-height: 28px; border-radius: 5px; }
-            QScrollBar::handle:vertical:hover { background: #93a6c0; }
+            QScrollBar:vertical { background: #ffffff; width: 10px; margin: 2px; border-radius: 5px; }
+            QScrollBar::handle:vertical { background: #d6e0ef; min-height: 28px; border-radius: 5px; }
+            QScrollBar::handle:vertical:hover { background: #a9bbd5; }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
-            QDialogButtonBox { border-top: 1px solid #e0e7f0; padding-top: 10px; }
+            QDialogButtonBox { background: #ffffff; border-top: 1px solid #e0e7f0; padding-top: 10px; }
         """)
         self._product = product
         self.image_path = ""
