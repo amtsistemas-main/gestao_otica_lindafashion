@@ -51,8 +51,8 @@ class SalesOrderDialog(QDialog):
         self.customer.addItem("Venda sem cliente identificado", None)
         self.product = QComboBox()
         self.quantity = QDoubleSpinBox()
-        self.quantity.setRange(0.001, 99999)
-        self.quantity.setDecimals(3)
+        self.quantity.setRange(1, 99999)
+        self.quantity.setDecimals(0)
         self.quantity.setValue(1)
         self.unit_price = QDoubleSpinBox()
         self.unit_price.setRange(0, 9999999)
@@ -141,6 +141,9 @@ class SalesOrderDialog(QDialog):
         line_total = qty * price - discount
         if line_total < 0:
             QMessageBox.warning(self, "Desconto inválido", "O desconto não pode superar o valor do item.")
+            return
+        if qty != qty.to_integral_value():
+            QMessageBox.warning(self, "Quantidade inválida", "A quantidade deve ser um número inteiro para este produto.")
             return
         if qty > Decimal(str(product.get("stock_quantity") or 0)):
             QMessageBox.warning(self, "Estoque insuficiente", f"Estoque disponível: {product.get('stock_quantity', 0)}.")
