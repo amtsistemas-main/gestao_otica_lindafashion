@@ -163,6 +163,19 @@ class FinancePage(QDialog):
                 border-radius:8px; padding:8px 10px; min-height:20px;
                 selection-background-color:#315FE8; selection-color:#FFFFFF;
             }
+
+            QAbstractSpinBox { padding-right: 7px; }
+            QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
+                subcontrol-origin: border; subcontrol-position: right; width: 25px;
+                border: none; border-left: 1px solid #1D4FC4; background: #245DE0;
+            }
+            QAbstractSpinBox::up-button { subcontrol-position: top right; border-top-right-radius: 7px; border-bottom: 1px solid #4A79E8; }
+            QAbstractSpinBox::down-button { subcontrol-position: bottom right; border-bottom-right-radius: 7px; }
+            QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover { background: #1749C2; }
+            QAbstractSpinBox::up-button:pressed, QAbstractSpinBox::down-button:pressed { background: #103A9F; }
+            QAbstractSpinBox::up-arrow, QAbstractSpinBox::down-arrow {
+                width: 8px; height: 8px; color: #FFFFFF;
+            }
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
             QPushButton:hover { background:#F0F5FF; }
             QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
