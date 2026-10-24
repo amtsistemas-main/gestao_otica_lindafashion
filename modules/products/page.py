@@ -42,25 +42,6 @@ class ProductFormDialog(QDialog):
                 font-size: 10pt;
             }
             QWidget#productFormContent { background: #F5F7FB; }
-            QFrame#productHeader {
-                background: #102957;
-                border: 1px solid #203D68;
-                border-radius: 14px;
-            }
-            QLabel#pageTitle {
-                background: transparent;
-                color: #FFFFFF;
-                font-size: 20pt;
-                font-weight: 800;
-                padding: 0;
-            }
-            QLabel#headerEyebrow {
-                background: transparent;
-                color: #BFD2F4;
-                font-size: 8pt;
-                font-weight: 800;
-                letter-spacing: 1px;
-            }
             QLabel#muted { color: #718099; font-size: 9pt; background: transparent; }
             QFrame#productFormCard, QFrame#productImageCard, QFrame#priceSummaryCard {
                 background: #FFFFFF;
@@ -184,24 +165,6 @@ class ProductFormDialog(QDialog):
         root.setSpacing(14)
         scroll.setWidget(content)
         outer.addWidget(scroll, 1)
-
-        header = QFrame()
-        header.setObjectName("productHeader")
-        header_layout = QVBoxLayout(header)
-        header_layout.setContentsMargins(22, 18, 22, 18)
-        header_layout.setSpacing(7)
-        eyebrow = QLabel("CATÁLOGO • GESTÃO DE PRODUTOS")
-        eyebrow.setObjectName("headerEyebrow")
-        title = QLabel("Editar produto" if product else "Novo produto")
-        title.setObjectName("pageTitle")
-        subtitle = QLabel("Cadastre informações, preços e estoque em um só lugar.")
-        subtitle.setObjectName("muted")
-        subtitle.setStyleSheet("color: #DCE7FA;")
-        subtitle.setWordWrap(True)
-        header_layout.addWidget(eyebrow)
-        header_layout.addWidget(title)
-        header_layout.addWidget(subtitle)
-        root.addWidget(header)
 
         form = QGridLayout()
         form.setHorizontalSpacing(22)
