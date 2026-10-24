@@ -1275,6 +1275,7 @@ QPushButton#primaryButton:hover {
 """
 
 
+SHARED_WINDOW_STYLES = """
 /* Shared window standard: blue title band, white text and readable table headers. */
 QFrame#windowTitleBar {
     background: #102957;
@@ -1311,3 +1312,4 @@ QTableWidget::item:selected {
     background: #E8F0FF;
     color: #102957;
 }
+"""
