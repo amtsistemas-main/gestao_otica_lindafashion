@@ -29,6 +29,7 @@ from modules.inventory.page import InventoryPage
 from modules.suppliers.page import SuppliersPage
 from ui.pages.dashboard_page import DashboardPage
 from ui.components.ai_results_panel import AIResultsPanel
+from core.ai_analysis_service import AIAnalysisWorker
 
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
 
