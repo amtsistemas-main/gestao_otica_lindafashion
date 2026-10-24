@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFormLayout,
+    QCheckBox, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFormLayout, QFrame,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QInputDialog, QMessageBox, QPushButton,
     QTableWidget, QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
@@ -35,13 +35,19 @@ class CustomerFormDialog(QDialog):
         root.setContentsMargins(24, 22, 24, 22)
         root.setSpacing(14)
 
+        title_bar = QFrame()
+        title_bar.setObjectName("windowTitleBar")
+        title_layout = QVBoxLayout(title_bar)
+        title_layout.setContentsMargins(18, 13, 18, 13)
+        title_layout.setSpacing(4)
         title = QLabel("Cadastro do cliente")
-        title.setStyleSheet("font-size:22pt;font-weight:800;color:#102957;")
-        root.addWidget(title)
+        title.setObjectName("windowTitle")
         subtitle = QLabel("Centralize os dados de contato e as preferências de comunicação do cliente.")
-        subtitle.setStyleSheet("color:#64748b;")
+        subtitle.setObjectName("windowSubtitle")
         subtitle.setWordWrap(True)
-        root.addWidget(subtitle)
+        title_layout.addWidget(title)
+        title_layout.addWidget(subtitle)
+        root.addWidget(title_bar)
 
         tabs = QTabWidget()
         root.addWidget(tabs, 1)
@@ -113,7 +119,10 @@ class CustomerFormDialog(QDialog):
         root.addWidget(buttons)
         self.setStyleSheet("""
             QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; }
-            QLineEdit, QDateEdit, QTextEdit {
+            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
+            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
+            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
+                        QLineEdit, QDateEdit, QTextEdit {
                 background:#FFFFFF; color:#102957; border:1px solid #D9E3F1;
                 border-radius:8px; padding:8px;
                 selection-background-color:#2165F5; selection-color:#FFFFFF;
@@ -186,14 +195,18 @@ class CustomersPage(QDialog):
         root.setContentsMargins(24, 22, 24, 22)
         root.setSpacing(14)
         header = QHBoxLayout()
-        heading = QVBoxLayout()
+        title_bar = QFrame()
+        title_bar.setObjectName("windowTitleBar")
+        heading = QVBoxLayout(title_bar)
+        heading.setContentsMargins(18, 13, 18, 13)
+        heading.setSpacing(4)
         title = QLabel("Clientes")
-        title.setStyleSheet("font-size:24pt;font-weight:800;color:#102957;")
-        heading.addWidget(title)
+        title.setObjectName("windowTitle")
         subtitle = QLabel("Cadastro, relacionamento e base para campanhas e follow-ups.")
-        subtitle.setStyleSheet("color:#64748b;")
+        subtitle.setObjectName("windowSubtitle")
+        heading.addWidget(title)
         heading.addWidget(subtitle)
-        header.addLayout(heading, 1)
+        header.addWidget(title_bar, 1)
         self.new_button = QPushButton("+ Novo cliente")
         self.new_button.setObjectName("primaryButton")
         self.new_button.clicked.connect(self._new_customer)
@@ -248,7 +261,10 @@ class CustomersPage(QDialog):
         root.addLayout(crm_actions)
         self.setStyleSheet("""
             QDialog { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; font-size:10pt; }
-            QLineEdit, QComboBox { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:8px; padding:9px; min-height:22px; }
+            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
+            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
+            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
+                        QLineEdit, QComboBox { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:8px; padding:9px; min-height:22px; }
             QLineEdit:focus, QComboBox:focus { border:1px solid #2165F5; }
             QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
             QHeaderView::section { background:#102957; color:#FFFFFF; border:none; padding:10px; font-weight:700; }
