@@ -41,7 +41,7 @@ begin
   values(p_organization_id,v_order_id,v_product.id,v_product.name,coalesce(v_product.sku,''),v_qty,v_price,v_discount,v_line_total);
  end loop;
  insert into public.financial_entries(organization_id,direction,category,description,amount,due_date,status,paid_at,payment_method,counterparty,reference,notes,created_by)
- values(p_organization_id,'entrada','Vendas','Venda '||v_order_number,p_total,current_date,'pago',current_date,coalesce(p_payment_method,''),coalesce((select c.full_name from public.customers c where c.id=p_customer_id and c.organization_id=p_organization_id),'Venda avulsa'),v_order_number,coalesce(p_notes,''),v_user_id);
+ values(p_organization_id,'entrada','Vendas','Venda '||v_order_number,p_total,current_date,case when lower(coalesce(p_payment_method,'')) like '%pendente%' then 'pendente' else 'pago' end,case when lower(coalesce(p_payment_method,'')) like '%pendente%' then null else current_date end,coalesce(p_payment_method,''),coalesce((select c.full_name from public.customers c where c.id=p_customer_id and c.organization_id=p_organization_id),'Venda avulsa'),v_order_number,coalesce(p_notes,''),v_user_id);
  return jsonb_build_object('id',v_order_id,'order_number',v_order_number,'status','completed','total',p_total);
 end;
 $$;
