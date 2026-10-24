@@ -213,6 +213,133 @@ QLabel#footerBrand {
     color: #64728A;
     font-weight: 800;
 }
+/* Login: palette aligned to the brand with a clear blue primary action */
+QWidget#loginBackground {
+    background: #F2F5FB;
+}
+QFrame#loginBrandPanel {
+    background: #172F59;
+    border: 1px solid #244779;
+    border-radius: 22px;
+}
+QLabel#loginLogo, QLabel#loginLogoFallback {
+    background: transparent;
+    color: #FFFFFF;
+}
+QLabel#loginLogoFallback {
+    font-size: 21pt;
+    font-weight: 800;
+}
+QLabel#loginEyebrow {
+    background: transparent;
+    color: #B9D0FF;
+    font-size: 8pt;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+QLabel#loginBrandTitle {
+    background: transparent;
+    color: #FFFFFF;
+    font-size: 27pt;
+    font-weight: 800;
+}
+QLabel#loginBrandDescription {
+    background: transparent;
+    color: #D9E5FA;
+    font-size: 11pt;
+}
+QFrame#loginFeature {
+    background: #213F70;
+    border: 1px solid #34588C;
+    border-radius: 13px;
+}
+QLabel#loginFeatureTitle {
+    background: transparent;
+    color: #FFFFFF;
+    font-weight: 800;
+    font-size: 11pt;
+}
+QLabel#loginFeatureText {
+    background: transparent;
+    color: #D9E5FA;
+    font-size: 9pt;
+}
+QLabel#loginBrandFooter {
+    background: transparent;
+    color: #B9C9E3;
+    font-size: 8pt;
+    font-weight: 700;
+}
+QFrame#loginFormHost {
+    background: transparent;
+    border: none;
+}
+QFrame#loginCard {
+    background: #FFFFFF;
+    border: 1px solid #E0E7F2;
+    border-radius: 20px;
+}
+QLabel#loginFormEyebrow {
+    background: transparent;
+    color: #315FE8;
+    font-size: 8pt;
+    font-weight: 800;
+}
+QLabel#loginFormTitle {
+    background: transparent;
+    color: #152342;
+    font-size: 23pt;
+    font-weight: 800;
+}
+QLabel#fieldLabel {
+    background: transparent;
+    color: #34435D;
+    font-weight: 700;
+}
+QLineEdit#loginInput {
+    background: #FBFCFF;
+    color: #19243A;
+    border: 1px solid #D8E1EF;
+    border-radius: 10px;
+    padding: 10px 13px;
+    selection-background-color: #315FE8;
+    selection-color: #FFFFFF;
+}
+QLineEdit#loginInput:focus {
+    background: #FFFFFF;
+    border: 1px solid #315FE8;
+}
+QLabel#loginStatus {
+    background: transparent;
+    color: #C2414B;
+    font-size: 9pt;
+}
+QPushButton#primaryButton {
+    background: #315FE8;
+    color: #FFFFFF;
+    border: 1px solid #315FE8;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 10pt;
+    font-weight: 800;
+}
+QPushButton#primaryButton:hover {
+    background: #244FCB;
+    border-color: #244FCB;
+}
+QPushButton#primaryButton:pressed {
+    background: #1D43AD;
+}
+QPushButton#primaryButton:disabled {
+    background: #91A9EE;
+    border-color: #91A9EE;
+    color: #FFFFFF;
+}
+QLabel#loginSecurityNote {
+    background: transparent;
+    color: #7B879C;
+    font-size: 8pt;
+}
 QStatusBar {
     background: #FFFFFF;
     color: #718099;
