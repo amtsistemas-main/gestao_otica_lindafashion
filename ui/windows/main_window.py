@@ -25,6 +25,7 @@ from core.auth_service import AuthService
 from core.session_manager import session_manager
 from modules.products.page import ProductsPage
 from modules.inventory.page import InventoryPage
+from modules.suppliers.page import SuppliersPage
 from ui.pages.dashboard_page import DashboardPage
 
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
@@ -228,7 +229,7 @@ class MainWindow(QMainWindow):
     def _open_module(self, module: str) -> None:
         for label, _abbreviation, target in NAV_ITEMS:
             self._nav_buttons[label].setChecked(target == module)
-        if module in ("Produtos", "Estoque"):
+        if module in ("Produtos", "Estoque", "Fornecedores"):
             try:
                 if module == "Produtos":
                     if self._products_window is None:
@@ -237,12 +238,18 @@ class MainWindow(QMainWindow):
                             parent=self,
                         )
                     self._products_window.exec()
-                else:
+                elif module == "Estoque":
                     inventory_window = InventoryPage(
                         preview_mode=self._preview_mode,
                         parent=self,
                     )
                     inventory_window.exec()
+                else:
+                    suppliers_window = SuppliersPage(
+                        preview_mode=self._preview_mode,
+                        parent=self,
+                    )
+                    suppliers_window.exec()
             except Exception as exc:
                 QMessageBox.critical(self, f"Não foi possível abrir {module}", str(exc))
             finally:
