@@ -1605,4 +1605,45 @@ QStatusBar {
     color: #667A9B;
     border-top: 1px solid #E4EAF5;
 }
+
+/* Final application-wide normalization: every combo box and its popup
+   must use the standard light surface, regardless of platform palette. */
+QComboBox, QComboBox:!editable, QComboBox:editable,
+QComboBox:hover, QComboBox:focus, QComboBox:on,
+QComboBox:disabled {
+    background-color: #FFFFFF;
+    color: #172B4D;
+    selection-background-color: #DCE8FF;
+    selection-color: #17365D;
+}
+QComboBox:disabled {
+    background-color: #F1F4F8;
+    color: #8793A6;
+}
+QComboBox::drop-down {
+    background-color: #F7F9FD;
+    border-left: 1px solid #E3EAF4;
+}
+QComboBox QAbstractItemView,
+QComboBox QListView,
+QComboBox QAbstractItemView:focus {
+    background-color: #FFFFFF;
+    color: #172B4D;
+    selection-background-color: #DCE8FF;
+    selection-color: #17365D;
+    border: 1px solid #D6E0EF;
+    outline: 0;
+}
+QComboBox QAbstractItemView::item {
+    background-color: #FFFFFF;
+    color: #172B4D;
+    min-height: 24px;
+    padding: 5px 8px;
+}
+QComboBox QAbstractItemView::item:selected,
+QComboBox QAbstractItemView::item:selected:active,
+QComboBox QAbstractItemView::item:selected:!active {
+    background-color: #DCE8FF;
+    color: #17365D;
+}
 """;
