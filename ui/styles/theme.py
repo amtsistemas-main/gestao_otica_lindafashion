@@ -550,3 +550,17 @@ QScrollArea#mainScroll {
     background: transparent;
     border: none;
 }
+
+QLineEdit#dashboardSearch {
+    background: #F4F7FC;
+    color: #263957;
+    border: 1px solid #E5EAF3;
+    border-radius: 10px;
+    padding: 10px 13px;
+    selection-background-color: #315FE8;
+    selection-color: #FFFFFF;
+}
+QLineEdit#dashboardSearch:focus {
+    background: #FFFFFF;
+    border: 1px solid #AFC2F4;
+}
