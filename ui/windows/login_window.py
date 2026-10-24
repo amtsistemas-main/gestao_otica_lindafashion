@@ -2,15 +2,16 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
-    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -23,6 +24,7 @@ from core.exceptions import ApplicationError
 from ui.windows.main_window import MainWindow
 
 logger = logging.getLogger(__name__)
+LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
 
 
 class LoginWindow(QMainWindow):
@@ -30,32 +32,49 @@ class LoginWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"{APP_NAME} | Acesso")
         self.setMinimumSize(480, 580)
-        self.resize(520, 620)
+        self.resize(520, 640)
         self._auth_service = AuthService()
         self._main_window: MainWindow | None = None
 
         root = QWidget()
+        root.setObjectName("loginBackground")
         root_layout = QVBoxLayout(root)
-        root_layout.setContentsMargins(34, 34, 34, 34)
+        root_layout.setContentsMargins(34, 28, 34, 28)
         root_layout.addStretch(1)
 
         card = QFrame()
         card.setObjectName("loginCard")
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(32, 32, 32, 32)
-        card_layout.setSpacing(14)
+        card_layout.setContentsMargins(36, 34, 36, 34)
+        card_layout.setSpacing(13)
 
-        brand = QLabel("LF")
-        brand.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        brand.setFixedSize(66, 66)
-        brand.setStyleSheet(
-            "background:#172c52; color:#ffffff; border-radius:18px;"
-            "font-size:22pt; font-weight:800;"
-        )
-        brand_row = QHBoxLayout()
-        brand_row.addStretch()
-        brand_row.addWidget(brand)
-        brand_row.addStretch()
+        logo = QLabel()
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo.setMinimumHeight(94)
+        if LOGO_PATH.is_file():
+            pixmap = QPixmap(str(LOGO_PATH))
+            if not pixmap.isNull():
+                logo.setPixmap(
+                    pixmap.scaled(
+                        230, 100,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )
+        if logo.pixmap() is None or logo.pixmap().isNull():
+            logo.setText("LF")
+            logo.setFixedSize(74, 74)
+            logo.setStyleSheet(
+                "background:#172c52; color:#ffffff; border-radius:20px;"
+                "font-size:23pt; font-weight:800;"
+            )
+            logo_row = QHBoxLayout()
+            logo_row.addStretch()
+            logo_row.addWidget(logo)
+            logo_row.addStretch()
+            card_layout.addLayout(logo_row)
+        else:
+            card_layout.addWidget(logo)
 
         title = QLabel(APP_NAME)
         title.setObjectName("brandTitle")
@@ -63,10 +82,16 @@ class LoginWindow(QMainWindow):
         subtitle = QLabel(APP_SUBTITLE)
         subtitle.setObjectName("muted")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(title)
+        card_layout.addWidget(subtitle)
+        card_layout.addSpacing(12)
 
+        email_label = QLabel("E-mail")
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("seu@email.com")
         self.email_input.setClearButtonEnabled(True)
+
+        password_label = QLabel("Senha")
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Sua senha")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
@@ -81,15 +106,12 @@ class LoginWindow(QMainWindow):
         self.login_button.setMinimumHeight(46)
         self.login_button.clicked.connect(self._submit)
 
-        card_layout.addLayout(brand_row)
-        card_layout.addWidget(title)
-        card_layout.addWidget(subtitle)
-        card_layout.addSpacing(10)
-        card_layout.addWidget(QLabel("E-mail"))
+        card_layout.addWidget(email_label)
         card_layout.addWidget(self.email_input)
-        card_layout.addWidget(QLabel("Senha"))
+        card_layout.addWidget(password_label)
         card_layout.addWidget(self.password_input)
         card_layout.addWidget(self.status_label)
+        card_layout.addSpacing(4)
         card_layout.addWidget(self.login_button)
 
         root_layout.addWidget(card)
@@ -108,8 +130,12 @@ class LoginWindow(QMainWindow):
             )
 
     def _submit(self) -> None:
-        email = self.email_input.text()
+        email = self.email_input.text().strip()
         password = self.password_input.text()
+        if not email or not password:
+            self.status_label.setText("Informe seu e-mail e sua senha.")
+            return
+
         self.login_button.setEnabled(False)
         self.status_label.setText("Validando acesso…")
         try:
