@@ -223,10 +223,10 @@ class ProductsPage(QDialog):
         self.search = QLineEdit()
         self.search.setPlaceholderText("Pesquisar por nome, código de barras, SKU, marca ou categoria")
         self.search.setClearButtonEnabled(True)
-        self.search.returnPressed.connect(self._search_products)
+        self.search.returnPressed.connect(self._search_from_barcode)
         self.search.textChanged.connect(self._search_products)
         search_button = QPushButton("Pesquisar / ler código")
-        search_button.clicked.connect(self._search_products)
+        search_button.clicked.connect(self._search_from_barcode)
         search_row.addWidget(self.search, 1)
         search_row.addWidget(search_button)
         root.addLayout(search_row)
@@ -265,13 +265,21 @@ class ProductsPage(QDialog):
         self._search_products()
 
     def _search_products(self, *_args: object) -> None:
+        """Refresh results while typing without interrupting a scanner input."""
+        self._load_products(offer_barcode=False)
+
+    def _search_from_barcode(self, *_args: object) -> None:
+        """Search on Enter/button and optionally offer to create an unknown barcode."""
+        self._load_products(offer_barcode=True)
+
+    def _load_products(self, offer_barcode: bool) -> None:
         term = self.search.text().strip()
         try:
             self._visible_products = self._service.list_products(term)
             self._render_table()
             # A scanner usually appends Enter; if the exact barcode isn't present,
             # offer to start a new product with the scanned value prefilled.
-            if term and not self._visible_products:
+            if offer_barcode and term and not self._visible_products:
                 exact = term
                 if len(exact) >= 6 and exact.replace(" ", "").isalnum():
                     answer = QMessageBox.question(
