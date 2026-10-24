@@ -155,7 +155,9 @@ class MainWindow(QMainWindow):
         else:
             profile_name = session_manager.current.email if session_manager.current else "Usuário"
             profile_role = "Conta conectada"
-        profile_box.addWidget(QLabel(profile_name))
+        profile_name_label = QLabel(profile_name)
+        profile_name_label.setObjectName("profileName")
+        profile_box.addWidget(profile_name_label)
         role_label = QLabel(profile_role)
         role_label.setObjectName("profileRole")
         profile_box.addWidget(role_label)
