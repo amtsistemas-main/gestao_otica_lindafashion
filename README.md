@@ -53,7 +53,11 @@ O fluxo de login requer as configurações públicas do Supabase no arquivo `.en
 - Autenticação e sessão
 - Integrações de pagamento (provedor a definir)
 
-## Módulo Produtos e Supabase\n\nO módulo separa modelos, regras de negócio, repositório e interface em `modules/products/`. Leitores de código de barras USB que funcionam como teclado são compatíveis; configure o leitor para enviar Enter ao final da leitura. Para habilitar dados online, aplique `database/migrations/202610240001_products.sql` no SQL Editor do Supabase e crie uma organização e um vínculo ativo em `organization_members` para o usuário autenticado. Sem esse vínculo, o catálogo online não será carregado.\n\n## Segurança e integridade
+## Módulo Produtos e Supabase
+
+O módulo separa modelos, regras de negócio, repositório e interface em `modules/products/`. Leitores de código de barras USB que funcionam como teclado são compatíveis; configure o leitor para enviar Enter ao final da leitura. Para habilitar dados online, aplique `database/migrations/202610240001_products.sql` no SQL Editor do Supabase e crie uma organização e um vínculo ativo em `organization_members` para o usuário autenticado. Sem esse vínculo, o catálogo online não será carregado.
+
+## Segurança e integridade
 
 - Nunca configure `service_role` ou qualquer segredo privilegiado do Supabase no cliente desktop.
 - Aplique políticas RLS restritivas nas tabelas acessadas pela aplicação.
