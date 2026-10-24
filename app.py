@@ -8,7 +8,9 @@ from PySide6.QtWidgets import QApplication
 
 from config.settings import get_settings
 from ui.styles.theme import apply_theme
+from ui.components.window_header import install_window_headers
 from ui.windows.login_window import LoginWindow
+from ui.windows.main_window import MainWindow
 
 
 def configure_logging(level: str) -> None:
@@ -20,16 +22,24 @@ def configure_logging(level: str) -> None:
 
 
 def main() -> int:
+    preview_mode = "--preview" in sys.argv
+    qt_args = [arg for arg in sys.argv if arg != "--preview"]
+
     settings = get_settings()
     configure_logging(settings.log_level)
 
-    app = QApplication(sys.argv)
+    app = QApplication(qt_args)
     app.setApplicationName("Ótica Linda Fashion")
     app.setOrganizationName("AMT Sistemas")
     app.setStyle("Fusion")
     apply_theme(app)
+    install_window_headers(app)
 
-    window = LoginWindow()
+    if preview_mode:
+        window = MainWindow(preview_mode=True)
+    else:
+        window = LoginWindow()
+
     window.show()
     return app.exec()
 
