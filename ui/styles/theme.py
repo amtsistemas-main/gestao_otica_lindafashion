@@ -874,4 +874,113 @@ QStatusBar {
     color: #7A8CA8;
     border-top: 1px solid #E6EDF7;
 }
+/* Typography and spacing refinement */
+QWidget {
+    font-family: "Segoe UI";
+    font-size: 9pt;
+}
+QFrame#topbar {
+    min-height: 70px;
+}
+QLabel#bannerGreeting {
+    font-size: 10pt;
+    font-weight: 650;
+}
+QLabel#bannerTitle {
+    font-size: 23pt;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+}
+QLabel#bannerDescription {
+    font-size: 9pt;
+    line-height: 1.35;
+}
+QLabel#cardTitle {
+    font-size: 10.5pt;
+    font-weight: 750;
+}
+QLabel#sectionTitle {
+    font-size: 12pt;
+    font-weight: 750;
+}
+QLabel#metricLabel {
+    font-size: 9pt;
+    font-weight: 550;
+}
+QLabel#metricValue {
+    font-size: 22pt;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+}
+QLabel#metricGrowth, QLabel#muted {
+    font-size: 8pt;
+}
+QLabel#quickTitle {
+    font-size: 10pt;
+    font-weight: 700;
+}
+QLabel#quickDescription {
+    font-size: 8.5pt;
+}
+QLabel#productName, QLabel#activityTitle {
+    font-size: 8.5pt;
+    font-weight: 650;
+}
+QLabel#productCode, QLabel#activityDetail, QLabel#activityTime {
+    font-size: 7.5pt;
+}
+QLabel#legendLabel, QLabel#stockLabel, QLabel#legendValue, QLabel#stockValue {
+    font-size: 8.5pt;
+}
+QLabel#agendaDate {
+    font-size: 9pt;
+}
+QLabel#agendaTime {
+    font-size: 8pt;
+}
+QPushButton#navButton {
+    padding: 11px 13px;
+    spacing: 12px;
+    font-size: 9.5pt;
+    font-weight: 600;
+}
+QPushButton#navButton:checked {
+    font-weight: 750;
+}
+QLineEdit#dashboardSearch {
+    font-size: 9pt;
+    padding: 11px 14px;
+}
+QLabel#sidebarEyebrow {
+    font-size: 7.5pt;
+    letter-spacing: 1.2px;
+}
+QPushButton#topbarIconButton {
+    padding: 7px;
+}
+QLabel#moduleIcon {
+    background: #EEF4FF;
+    border: 1px solid #E2EBFC;
+    border-radius: 14px;
+}
+QLabel#moduleTitle {
+    color: #172B4D;
+    font-size: 10pt;
+    font-weight: 750;
+}
+QLabel#moduleDescription {
+    color: #71819A;
+    font-size: 8.5pt;
+}
+QPushButton#moduleCard {
+    background: #FFFFFF;
+    border: 1px solid #E2EAF5;
+    border-radius: 12px;
+    padding: 12px;
+}
+QPushButton#moduleCard:hover {
+    background: #F8FAFF;
+    border-color: #B9CCF3;
+}
+
 """
