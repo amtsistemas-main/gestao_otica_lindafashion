@@ -146,7 +146,10 @@ class ProductFormDialog(QDialog):
             self.minimum_stock.setValue(product.minimum_stock)
             self.description.setPlainText(product.description)
             self.image_url.setText(product.image_url)
-            self._render_image(product.image_url)
+            if product.image_url.startswith(("https://", "http://")):
+                self._show_image_url_hint(product.image_url)
+            else:
+                self._render_image(product.image_url)
             self.active.setChecked(product.active)
         else:
             self.barcode.setFocus()
@@ -297,11 +300,16 @@ class ProductsPage(QDialog):
         self.new_button = QPushButton("+ Novo produto")
         self.new_button.setObjectName("primaryButton")
         self.new_button.clicked.connect(self._new_product)
-        header.addWidget(self.export_button)
-        header.addWidget(self.template_button)
-        header.addWidget(self.import_button)
         header.addWidget(self.new_button)
         root.addLayout(header)
+
+        catalog_tools = QHBoxLayout()
+        catalog_tools.setSpacing(10)
+        catalog_tools.addWidget(self.export_button)
+        catalog_tools.addWidget(self.template_button)
+        catalog_tools.addWidget(self.import_button)
+        catalog_tools.addStretch()
+        root.addLayout(catalog_tools)
 
         if preview_mode:
             preview_note = QLabel("PRÉ-VISUALIZAÇÃO • os produtos cadastrados aqui ficam apenas na memória e são apagados ao fechar.")
