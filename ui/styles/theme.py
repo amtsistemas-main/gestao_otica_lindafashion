@@ -5,20 +5,20 @@ from PySide6.QtWidgets import QApplication
 
 THEME_QSS = """
 QWidget {
-    background: #F5F7FB;
+    background: #FFFFFF;
     color: #19243A;
     font-family: "Arial";
     font-size: 10pt;
 }
 QMainWindow, QDialog {
-    background: #F5F7FB;
+    background: #FFFFFF;
 }
 QFrame#appSidebar {
     background: #FFFFFF;
     border-right: 1px solid #E6EAF2;
 }
 QFrame#workspace, QFrame#topbar {
-    background: #F5F7FB;
+    background: #FFFFFF;
     border: none;
 }
 QFrame#topbar {
@@ -244,7 +244,7 @@ QLabel#footerBrand {
 }
 /* Login: palette aligned to the brand with a clear blue primary action */
 QWidget#loginBackground {
-    background: #F2F5FB;
+    background: #FFFFFF;
 }
 QFrame#loginBrandPanel {
     background: #172F59;
@@ -648,7 +648,7 @@ QPushButton#navButton:checked {
     font-weight: 700;
 }
 QFrame#welcomeBanner {
-    background: #F1F6FD;
+    background: #FFFFFF;
     border: 1px solid #DFE9F8;
     border-radius: 12px;
 }
@@ -1031,7 +1031,7 @@ QWidget {
     color: #24334B;
 }
 QMainWindow, QDialog {
-    background: #F3F5F8;
+    background: #FFFFFF;
 }
 QFrame#appSidebar {
     background: #102957;
@@ -1185,7 +1185,7 @@ QPushButton#primaryButton {
 
 /* Product catalog: refined SaaS surface and clear actions */
 QDialog {
-    background: #F5F8FD;
+    background: #FFFFFF;
     color: #172B4D;
 }
 QLabel#pageTitle {
