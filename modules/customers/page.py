@@ -395,10 +395,12 @@ class CustomersPage(QDialog):
         actions = QHBoxLayout()
         refresh_button = QPushButton("Atualizar lista")
         update_status_button = QPushButton("Alterar status selecionado")
+        history_button = QPushButton("Histórico de status")
         save_button = QPushButton("Cadastrar pedido")
         save_button.setObjectName("primaryButton")
         actions.addWidget(refresh_button)
         actions.addWidget(update_status_button)
+        actions.addWidget(history_button)
         actions.addStretch(1)
         actions.addWidget(save_button)
         layout.addLayout(actions)
@@ -439,19 +441,102 @@ class CustomersPage(QDialog):
             if not accepted:
                 return
             new_status = values[choices.index(selected)]
-            payload = {"status": new_status, "updated_at": __import__("datetime").datetime.now().astimezone().isoformat()}
-            if new_status == "pronto":
-                payload["completed_at"] = payload["updated_at"]
-            elif new_status == "entregue":
-                payload["delivered_at"] = payload["updated_at"]
             try:
+                current_rows = self._client.table("customer_orders").select(
+                    "status"
+                ).eq("id", order_id).eq("organization_id", self._organization_id).eq(
+                    "customer_id", customer["id"]
+                ).limit(1).execute().data or []
+                if not current_rows:
+                    QMessageBox.warning(dialog, "Pedido não encontrado", "O pedido não foi localizado nesta organização.")
+                    return
+                previous_status = str(current_rows[0].get("status") or "")
+                if previous_status == new_status:
+                    QMessageBox.information(dialog, "Sem alteração", "O pedido já está com esse status.")
+                    return
+                now = __import__("datetime").datetime.now().astimezone().isoformat()
+                payload = {"status": new_status, "updated_at": now}
+                if new_status == "pronto":
+                    payload["completed_at"] = now
+                elif new_status == "entregue":
+                    payload["delivered_at"] = now
                 self._client.table("customer_orders").update(payload).eq("id", order_id).eq(
                     "organization_id", self._organization_id
                 ).eq("customer_id", customer["id"]).execute()
-                QMessageBox.information(dialog, "Status atualizado", "Status do pedido atualizado. Nenhuma mensagem externa foi enviada.")
+                try:
+                    self._client.table("customer_order_events").insert({
+                        "organization_id": self._organization_id,
+                        "customer_id": customer["id"],
+                        "order_id": order_id,
+                        "previous_status": previous_status,
+                        "new_status": new_status,
+                        "changed_by": self._user_id,
+                        "note": "",
+                    }).execute()
+                except Exception as history_exc:
+                    QMessageBox.warning(
+                        dialog, "Status salvo com ressalva",
+                        "O status foi atualizado, mas não foi possível registrar o histórico. "
+                        "Verifique as permissões e tente consultar o histórico novamente.\\n\\n"
+                        f"{history_exc}",
+                    )
+                    load_orders()
+                    return
+                QMessageBox.information(
+                    dialog, "Status atualizado",
+                    "Status atualizado e registrado no histórico. Nenhuma mensagem externa foi enviada.",
+                )
                 load_orders()
             except Exception as exc:
                 QMessageBox.critical(dialog, "Erro ao atualizar status", f"Não foi possível atualizar o status.\\n\\n{exc}")
+
+        def view_order_history() -> None:
+            row_index = table.currentRow()
+            if row_index < 0 or table.item(row_index, 0) is None:
+                QMessageBox.information(dialog, "Selecione um pedido", "Selecione um pedido para consultar o histórico.")
+                return
+            order_id = table.item(row_index, 0).data(Qt.ItemDataRole.UserRole)
+            try:
+                events = self._client.table("customer_order_events").select(
+                    "previous_status,new_status,changed_at,note"
+                ).eq("organization_id", self._organization_id).eq(
+                    "customer_id", customer["id"]
+                ).eq("order_id", order_id).order("changed_at", desc=True).limit(100).execute().data or []
+            except Exception as exc:
+                QMessageBox.critical(dialog, "Erro no histórico", f"Não foi possível carregar o histórico de status.\\n\\n{exc}")
+                return
+            history_dialog = QDialog(dialog)
+            history_dialog.setWindowTitle("Histórico de status do pedido")
+            history_dialog.resize(720, 420)
+            history_layout = QVBoxLayout(history_dialog)
+            history_title = QLabel(f"Histórico — {customer.get('full_name', 'Cliente')}")
+            history_title.setStyleSheet("font-size:16pt;font-weight:750;color:#102957;")
+            history_layout.addWidget(history_title)
+            history_table = QTableWidget(0, 4)
+            history_table.setHorizontalHeaderLabels(["Data", "Status anterior", "Novo status", "Observação"])
+            history_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+            history_table.verticalHeader().setVisible(False)
+            history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+            history_table.setRowCount(len(events))
+            for index, event in enumerate(events):
+                previous = status_labels.get(event.get("previous_status", ""), event.get("previous_status", "") or "—")
+                current = status_labels.get(event.get("new_status", ""), event.get("new_status", ""))
+                values = [
+                    str(event.get("changed_at") or "")[:16].replace("T", " "),
+                    previous, current, event.get("note", ""),
+                ]
+                for column, value in enumerate(values):
+                    history_table.setItem(index, column, QTableWidgetItem(str(value)))
+            history_layout.addWidget(history_table)
+            if not events:
+                empty = QLabel("Ainda não há alterações de status registradas para este pedido.")
+                empty.setStyleSheet("color:#64748b;padding:8px;")
+                history_layout.addWidget(empty)
+            close_history = QPushButton("Fechar")
+            close_history.clicked.connect(history_dialog.accept)
+            history_layout.addWidget(close_history, alignment=Qt.AlignmentFlag.AlignRight)
+            history_dialog.setStyleSheet(dialog.styleSheet())
+            history_dialog.exec()
 
         def save_order() -> None:
             if not description.text().strip():
@@ -484,6 +569,7 @@ class CustomersPage(QDialog):
 
         refresh_button.clicked.connect(load_orders)
         update_status_button.clicked.connect(update_order_status)
+        history_button.clicked.connect(view_order_history)
         save_button.clicked.connect(save_order)
         load_orders()
         dialog.setStyleSheet("""
