@@ -325,7 +325,25 @@ class CustomersPage(QDialog):
                 item.setData(Qt.ItemDataRole.UserRole, record.get("id"))
                 self.table.setItem(row_index, col, item)
             action = QPushButton("Editar")
-            action.setObjectName("primaryButton")
+            action.setObjectName("editCustomerButton")
+            action.setStyleSheet("""
+                QPushButton#editCustomerButton {
+                    background-color: #2165F5;
+                    color: #FFFFFF;
+                    border: 1px solid #2165F5;
+                    border-radius: 6px;
+                    padding: 7px 12px;
+                    font-weight: 700;
+                }
+                QPushButton#editCustomerButton:hover {
+                    background-color: #1749C2;
+                    color: #FFFFFF;
+                }
+                QPushButton#editCustomerButton:pressed {
+                    background-color: #103A9F;
+                    color: #FFFFFF;
+                }
+            """)
             action.clicked.connect(lambda checked=False, item=record: self._edit_customer(item))
             self.table.setCellWidget(row_index, 5, action)
         total = len(self._rows)
