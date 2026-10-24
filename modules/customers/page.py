@@ -80,7 +80,7 @@ class CustomerFormDialog(QDialog):
                     widget.setObjectName("birthDateEdit")
                     widget.setCalendarPopup(True)
                     widget.setDisplayFormat("dd/MM/yyyy")
-                    widget.setSpecialValueText("Não informado")
+                    widget.setSpecialValueText("dd/MM/yyyy")
                     widget.setDate(widget.minimumDate())
                     calendar = QCalendarWidget()
                     calendar.setGridVisible(False)
