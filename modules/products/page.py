@@ -41,22 +41,55 @@ class ProductFormDialog(QDialog):
                 font-family: "Segoe UI";
                 font-size: 10pt;
             }
-            QWidget#productFormContent { background: #ffffff; }
-            QLabel#pageTitle {
+            QWidget#productFormContent { background: #F5F7FB; }
+            QFrame#productHeader {
                 background: #102957;
-                color: #FFFFFF;
-                font-size: 18pt;
-                font-weight: 750;
-                padding: 14px 18px;
                 border: 1px solid #203D68;
-                border-radius: 8px;
+                border-radius: 14px;
             }
-            QLabel#muted { color: #64748b; font-size: 10pt; }
+            QLabel#pageTitle {
+                background: transparent;
+                color: #FFFFFF;
+                font-size: 20pt;
+                font-weight: 800;
+                padding: 0;
+            }
+            QLabel#headerEyebrow {
+                background: transparent;
+                color: #BFD2F4;
+                font-size: 8pt;
+                font-weight: 800;
+                letter-spacing: 1px;
+            }
+            QLabel#muted { color: #718099; font-size: 9pt; background: transparent; }
+            QFrame#productFormCard, QFrame#productImageCard, QFrame#priceSummaryCard {
+                background: #FFFFFF;
+                border: 1px solid #E1E8F2;
+                border-radius: 14px;
+            }
             QLabel#sectionTitle {
-                color: #17365d;
+                color: #102957;
+                background: transparent;
                 font-size: 12pt;
+                font-weight: 800;
+                padding: 0 0 5px 0;
+            }
+            QLabel#sectionDescription {
+                color: #718099;
+                background: transparent;
+                font-size: 9pt;
+            }
+            QLabel#priceSummaryLabel {
+                background: transparent;
+                color: #718099;
+                font-size: 9pt;
                 font-weight: 700;
-                padding-bottom: 4px;
+            }
+            QLabel#priceSummaryValue {
+                background: transparent;
+                color: #2457D6;
+                font-size: 17pt;
+                font-weight: 800;
             }
             QLabel#productFieldLabel {
                 color: #334766;
@@ -147,18 +180,28 @@ class ProductFormDialog(QDialog):
         content = QWidget()
         content.setObjectName("productFormContent")
         root = QVBoxLayout(content)
-        root.setContentsMargins(18, 14, 18, 18)
-        root.setSpacing(18)
+        root.setContentsMargins(20, 18, 20, 20)
+        root.setSpacing(14)
         scroll.setWidget(content)
         outer.addWidget(scroll, 1)
 
-        title = QLabel("Dados do produto")
+        header = QFrame()
+        header.setObjectName("productHeader")
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(22, 18, 22, 18)
+        header_layout.setSpacing(7)
+        eyebrow = QLabel("CATÁLOGO • GESTÃO DE PRODUTOS")
+        eyebrow.setObjectName("headerEyebrow")
+        title = QLabel("Editar produto" if product else "Novo produto")
         title.setObjectName("pageTitle")
-        root.addWidget(title)
-        subtitle = QLabel("Use o leitor USB no campo de código de barras ou digite o código.")
+        subtitle = QLabel("Cadastre informações, preços e estoque em um só lugar.")
         subtitle.setObjectName("muted")
+        subtitle.setStyleSheet("color: #DCE7FA;")
         subtitle.setWordWrap(True)
-        root.addWidget(subtitle)
+        header_layout.addWidget(eyebrow)
+        header_layout.addWidget(title)
+        header_layout.addWidget(subtitle)
+        root.addWidget(header)
 
         form = QGridLayout()
         form.setHorizontalSpacing(22)
@@ -198,11 +241,20 @@ class ProductFormDialog(QDialog):
         self.description.setPlaceholderText("Detalhes adicionais, cor, tamanho, material...")
         self.description.setMaximumHeight(78)
 
+        image_card = QFrame()
+        image_card.setObjectName("productImageCard")
+        image_card_layout = QVBoxLayout(image_card)
+        image_card_layout.setContentsMargins(18, 16, 18, 16)
+        image_card_layout.setSpacing(10)
         image_section = QVBoxLayout()
         image_section.setSpacing(8)
-        image_heading = QLabel("Imagem do produto")
+        image_heading = QLabel("▣  Imagem do produto")
         image_heading.setObjectName("sectionTitle")
         image_section.addWidget(image_heading)
+        image_description = QLabel("Adicione uma imagem para facilitar a identificação no catálogo.")
+        image_description.setObjectName("sectionDescription")
+        image_description.setWordWrap(True)
+        image_section.addWidget(image_description)
         image_row = QHBoxLayout()
         self.image_preview = QLabel("Sem imagem")
         self.image_preview.setObjectName("productImagePreview")
@@ -226,7 +278,8 @@ class ProductFormDialog(QDialog):
         image_row.addLayout(image_controls, 1)
         image_section.addLayout(image_row)
         image_section.addWidget(QLabel("PNG, JPG ou WEBP • máximo 8 MB. Upload online usa o armazenamento da organização."))
-        root.addLayout(image_section)
+        image_card_layout.addLayout(image_section)
+        root.addWidget(image_card)
 
         self.active = QCheckBox("Produto ativo para venda")
         self.active.setChecked(True)
@@ -250,11 +303,36 @@ class ProductFormDialog(QDialog):
         form.addWidget(description_label, details_row, 0)
         form.addWidget(self.description, details_row, 1, 1, 3)
         form.addWidget(self.active, details_row + 1, 0, 1, 4)
-        root.addLayout(form)
+        form_card = QFrame()
+        form_card.setObjectName("productFormCard")
+        form_card_layout = QVBoxLayout(form_card)
+        form_card_layout.setContentsMargins(20, 18, 20, 20)
+        form_card_layout.setSpacing(14)
+        form_heading = QLabel("✦  Informações do produto")
+        form_heading.setObjectName("sectionTitle")
+        form_card_layout.addWidget(form_heading)
+        form_description = QLabel("Preencha os dados essenciais, os valores comerciais e os níveis de estoque.")
+        form_description.setObjectName("sectionDescription")
+        form_description.setWordWrap(True)
+        form_card_layout.addWidget(form_description)
+        form_card_layout.addLayout(form)
+        root.addWidget(form_card)
 
-        self.final_price_label = QLabel("Preço final: R$ 0,00")
-        self.final_price_label.setStyleSheet("font-size: 13pt; font-weight: 700; color: #2457d6;")
-        root.addWidget(self.final_price_label)
+        price_card = QFrame()
+        price_card.setObjectName("priceSummaryCard")
+        price_layout = QHBoxLayout(price_card)
+        price_layout.setContentsMargins(20, 15, 20, 15)
+        price_layout.setSpacing(12)
+        price_text_layout = QVBoxLayout()
+        price_text_layout.setSpacing(4)
+        price_caption = QLabel("RESUMO DE PREÇO")
+        price_caption.setObjectName("priceSummaryLabel")
+        price_text_layout.addWidget(price_caption)
+        self.final_price_label = QLabel("Preço final com desconto: R$ 0,00")
+        self.final_price_label.setObjectName("priceSummaryValue")
+        price_text_layout.addWidget(self.final_price_label)
+        price_layout.addLayout(price_text_layout, 1)
+        root.addWidget(price_card)
         self.sale_price.valueChanged.connect(self._update_final_price)
         self.discount.valueChanged.connect(self._update_final_price)
 
