@@ -417,3 +417,136 @@ QHeaderView::section {
 def apply_theme(app: QApplication) -> None:
     app.setFont(QFont("Segoe UI", 10))
     app.setStyleSheet(THEME_QSS)
+
+
+/* Dashboard visual refresh: navy navigation, white surfaces and airy analytics. */
+QFrame#appSidebar {
+    background: #102957;
+    border-right: 1px solid #193967;
+}
+QLabel#sidebarBrand {
+    color: #FFFFFF;
+    font-size: 10pt;
+}
+QLabel#sidebarEyebrow, QLabel#sidebarSection {
+    color: #9EB5DD;
+}
+QLabel#sidebarFooter {
+    color: #9EB5DD;
+}
+QLabel#logoFallback {
+    background: #244A83;
+    color: #FFFFFF;
+}
+QPushButton#navButton {
+    background: transparent;
+    color: #D5E1F5;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    padding: 11px 9px;
+    text-align: left;
+    font-weight: 600;
+}
+QPushButton#navButton:hover {
+    background: #1A3A70;
+    color: #FFFFFF;
+}
+QPushButton#navButton:checked {
+    background: #245DE0;
+    color: #FFFFFF;
+    border: 1px solid #3D72EE;
+    font-weight: 800;
+}
+QLabel#bannerEyebrow {
+    background: transparent;
+    color: #BDD1FF;
+    font-size: 8pt;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+QLabel#bannerTitle {
+    background: transparent;
+    color: #FFFFFF;
+    font-size: 20pt;
+    font-weight: 800;
+}
+QLabel#bannerDescription {
+    background: transparent;
+    color: #DDE7FA;
+    font-size: 10pt;
+}
+QFrame#welcomeBanner {
+    background: #193765;
+    border: 1px solid #274A7C;
+    border-radius: 16px;
+}
+QFrame#analyticsCard {
+    background: #FFFFFF;
+    border: 1px solid #E4EAF4;
+    border-radius: 13px;
+}
+QLabel#chartTitle {
+    background: transparent;
+    color: #172849;
+    font-size: 11pt;
+    font-weight: 800;
+}
+QLabel#chartCategoryLabel {
+    background: transparent;
+    color: #40516D;
+    font-size: 9pt;
+    font-weight: 600;
+}
+QLabel#chartValue {
+    background: transparent;
+    color: #25395E;
+    font-size: 9pt;
+    font-weight: 750;
+}
+QLabel#emptyState {
+    background: #F8FAFE;
+    color: #8491A6;
+    border: 1px dashed #DCE4F0;
+    border-radius: 9px;
+    padding: 12px;
+}
+QFrame#dashboardFooter {
+    background: #FFFFFF;
+    border: 1px solid #E4EAF4;
+    border-radius: 10px;
+}
+QFrame#quickActionsCard {
+    background: #FFFFFF;
+    border: 1px solid #E4EAF4;
+    border-radius: 13px;
+}
+QPushButton#primaryQuickAction {
+    background: #315FE8;
+    color: #FFFFFF;
+    border: 1px solid #315FE8;
+    border-radius: 9px;
+    padding: 10px 14px;
+    font-weight: 800;
+}
+QPushButton#primaryQuickAction:hover {
+    background: #244FCB;
+}
+QPushButton#secondaryQuickAction {
+    background: #FFFFFF;
+    color: #244BAA;
+    border: 1px solid #DCE5F5;
+    border-radius: 9px;
+    padding: 10px 14px;
+    font-weight: 750;
+}
+QPushButton#secondaryQuickAction:hover {
+    background: #F1F5FF;
+    border-color: #B9C9F2;
+}
+QLabel#metricValue {
+    font-size: 21pt;
+}
+QScrollArea#mainScroll {
+    background: transparent;
+    border: none;
+}
