@@ -325,6 +325,7 @@ class CustomersPage(QDialog):
                 item.setData(Qt.ItemDataRole.UserRole, record.get("id"))
                 self.table.setItem(row_index, col, item)
             action = QPushButton("Editar")
+            action.setObjectName("primaryButton")
             action.clicked.connect(lambda checked=False, item=record: self._edit_customer(item))
             self.table.setCellWidget(row_index, 5, action)
         total = len(self._rows)
