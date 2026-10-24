@@ -55,7 +55,9 @@ class InventoryPage(QDialog):
             QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
             QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; border-radius:10px; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
             QHeaderView::section { background:#102957; color:#FFFFFF; border:none; border-right:1px solid #28456F; padding:11px 8px; min-height:22px; font-weight:700; }
-            QTabWidget { background:#F3F5F8; }\n            QTabWidget::pane { border:1px solid #DFE7F3; background:#F3F5F8; border-radius:10px; }\n            QTabWidget QWidget { background:#F3F5F8; color:#24334B; }\n            QTabWidget QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; }
+            QTabWidget { background:#F3F5F8; }\n            QTabWidget::pane { border:1px solid #DFE7F3; background:#F3F5F8; border-radius:10px; }
+            QTabWidget QWidget { background:#F3F5F8; color:#24334B; }
+            QTabWidget QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; }
             QTabBar::tab { background:#EAF0F9; color:#526782; padding:10px 18px; margin-right:4px; border-top-left-radius:7px; border-top-right-radius:7px; }
             QTabBar::tab:selected { background:#FFFFFF; color:#2457D6; font-weight:750; }
         """)
