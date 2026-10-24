@@ -454,7 +454,7 @@ class InventoryPage(QDialog):
                 self,
                 "Recebimento registrado",
                 f"Entrada de {quantity.value()} unidade(s) registrada. "
-                f"Saldo atualizado de {data.get('stock_quantity', '—')} para {data.get('stock_quantity', '—')}. "
+                f"Novo saldo do produto: {data.get('stock_quantity', '—')}. "
                 f"Status da solicitação: {data.get('request_status', 'atualizado')}.",
             )
         except Exception as exc:
