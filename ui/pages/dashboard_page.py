@@ -133,42 +133,42 @@ class DashboardPage(QWidget):
         page_heading.addWidget(intro)
         root.addLayout(page_heading)
 
-        hero = QFrame()
-        hero.setObjectName("welcomeBanner")
-        hero_layout = QHBoxLayout(hero)
-        hero_layout.setContentsMargins(26, 22, 24, 22)
-        hero_layout.setSpacing(20)
+        # Functional shortcuts replace the promotional banner.
+        actions_card = QFrame()
+        actions_card.setObjectName("quickActionsCard")
+        actions_layout = QVBoxLayout(actions_card)
+        actions_layout.setContentsMargins(20, 17, 20, 17)
+        actions_layout.setSpacing(12)
 
-        hero_copy = QVBoxLayout()
-        hero_copy.setSpacing(8)
-        badge = QLabel("ÓTICA LINDA FASHION  •  GESTÃO INTELIGENTE")
-        badge.setObjectName("heroEyebrow")
-        hero_title = QLabel("Sua gestão, mais clara.\nSeu negócio, mais forte.")
-        hero_title.setObjectName("heroTitle")
-        hero_title.setWordWrap(True)
-        hero_description = QLabel(
-            "Organize produtos, acompanhe o estoque e prepare sua operação "
-            "para decisões melhores."
-        )
-        hero_description.setObjectName("heroDescription")
-        hero_description.setWordWrap(True)
-        hero_description.setMaximumWidth(560)
-        hero_copy.addWidget(badge)
-        hero_copy.addWidget(hero_title)
-        hero_copy.addWidget(hero_description)
-        hero_layout.addLayout(hero_copy, 1)
+        actions_heading = QHBoxLayout()
+        actions_title = QLabel("Ações rápidas")
+        actions_title.setObjectName("sectionTitle")
+        actions_hint = QLabel("Atalhos para tarefas frequentes")
+        actions_hint.setObjectName("muted")
+        actions_heading.addWidget(actions_title)
+        actions_heading.addStretch()
+        actions_heading.addWidget(actions_hint)
+        actions_layout.addLayout(actions_heading)
 
-        hero_action = QVBoxLayout()
-        hero_action.addStretch()
-        self.primary_action = QPushButton("＋  Cadastrar produto")
-        self.primary_action.setObjectName("heroButton")
-        self.primary_action.setMinimumHeight(46)
-        self.primary_action.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.primary_action.clicked.connect(lambda: self.module_requested.emit("Produtos"))
-        hero_action.addWidget(self.primary_action)
-        hero_action.addStretch()
-        hero_layout.addLayout(hero_action)
-        root.addWidget(hero)
+        actions_row = QHBoxLayout()
+        actions_row.setSpacing(12)
+        quick_actions = [
+            ("＋  Cadastrar / consultar produtos", "Produtos", "primaryQuickAction"),
+            ("▤  Estoque", "Estoque", "secondaryQuickAction"),
+            ("R$  Financeiro", "Financeiro", "secondaryQuickAction"),
+        ]
+        for label, module, style_name in quick_actions:
+            action_button = QPushButton(label)
+            action_button.setObjectName(style_name)
+            action_button.setMinimumHeight(44)
+            action_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            action_button.setToolTip(f"Abrir módulo {module}")
+            action_button.clicked.connect(
+                lambda checked=False, target=module: self.module_requested.emit(target)
+            )
+            actions_row.addWidget(action_button, 1)
+        actions_layout.addLayout(actions_row)
+        root.addWidget(actions_card)
 
         metrics_heading = QHBoxLayout()
         metrics_title = QLabel("Indicadores do negócio")
