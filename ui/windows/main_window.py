@@ -164,6 +164,9 @@ class MainWindow(QMainWindow):
         profile_menu = QPushButton("⌄")
         profile_menu.setObjectName("topbarIconButton")
         profile_menu.setFixedSize(28, 36)
+        profile_menu.setToolTip("Sair da conta" if not preview_mode else "Perfil de demonstração")
+        if not preview_mode:
+            profile_menu.clicked.connect(self._logout)
         topbar_layout.addWidget(profile_menu)
 
         workspace_layout.addWidget(topbar)
