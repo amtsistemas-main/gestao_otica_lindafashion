@@ -107,6 +107,19 @@ class SalesOrderDialog(QDialog):
             QLabel#windowSubtitle { color:#DCE7F7; background:transparent; }
             QLabel#sectionTitle { font-size:14pt; font-weight:700; }
             QLineEdit, QComboBox, QDoubleSpinBox, QTextEdit { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:7px; padding:7px; min-height:24px; }
+
+            QAbstractSpinBox { padding-right: 7px; }
+            QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
+                subcontrol-origin: border; subcontrol-position: right; width: 25px;
+                border: none; border-left: 1px solid #1D4FC4; background: #245DE0;
+            }
+            QAbstractSpinBox::up-button { subcontrol-position: top right; border-top-right-radius: 7px; border-bottom: 1px solid #4A79E8; }
+            QAbstractSpinBox::down-button { subcontrol-position: bottom right; border-bottom-right-radius: 7px; }
+            QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover { background: #1749C2; }
+            QAbstractSpinBox::up-button:pressed, QAbstractSpinBox::down-button:pressed { background: #103A9F; }
+            QAbstractSpinBox::up-arrow, QAbstractSpinBox::down-arrow {
+                width: 8px; height: 8px; color: #FFFFFF;
+            }
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:7px; padding:9px 14px; }
             QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border-color:#2165F5; font-weight:700; }
             QHeaderView::section { background:#EEF3FC; color:#102957; padding:8px; border:0; font-weight:700; }
