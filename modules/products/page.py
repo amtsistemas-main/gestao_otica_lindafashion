@@ -73,6 +73,19 @@ class ProductFormDialog(QDialog):
                 selection-background-color: #2457d6;
                 min-height: 20px;
             }
+
+            QAbstractSpinBox { padding-right: 7px; }
+            QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
+                subcontrol-origin: border; subcontrol-position: right; width: 25px;
+                border: none; border-left: 1px solid #1D4FC4; background: #245DE0;
+            }
+            QAbstractSpinBox::up-button { subcontrol-position: top right; border-top-right-radius: 7px; border-bottom: 1px solid #4A79E8; }
+            QAbstractSpinBox::down-button { subcontrol-position: bottom right; border-bottom-right-radius: 7px; }
+            QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover { background: #1749C2; }
+            QAbstractSpinBox::up-button:pressed, QAbstractSpinBox::down-button:pressed { background: #103A9F; }
+            QAbstractSpinBox::up-arrow, QAbstractSpinBox::down-arrow {
+                width: 8px; height: 8px; color: #FFFFFF;
+            }
             QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus, QSpinBox:focus, QTextEdit:focus {
                 border: 1px solid #3975e8;
                 background: #ffffff;
