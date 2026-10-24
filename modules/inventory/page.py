@@ -448,7 +448,7 @@ class InventoryPage(QDialog):
                 },
             ).execute()
             self._load()
-            self.tabs.setCurrentIndex(1)
+            self.tabs.setCurrentIndex(0)
             data = result.data if isinstance(result.data, dict) else {}
             QMessageBox.information(
                 self,
