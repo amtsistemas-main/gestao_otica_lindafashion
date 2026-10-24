@@ -2,16 +2,18 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+import qtawesome as qta
 
 
 MODULE_ICONS = {
-    "Produtos": "▣",
-    "Estoque": "▤",
-    "Fornecedores": "♧",
-    "Financeiro": "R$",
-    "Relatórios": "▥",
-    "Configurações": "⚙",
+    "Produtos": ("fa5s.glasses", "#2165F5"),
+    "Estoque": ("fa5s.warehouse", "#17A982"),
+    "Fornecedores": ("fa5s.truck", "#E7A22B"),
+    "Financeiro": ("fa5s.wallet", "#8955E8"),
+    "Relatórios": ("fa5s.chart-bar", "#2165F5"),
+    "Configurações": ("fa5s.cog", "#60799E"),
 }
 
 
@@ -34,9 +36,11 @@ class ModuleCard(QPushButton):
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(14)
 
-        icon = QLabel(MODULE_ICONS.get(title, "◇"))
+        icon = QLabel()
+        icon_name, icon_color = MODULE_ICONS.get(title, ("fa5s.layer-group", "#2165F5"))
         icon.setObjectName("moduleIcon")
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon.setPixmap(qta.icon(icon_name, color=icon_color).pixmap(21, 21))
         icon.setFixedSize(46, 46)
         icon.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
