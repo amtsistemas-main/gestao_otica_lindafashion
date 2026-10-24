@@ -164,6 +164,9 @@ class CustomerFormDialog(QDialog):
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 14px; }
             QPushButton:hover { background:#F3F7FF; }
             QCheckBox { spacing:8px; padding:5px; }
+            QCheckBox::indicator { width:18px; height:18px; border:1px solid #B8C7DC; border-radius:5px; background:#FFFFFF; }
+            QCheckBox::indicator:checked { background:#2165F5; border:1px solid #2165F5; image:url(:/qt-project.org/styles/commonstyle/images/checkbox_checked.png); }
+            QCheckBox::indicator:hover { border:1px solid #2165F5; }
         """)
 
     def _lookup_postal_code(self) -> None:
