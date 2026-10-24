@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Protocol
+from pathlib import Path
 from uuid import uuid4
 
 from core.exceptions import ConfigurationError
@@ -141,6 +142,29 @@ class SupabaseProductRepository:
                 "e se o registro existe na organização atual."
             )
         return Product.from_mapping(rows[0])
+
+    @property
+    def organization_id(self) -> str:
+        return self._organization_id
+
+    def upload_product_image(self, image_path: str) -> str:
+        """Upload an image into the organization-scoped public product image bucket."""
+        path = Path(image_path)
+        suffix = path.suffix.lower()
+        allowed = {".png", ".jpg", ".jpeg", ".webp"}
+        if suffix not in allowed:
+            raise ValueError("Formato de imagem não suportado. Use PNG, JPG ou WEBP.")
+        if path.stat().st_size > 8 * 1024 * 1024:
+            raise ValueError("A imagem deve ter no máximo 8 MB.")
+        content_types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+        object_path = f"{self._organization_id}/{uuid4().hex}{suffix}"
+        with path.open("rb") as image_file:
+            self._client.storage.from_("product-images").upload(
+                object_path,
+                image_file.read(),
+                file_options={"content-type": content_types[suffix], "upsert": "false"},
+            )
+        return self._client.storage.from_("product-images").get_public_url(object_path)
 
     def archive_product(self, product_id: str) -> None:
         (
