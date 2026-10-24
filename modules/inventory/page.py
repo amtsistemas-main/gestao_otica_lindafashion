@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
     QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
@@ -185,7 +186,7 @@ class InventoryPage(QDialog):
                 if col in (3,4,6):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 if col == 5 and status != "Normal":
-                    item.setForeground(Qt.GlobalColor.red if stock == 0 else Qt.GlobalColor.darkYellow)
+                    item.setForeground(QBrush(QColor("#B42318" if stock == 0 else "#9A6700")) )
                 self.inventory_table.setItem(row, col, item)
 
     def _load_movements(self) -> None:
@@ -252,6 +253,10 @@ class InventoryPage(QDialog):
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
         if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        selected_product = next((item for item in self._products if item.get("id") == product.currentData()), None)
+        if movement_type.currentData() == "ajuste" and selected_product and quantity.value() == int(selected_product.get("stock_quantity") or 0):
+            QMessageBox.information(dialog, "Nenhuma alteração", "A quantidade informada já corresponde ao saldo atual.")
             return
         try:
             self._client.rpc("record_stock_movement", {"p_product_id": product.currentData(), "p_movement_type": movement_type.currentData(), "p_quantity": quantity.value(), "p_reason": reason.text().strip(), "p_reference": reference.text().strip()}).execute()
