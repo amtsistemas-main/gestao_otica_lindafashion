@@ -31,7 +31,7 @@ def make_card(title: str, parent: QWidget | None = None) -> tuple[QFrame, QVBoxL
     card.setObjectName("analyticsCard")
     card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
     layout = QVBoxLayout(card)
-    layout.setContentsMargins(20, 18, 20, 18)
+    layout.setContentsMargins(18, 16, 18, 16)
     layout.setSpacing(14)
     layout.addWidget(label(title, "cardTitle"))
     return card, layout
@@ -246,11 +246,6 @@ class DashboardPage(QWidget):
         side_layout.setContentsMargins(0,0,0,0)
         side_layout.setSpacing(10)
 
-        metric_header = QHBoxLayout()
-        metric_header.addWidget(label("Indicadores do negócio", "sectionTitle"))
-        metric_header.addStretch()
-        metric_header.addWidget(label("Prévia ilustrativa" if preview_mode else "Dados da operação", "muted"))
-        main_layout.addLayout(metric_header)
         metrics = QGridLayout()
         metrics.setHorizontalSpacing(14)
         metrics.setVerticalSpacing(12)
