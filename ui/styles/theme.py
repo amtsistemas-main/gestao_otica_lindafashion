@@ -1387,28 +1387,29 @@ QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
     subcontrol-position: right;
     width: 25px;
     border: none;
-    border-left: 1px solid #DCE5F2;
-    background: #F4F7FC;
+    border-left: 1px solid #1D4FC4;
+    background: #245DE0;
 }
 QAbstractSpinBox::up-button {
     subcontrol-position: top right;
     border-top-right-radius: 7px;
-    border-bottom: 1px solid #E1E8F2;
+    border-bottom: 1px solid #4A79E8;
 }
 QAbstractSpinBox::down-button {
     subcontrol-position: bottom right;
     border-bottom-right-radius: 7px;
 }
 QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover {
-    background: #E7EEFC;
-    border-left-color: #AFC4EC;
+    background: #1749C2;
+    border-left-color: #1749C2;
 }
 QAbstractSpinBox::up-button:pressed, QAbstractSpinBox::down-button:pressed {
-    background: #D9E5FC;
+    background: #103A9F;
 }
 QAbstractSpinBox::up-arrow, QAbstractSpinBox::down-arrow {
     width: 8px;
     height: 8px;
+    color: #FFFFFF;
 }
 QCheckBox, QRadioButton {
     spacing: 9px;
