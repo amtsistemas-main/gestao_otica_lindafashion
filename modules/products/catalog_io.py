@@ -3,6 +3,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from html import escape
+from io import BytesIO
+from urllib.parse import urlparse
+from urllib.request import urlopen
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -186,7 +190,7 @@ def export_pdf(path: str, products: Iterable[Product]) -> None:
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     items = list(products)
     document = SimpleDocTemplate(
@@ -204,25 +208,43 @@ def export_pdf(path: str, products: Iterable[Product]) -> None:
         Paragraph("CATÁLOGO DE PRODUTOS · Gerado em " + datetime.now().strftime("%d/%m/%Y %H:%M"), sub_style),
         Spacer(1, 6*mm),
     ]
-    rows = [[Paragraph(text, head_style) for text in ["Código / SKU", "Produto", "Categoria", "Marca", "Custo", "Venda", "Desc.", "Preço final", "Estoque"]]]
+    rows = [[Paragraph(text, head_style) for text in ["Imagem", "Código / SKU", "Produto", "Categoria", "Marca", "Custo", "Venda", "Desc.", "Preço final", "Estoque"]]]
     for product in items:
+        image_cell: Any = "—"
+        if product.image_url:
+            try:
+                parsed = urlparse(product.image_url)
+                if parsed.scheme == "file":
+                    image_bytes = Path(parsed.path).read_bytes()
+                elif parsed.scheme in {"http", "https"}:
+                    with urlopen(product.image_url, timeout=3) as response:
+                        image_bytes = response.read(8 * 1024 * 1024 + 1)
+                    if len(image_bytes) > 8 * 1024 * 1024:
+                        image_bytes = b""
+                else:
+                    image_bytes = b""
+                if image_bytes:
+                    image_cell = Image(BytesIO(image_bytes), width=15*mm, height=15*mm, kind="proportional")
+            except Exception:
+                image_cell = "—"
         rows.append([
-            Paragraph((product.barcode or product.sku or "—").replace("&", "&amp;"), cell_style),
-            Paragraph(product.name.replace("&", "&amp;"), cell_style),
-            Paragraph((product.category or "—").replace("&", "&amp;"), cell_style),
-            Paragraph((product.brand or "—").replace("&", "&amp;"), cell_style),
+            image_cell,
+            Paragraph(escape(product.barcode or product.sku or "—"), cell_style),
+            Paragraph(escape(product.name), cell_style),
+            Paragraph(escape(product.category or "—"), cell_style),
+            Paragraph(escape(product.brand or "—"), cell_style),
             _currency_text(product.cost_price), _currency_text(product.sale_price),
             f"{product.discount_percent:.2f}%".replace(".", ","),
             _currency_text(product.final_price), str(product.stock_quantity),
         ])
-    table = Table(rows, repeatRows=1, colWidths=[28*mm, 54*mm, 32*mm, 28*mm, 22*mm, 22*mm, 16*mm, 24*mm, 17*mm])
+    table = Table(rows, repeatRows=1, colWidths=[19*mm, 26*mm, 48*mm, 28*mm, 24*mm, 21*mm, 21*mm, 15*mm, 24*mm, 17*mm])
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#102957")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#E1E8F2")),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F5F8FD")]),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (4, 1), (-1, -1), "RIGHT"),
+        ("ALIGN", (5, 1), (-1, -1), "RIGHT"),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
         ("TOPPADDING", (0, 0), (-1, -1), 6),
