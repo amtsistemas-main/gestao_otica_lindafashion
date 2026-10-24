@@ -5,7 +5,7 @@ from datetime import date
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFormLayout,
-    QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton,
+    QHBoxLayout, QHeaderView, QLabel, QLineEdit, QInputDialog, QMessageBox, QPushButton,
     QTableWidget, QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
@@ -394,9 +394,11 @@ class CustomersPage(QDialog):
         layout.addLayout(form)
         actions = QHBoxLayout()
         refresh_button = QPushButton("Atualizar lista")
+        update_status_button = QPushButton("Alterar status selecionado")
         save_button = QPushButton("Cadastrar pedido")
         save_button.setObjectName("primaryButton")
         actions.addWidget(refresh_button)
+        actions.addWidget(update_status_button)
         actions.addStretch(1)
         actions.addWidget(save_button)
         layout.addLayout(actions)
@@ -420,7 +422,36 @@ class CustomersPage(QDialog):
                     row.get("expected_at") or "—", str(row.get("created_at") or "")[:10],
                 ]
                 for column, value in enumerate(values):
-                    table.setItem(index, column, QTableWidgetItem(str(value)))
+                    cell = QTableWidgetItem(str(value))
+                    if column == 0:
+                        cell.setData(Qt.ItemDataRole.UserRole, row.get("id"))
+                    table.setItem(index, column, cell)
+
+        def update_order_status() -> None:
+            row_index = table.currentRow()
+            if row_index < 0 or table.item(row_index, 0) is None:
+                QMessageBox.information(dialog, "Selecione um pedido", "Selecione um pedido na lista para alterar seu status.")
+                return
+            order_id = table.item(row_index, 0).data(Qt.ItemDataRole.UserRole)
+            choices = ["Em desenvolvimento", "Óculos pronto", "Entregue", "Cancelado"]
+            values = ["em_desenvolvimento", "pronto", "entregue", "cancelado"]
+            selected, accepted = QInputDialog.getItem(dialog, "Atualizar status", "Novo status:", choices, 0, False)
+            if not accepted:
+                return
+            new_status = values[choices.index(selected)]
+            payload = {"status": new_status, "updated_at": __import__("datetime").datetime.now().astimezone().isoformat()}
+            if new_status == "pronto":
+                payload["completed_at"] = payload["updated_at"]
+            elif new_status == "entregue":
+                payload["delivered_at"] = payload["updated_at"]
+            try:
+                self._client.table("customer_orders").update(payload).eq("id", order_id).eq(
+                    "organization_id", self._organization_id
+                ).eq("customer_id", customer["id"]).execute()
+                QMessageBox.information(dialog, "Status atualizado", "Status do pedido atualizado. Nenhuma mensagem externa foi enviada.")
+                load_orders()
+            except Exception as exc:
+                QMessageBox.critical(dialog, "Erro ao atualizar status", f"Não foi possível atualizar o status.\\n\\n{exc}")
 
         def save_order() -> None:
             if not description.text().strip():
@@ -452,6 +483,7 @@ class CustomersPage(QDialog):
                 QMessageBox.critical(dialog, "Erro ao salvar pedido", f"Não foi possível salvar o pedido.\\n\\n{exc}")
 
         refresh_button.clicked.connect(load_orders)
+        update_status_button.clicked.connect(update_order_status)
         save_button.clicked.connect(save_order)
         load_orders()
         dialog.setStyleSheet("""
