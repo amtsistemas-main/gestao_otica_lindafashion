@@ -17,12 +17,17 @@ def label(text: str, object_name: str, parent: QWidget | None = None) -> QLabel:
 
 
 def icon_label(icon_name: str, color: str = "#2165F5", size: int = 18, object_name: str = "dashboardIcon") -> QLabel:
-    """Renderiza ícones vetoriais consistentes via QtAwesome/Font Awesome."""
+    """Renderiza ícone branco centralizado em fundo azul padronizado."""
+    del color  # Mantém compatibilidade com chamadas existentes; a cor é global.
     item = QLabel()
     item.setObjectName(object_name)
     item.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    item.setFixedSize(size + 12, size + 12)
-    item.setPixmap(qta.icon(icon_name, color=color).pixmap(size, size))
+    badge_size = size + 12
+    item.setFixedSize(badge_size, badge_size)
+    item.setStyleSheet(
+        f"background-color: #2165F5; border: none; border-radius: {badge_size // 2}px;"
+    )
+    item.setPixmap(qta.icon(icon_name, color="#FFFFFF").pixmap(size, size))
     return item
 
 
@@ -155,7 +160,6 @@ class MetricCard(QFrame):
         layout.setSpacing(7)
         row = QHBoxLayout()
         badge = icon_label(icon, color, 16, "metricIcon")
-        badge.setStyleSheet(f"background:{color}18; border-radius:20px;")
         row.addWidget(badge)
         row.addStretch()
         layout.addLayout(row)
@@ -218,7 +222,6 @@ class DashboardPage(QWidget):
             tile_layout = QHBoxLayout(tile)
             tile_layout.setContentsMargins(12, 8, 10, 8)
             badge = icon_label({"Produtos":"fa5s.box-open","Estoque":"fa5s.warehouse","Financeiro":"fa5s.coins"}[title], tint, 19, "quickIcon")
-            badge.setStyleSheet(f"background:{tint}18; border-radius:20px;")
             tile_layout.addWidget(badge)
             texts = QVBoxLayout()
             texts.addWidget(label(title, "quickTitle"))
@@ -346,7 +349,6 @@ class DashboardPage(QWidget):
             for ico, title, detail, time, bg, fg in activities:
                 row=QHBoxLayout()
                 ico_label=icon_label(ico, fg, 15, "activityIcon")
-                ico_label.setStyleSheet(f"background:{bg}; border-radius:20px;")
                 row.addWidget(ico_label)
                 text_box=QVBoxLayout()
                 text_box.addWidget(label(title,"activityTitle"))
