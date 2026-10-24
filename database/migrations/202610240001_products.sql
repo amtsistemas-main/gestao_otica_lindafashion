@@ -138,3 +138,8 @@ with check (
 comment on table public.products is 'Catalogo de produtos da ótica, isolado por organização.';
 comment on column public.products.barcode is 'Código de barras lido por leitor USB ou informado manualmente.';
 comment on column public.products.discount_percent is 'Percentual de desconto padrão aplicado ao preço de venda.';
+
+-- Explicit table grants are still constrained by the RLS policies above.
+grant select on public.organizations to authenticated;
+grant select on public.organization_members to authenticated;
+grant select, insert, update on public.products to authenticated;
