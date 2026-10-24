@@ -3,26 +3,26 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal, QPointF
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF, QLinearGradient
+import qtawesome as qta
 from PySide6.QtWidgets import (
     QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton, QSizePolicy,
     QVBoxLayout, QWidget, QProgressBar, QComboBox,
 )
-from ui.components.module_card import ModuleCard
-
-
-MODULES = [
-    ("Produtos", "Cadastrar / consultar produtos", "◇"),
-    ("Estoque", "Entradas, saídas e inventário", "▤"),
-    ("Fornecedores", "Parceiros e compras", "♧"),
-    ("Financeiro", "Receitas, despesas e caixa", "R$"),
-    ("Relatórios", "Indicadores e análises", "▥"),
-    ("Configurações", "Preferências e integrações", "⚙"),
-]
-
+ 
 
 def label(text: str, object_name: str, parent: QWidget | None = None) -> QLabel:
     item = QLabel(text, parent)
     item.setObjectName(object_name)
+    return item
+
+
+def icon_label(icon_name: str, color: str = "#2165F5", size: int = 18, object_name: str = "dashboardIcon") -> QLabel:
+    """Renderiza ícones vetoriais consistentes via QtAwesome/Font Awesome."""
+    item = QLabel()
+    item.setObjectName(object_name)
+    item.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    item.setFixedSize(size + 12, size + 12)
+    item.setPixmap(qta.icon(icon_name, color=color).pixmap(size, size))
     return item
 
 
@@ -31,8 +31,8 @@ def make_card(title: str, parent: QWidget | None = None) -> tuple[QFrame, QVBoxL
     card.setObjectName("analyticsCard")
     card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
     layout = QVBoxLayout(card)
-    layout.setContentsMargins(16, 14, 16, 14)
-    layout.setSpacing(10)
+    layout.setContentsMargins(18, 16, 18, 16)
+    layout.setSpacing(12)
     layout.addWidget(label(title, "cardTitle"))
     return card, layout
 
@@ -149,13 +149,13 @@ class MetricCard(QFrame):
     def __init__(self, icon: str, title: str, value: str, growth: str, color: str) -> None:
         super().__init__()
         self.setObjectName("metricCard")
-        self.setMinimumHeight(138)
+        self.setMinimumHeight(142)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(17, 14, 17, 13)
-        layout.setSpacing(5)
+        layout.setContentsMargins(18, 16, 18, 15)
+        layout.setSpacing(7)
         row = QHBoxLayout()
-        badge = label(icon, "metricIcon")
-        badge.setStyleSheet(f"color:{color}; background:{color}18;")
+        badge = icon_label(icon, color, 16, "metricIcon")
+        badge.setStyleSheet(f"background:{color}18; border-radius:20px;")
         row.addWidget(badge)
         row.addStretch()
         layout.addLayout(row)
@@ -198,7 +198,7 @@ class DashboardPage(QWidget):
         self.setObjectName("dashboardPage")
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(14)
+        root.setSpacing(12)
 
         root.addWidget(WelcomeBanner(preview_mode))
 
@@ -217,8 +217,8 @@ class DashboardPage(QWidget):
             tile.setCursor(Qt.CursorShape.PointingHandCursor)
             tile_layout = QHBoxLayout(tile)
             tile_layout.setContentsMargins(12, 8, 10, 8)
-            badge = label(icon, "quickIcon")
-            badge.setStyleSheet(f"color:{tint}; background:{tint}20;")
+            badge = icon_label({"Produtos":"fa5s.box-open","Estoque":"fa5s.warehouse","Financeiro":"fa5s.coins"}[title], tint, 19, "quickIcon")
+            badge.setStyleSheet(f"background:{tint}18; border-radius:20px;")
             tile_layout.addWidget(badge)
             texts = QVBoxLayout()
             texts.addWidget(label(title, "quickTitle"))
@@ -239,12 +239,12 @@ class DashboardPage(QWidget):
         main.setObjectName("transparentHost")
         main_layout = QVBoxLayout(main)
         main_layout.setContentsMargins(0,0,0,0)
-        main_layout.setSpacing(12)
+        main_layout.setSpacing(10)
         side = QWidget()
         side.setObjectName("transparentHost")
         side_layout = QVBoxLayout(side)
         side_layout.setContentsMargins(0,0,0,0)
-        side_layout.setSpacing(12)
+        side_layout.setSpacing(10)
 
         metric_header = QHBoxLayout()
         metric_header.addWidget(label("Indicadores do negócio", "sectionTitle"))
@@ -255,9 +255,9 @@ class DashboardPage(QWidget):
         metrics.setHorizontalSpacing(12)
         metrics.setVerticalSpacing(10)
         cards = [
-            ("◇","Produtos Cadastrados","248" if preview_mode else "—","↑ +12%   vs. mês anterior" if preview_mode else "Aguardando integração","#2165F5"),
-            ("🛒","Vendas no Mês","R$ 18.742,90" if preview_mode else "—","↑ +8%   vs. mês anterior" if preview_mode else "Aguardando integração","#F0A52B"),
-            ("♙","Clientes Ativos","132" if preview_mode else "—","↑ +15%   vs. mês anterior" if preview_mode else "Aguardando integração","#17A982"),
+            ("fa5s.box","Produtos Cadastrados","248" if preview_mode else "—","↑ +12%   vs. mês anterior" if preview_mode else "Aguardando integração","#2165F5"),
+            ("fa5s.shopping-cart","Vendas no Mês","R$ 18.742,90" if preview_mode else "—","↑ +8%   vs. mês anterior" if preview_mode else "Aguardando integração","#F0A52B"),
+            ("fa5s.users","Clientes Ativos","132" if preview_mode else "—","↑ +15%   vs. mês anterior" if preview_mode else "Aguardando integração","#17A982"),
         ]
         for i, data in enumerate(cards):
             metrics.addWidget(MetricCard(*data),0,i)
@@ -301,7 +301,7 @@ class DashboardPage(QWidget):
         if preview_mode:
             for name, code, trend_text in [("Armação Ray-Ban","RBS228","↑ 12%"),("Óculos de Sol Oakley","OO9186","↑ 6%"),("Lente Zeiss","ZEISS 1.60","↑ 9%"),("Armação Vogue","VO5338","↑ 5%")]:
                 line = QHBoxLayout()
-                line.addWidget(label("◉", "productThumb"))
+                line.addWidget(icon_label("fa5s.glasses", "#355E9B", 18, "productThumb"))
                 item_text = QVBoxLayout()
                 item_text.addWidget(label(name, "productName"))
                 item_text.addWidget(label(code, "productCode"))
@@ -341,17 +341,17 @@ class DashboardPage(QWidget):
         header.addWidget(view_all)
         activity_layout.insertLayout(0,header)
         activities = [
-            ("◇","Novo produto cadastrado","Armação Ray-Ban","Hoje, 10:24","#EAF2FF","#2165F5"),
-            ("🛒","Venda realizada","R$ 348,90","Hoje, 09:17","#E4F8F2","#14A887"),
-            ("♙","Cliente cadastrado","Mariana Costa","Hoje, 08:42","#FFF0F2","#F05B72"),
-            ("▧","Produto atualizado","Lente Zeiss","Hoje, 08:15","#EAF2FF","#3478F6"),
-            ("▣","Usuário realizou login","Ana Silva","Hoje, 07:58","#F0ECFF","#7958D7"),
+            ("fa5s.box","Novo produto cadastrado","Armação Ray-Ban","Hoje, 10:24","#EAF2FF","#2165F5"),
+            ("fa5s.shopping-cart","Venda realizada","R$ 348,90","Hoje, 09:17","#E4F8F2","#14A887"),
+            ("fa5s.user-plus","Cliente cadastrado","Mariana Costa","Hoje, 08:42","#FFF0F2","#F05B72"),
+            ("fa5s.edit","Produto atualizado","Lente Zeiss","Hoje, 08:15","#EAF2FF","#3478F6"),
+            ("fa5s.sign-in-alt","Usuário realizou login","Ana Silva","Hoje, 07:58","#F0ECFF","#7958D7"),
         ]
         if preview_mode:
             for ico, title, detail, time, bg, fg in activities:
                 row=QHBoxLayout()
-                ico_label=label(ico,"activityIcon")
-                ico_label.setStyleSheet(f"background:{bg}; color:{fg};")
+                ico_label=icon_label(ico, fg, 15, "activityIcon")
+                ico_label.setStyleSheet(f"background:{bg}; border-radius:20px;")
                 row.addWidget(ico_label)
                 text_box=QVBoxLayout()
                 text_box.addWidget(label(title,"activityTitle"))
@@ -391,20 +391,7 @@ class DashboardPage(QWidget):
         columns.addWidget(side,0,1)
         root.addLayout(columns)
 
-        modules_header=QHBoxLayout()
-        modules_header.addWidget(label("Todos os módulos","sectionTitle"))
-        modules_header.addStretch()
-        modules_header.addWidget(label("Acesso às áreas do sistema","muted"))
-        root.addLayout(modules_header)
-        module_grid=QGridLayout()
-        module_grid.setHorizontalSpacing(12)
-        module_grid.setVerticalSpacing(12)
-        for i,(name,description,icon) in enumerate(MODULES):
-            card=ModuleCard(name,description,icon)
-            card.clicked.connect(lambda checked=False, target=name: self.module_requested.emit(target))
-            module_grid.addWidget(card,i//3,i%3)
-        root.addLayout(module_grid)
-        footer=QHBoxLayout()
+         footer=QHBoxLayout()
         footer.addWidget(label("●", "statusDot"))
         footer.addWidget(label("Pré-visualização ativa — dados demonstrativos não são persistidos." if preview_mode else "Painel pronto para receber os dados da sua operação.", "muted"))
         footer.addStretch()
