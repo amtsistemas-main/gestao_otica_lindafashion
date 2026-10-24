@@ -284,7 +284,7 @@ class MainWindow(QMainWindow):
             lambda request: self._analysis_generation_unavailable(panel, request)
         )
         panel.regenerate_requested.connect(
-            lambda request: self._ai_generation_unavailable(panel, request)
+            lambda request: self._analysis_generation_unavailable(panel, request)
         )
         scroll = QScrollArea(dialog)
         scroll.setWidgetResizable(True)
@@ -295,12 +295,12 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     @staticmethod
-    def _ai_generation_unavailable(panel: BusinessAnalysisPanel, request: dict) -> None:
+    def _analysis_generation_unavailable(panel: BusinessAnalysisPanel, request: dict) -> None:
         panel.set_loading(False)
         QMessageBox.information(
             panel,
             "Análise ainda não disponível",
-            "A interface está pronta, mas a análise ainda não está conectada aos dados necessários. O sistema não depende de um serviço externo de IA.\n\nDetalhes: possui "
+            "A interface está pronta, mas a análise local ainda não foi conectada aos dados necessários. Nenhum serviço externo de IA será utilizado.\n\nDetalhes: "
             "um serviço de IA conectado. Nenhuma análise foi simulada. "
             "A solicitação selecionada foi: "
             f"{request.get('analysis_label', 'Análise')} — {request.get('period_label', 'período')}.",
