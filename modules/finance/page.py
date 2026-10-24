@@ -158,7 +158,11 @@ class FinancePage(QDialog):
             QLabel#expenseMetric { background:#FFF3F2; color:#B42318; border:1px solid #F5CBC7; border-left:5px solid #E5484D; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
             QLabel#balanceMetric { background:#F0F5FF; color:#244BAA; border:1px solid #D5E2FF; border-left:5px solid #3973E6; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
             QLabel#pendingMetric { background:#FFF9E9; color:#8A5A00; border:1px solid #F2E2B5; border-left:5px solid #E8AB28; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
-            QLineEdit, QComboBox, QDateEdit, QDoubleSpinBox, QTextEdit { background:#FFFFFF; color:#172B4D; border:1px solid #D9E3F1; border-radius:8px; padding:8px; min-height:18px; }
+            QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit, QSpinBox, QDoubleSpinBox {
+                background:#FFFFFF; color:#172B4D; border:1px solid #CFD9E8;
+                border-radius:8px; padding:8px 10px; min-height:20px;
+                selection-background-color:#315FE8; selection-color:#FFFFFF;
+            }
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
             QPushButton:hover { background:#F0F5FF; }
             QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
