@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QPixmap
+import qtawesome as qta
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -28,13 +29,13 @@ from ui.pages.dashboard_page import DashboardPage
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
 
 NAV_ITEMS = [
-    ("Visão geral", "⌂", None),
-    ("Produtos", "◇", "Produtos"),
-    ("Estoque", "▤", "Estoque"),
-    ("Fornecedores", "♧", "Fornecedores"),
-    ("Financeiro", "R$", "Financeiro"),
-    ("Relatórios", "▥", "Relatórios"),
-    ("Configurações", "⚙", "Configurações"),
+    ("Visão geral", "fa5s.home", None),
+    ("Produtos", "fa5s.glasses", "Produtos"),
+    ("Estoque", "fa5s.warehouse", "Estoque"),
+    ("Fornecedores", "fa5s.truck", "Fornecedores"),
+    ("Financeiro", "fa5s.wallet", "Financeiro"),
+    ("Relatórios", "fa5s.chart-bar", "Relatórios"),
+    ("Configurações", "fa5s.cog", "Configurações"),
 ]
 
 
@@ -92,8 +93,10 @@ class MainWindow(QMainWindow):
         nav_label.setObjectName("sidebarSection")
         side_layout.addWidget(nav_label)
 
-        for label, abbreviation, module in NAV_ITEMS:
-            button = QPushButton(f"  {abbreviation}     {label}")
+        for label, icon_name, module in NAV_ITEMS:
+            button = QPushButton(label)
+            button.setIcon(qta.icon(icon_name, color="#FFFFFF" if module is None else "#D5E1F5"))
+            button.setIconSize(QSize(18, 18))
             button.setObjectName("navButton")
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setCheckable(True)
@@ -120,7 +123,9 @@ class MainWindow(QMainWindow):
         topbar_layout.setContentsMargins(20, 10, 24, 10)
         topbar_layout.setSpacing(12)
 
-        menu_button = QPushButton("☰")
+        menu_button = QPushButton()
+        menu_button.setIcon(qta.icon("fa5s.bars", color="#102957"))
+        menu_button.setIconSize(QSize(17, 17))
         menu_button.setObjectName("topbarIconButton")
         menu_button.setFixedSize(36, 36)
         menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -129,22 +134,26 @@ class MainWindow(QMainWindow):
 
         search_box = QLineEdit()
         search_box.setObjectName("dashboardSearch")
-        search_box.setPlaceholderText("⌕   Buscar no sistema...")
+        search_box.setPlaceholderText("Buscar no sistema...")
+        search_box.addAction(qta.icon("fa5s.search", color="#7A8EAF"), QLineEdit.ActionPosition.LeadingPosition)
         search_box.setClearButtonEnabled(True)
         search_box.setMinimumHeight(40)
         search_box.setMaximumWidth(420)
         topbar_layout.addWidget(search_box, 1)
         topbar_layout.addStretch()
 
-        notifications = QPushButton("♧")
+        notifications = QPushButton()
+        notifications.setIcon(qta.icon("fa5s.bell", color="#102957"))
+        notifications.setIconSize(QSize(18, 18))
         notifications.setObjectName("topbarIconButton")
         notifications.setFixedSize(38, 38)
         notifications.setToolTip("Notificações")
         topbar_layout.addWidget(notifications)
 
-        avatar = QLabel("●")
+        avatar = QLabel()
         avatar.setObjectName("accountAvatar")
         avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        avatar.setPixmap(qta.icon("fa5s.user", color="#102957").pixmap(19, 19))
         avatar.setFixedSize(40, 40)
         topbar_layout.addWidget(avatar)
 
@@ -163,7 +172,9 @@ class MainWindow(QMainWindow):
         profile_box.addWidget(role_label)
         topbar_layout.addLayout(profile_box)
 
-        profile_menu = QPushButton("⌄")
+        profile_menu = QPushButton()
+        profile_menu.setIcon(qta.icon("fa5s.chevron-down", color="#102957"))
+        profile_menu.setIconSize(QSize(11, 11))
         profile_menu.setObjectName("topbarIconButton")
         profile_menu.setFixedSize(28, 36)
         profile_menu.setToolTip("Sair da conta" if not preview_mode else "Perfil de demonstração")
