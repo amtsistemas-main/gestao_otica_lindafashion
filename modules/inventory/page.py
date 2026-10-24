@@ -7,7 +7,7 @@ from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
     QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
-    QTableWidget, QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
+    QFrame, QTableWidget, QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
 from config.settings import get_settings
@@ -26,8 +26,10 @@ class InventoryPage(QDialog):
         self.resize(1180, 760)
         self.setMinimumSize(900, 620)
         self.setStyleSheet("""
-            QDialog { background:#F5F8FD; color:#172B4D; font-family:"Arial"; font-size:10pt; }
-            QLabel#pageTitle { color:#102957; font-size:23pt; font-weight:800; }
+            QDialog { background:#F3F5F8; color:#24334B; font-family:"Arial"; font-size:10pt; }
+            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
+            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
+            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
             QLabel#muted { color:#7184A1; }
             QLabel#metric { background:#FFFFFF; color:#17365D; border:1px solid #DFE7F3; border-radius:10px; padding:14px; font-size:12pt; font-weight:700; }
             QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit { background:#FFFFFF; color:#172B4D; border:1px solid #D9E3F1; border-radius:8px; padding:8px; }
@@ -59,15 +61,20 @@ class InventoryPage(QDialog):
         root.setContentsMargins(24, 22, 24, 22)
         root.setSpacing(14)
         header = QHBoxLayout()
-        heading = QVBoxLayout()
-        title = QLabel("Controle de estoque")
-        title.setObjectName("pageTitle")
-        heading.addWidget(title)
+        title_bar = QFrame()
+        title_bar.setObjectName("windowTitleBar")
+        title_layout = QVBoxLayout(title_bar)
+        title_layout.setContentsMargins(18, 13, 18, 13)
+        title_layout.setSpacing(4)
+        title = QLabel("Estoque")
+        title.setObjectName("windowTitle")
+        title.setWordWrap(True)
         subtitle = QLabel("Acompanhe saldos, registre movimentações e transforme alertas em solicitações de compra.")
-        subtitle.setObjectName("muted")
+        subtitle.setObjectName("windowSubtitle")
         subtitle.setWordWrap(True)
-        heading.addWidget(subtitle)
-        header.addLayout(heading, 1)
+        title_layout.addWidget(title)
+        title_layout.addWidget(subtitle)
+        header.addWidget(title_bar, 1)
         self.refresh_button = QPushButton("Atualizar")
         self.refresh_button.clicked.connect(self._load)
         header.addWidget(self.refresh_button)
