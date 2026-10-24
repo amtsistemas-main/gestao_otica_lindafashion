@@ -126,6 +126,35 @@ QPushButton#heroButton:hover {
     background: #EAF0FF;
     border-color: #EAF0FF;
 }
+QFrame#quickActionsCard {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F2;
+    border-radius: 15px;
+}
+QPushButton#primaryQuickAction {
+    background: #315FE8;
+    color: #FFFFFF;
+    border: 1px solid #315FE8;
+    border-radius: 9px;
+    padding: 10px 14px;
+    font-weight: 800;
+}
+QPushButton#primaryQuickAction:hover {
+    background: #244FCB;
+    border-color: #244FCB;
+}
+QPushButton#secondaryQuickAction {
+    background: #F4F7FD;
+    color: #244BAA;
+    border: 1px solid #DCE5F5;
+    border-radius: 9px;
+    padding: 10px 14px;
+    font-weight: 750;
+}
+QPushButton#secondaryQuickAction:hover {
+    background: #EAF0FF;
+    border-color: #B9C9F2;
+}
 QFrame#metricCard {
     background: #FFFFFF;
     border: 1px solid #E5EAF2;
