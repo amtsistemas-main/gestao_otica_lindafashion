@@ -1,4 +1,8 @@
 -- Harden the WhatsApp outbox for safe claims, retries, and provider status tracking.
+alter table public.customer_notification_outbox drop constraint if exists customer_notification_outbox_status_check;
+alter table public.customer_notification_outbox add constraint customer_notification_outbox_status_check
+check (status = any (array['pending','processing','retry','sent','failed','cancelled']));
+
 alter table public.customer_notification_outbox
   add column if not exists next_attempt_at timestamptz not null default now(),
   add column if not exists locked_at timestamptz,
