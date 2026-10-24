@@ -1,7 +1,8 @@
 """Premium home dashboard for Ótica Linda Fashion."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QPointF
+from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -24,6 +25,50 @@ MODULES = [
     ("Relatórios", "Indicadores e análises", "RE"),
     ("Configurações", "Preferências e integrações", "CO"),
 ]
+
+
+
+class SalesTrendChart(QWidget):
+    """Native Qt line chart with clearly labeled illustrative preview data."""
+
+    def __init__(self, preview_mode: bool, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._preview_mode = preview_mode
+        self.setMinimumHeight(170)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+    def paintEvent(self, event) -> None:
+        del event
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        area = self.rect().adjusted(18, 14, -12, -24)
+        painter.setPen(QPen(QColor("#E7ECF5"), 1))
+        for i in range(4):
+            y = area.top() + i * area.height() / 3
+            painter.drawLine(int(area.left()), int(y), int(area.right()), int(y))
+        if not self._preview_mode:
+            painter.setPen(QColor("#718099"))
+            painter.drawText(area, Qt.AlignmentFlag.AlignCenter,
+                             "Gráfico disponível após integrar os dados de vendas.")
+            return
+        values = [0.28, 0.42, 0.36, 0.58, 0.51, 0.73, 0.86]
+        points = [QPointF(area.left() + i * area.width() / 6,
+                          area.bottom() - value * area.height())
+                  for i, value in enumerate(values)]
+        painter.setPen(QPen(QColor("#315FE8"), 3, Qt.PenStyle.SolidLine,
+                            Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        painter.drawPolyline(QPolygonF(points))
+        painter.setBrush(QColor("#FFFFFF"))
+        for point in points:
+            painter.drawEllipse(point, 4, 4)
+        painter.setPen(QColor("#315FE8"))
+        for point in points:
+            painter.drawEllipse(point, 2, 2)
+        painter.setPen(QColor("#718099"))
+        for i, label in enumerate(["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]):
+            x = int(area.left() + i * area.width() / 6 - 12)
+            painter.drawText(x, int(area.bottom()) + 19, 28, 18,
+                             Qt.AlignmentFlag.AlignHCenter, label)
 
 
 class MetricCard(QFrame):
@@ -148,7 +193,91 @@ class DashboardPage(QWidget):
         ]
         for index, data in enumerate(metric_data):
             metrics.addWidget(MetricCard(*data), 0, index)
+
         root.addLayout(metrics)
+
+        analytics_heading = QHBoxLayout()
+        analytics_title = QLabel("Visão analítica")
+        analytics_title.setObjectName("sectionTitle")
+        analytics_caption = QLabel("Exemplo visual" if preview_mode else "Aguardando dados reais")
+        analytics_caption.setObjectName("muted")
+        analytics_heading.addWidget(analytics_title)
+        analytics_heading.addStretch()
+        analytics_heading.addWidget(analytics_caption)
+        root.addLayout(analytics_heading)
+
+        analytics_grid = QGridLayout()
+        analytics_grid.setContentsMargins(0, 0, 0, 0)
+        analytics_grid.setHorizontalSpacing(14)
+        analytics_grid.setVerticalSpacing(14)
+
+        trend_card = QFrame()
+        trend_card.setObjectName("analyticsCard")
+        trend_layout = QVBoxLayout(trend_card)
+        trend_layout.setContentsMargins(18, 16, 18, 12)
+        trend_layout.setSpacing(8)
+        trend_title = QLabel("Tendência de vendas")
+        trend_title.setObjectName("chartTitle")
+        trend_subtitle = QLabel(
+            "Dados ilustrativos para demonstração" if preview_mode
+            else "Nenhuma série de vendas conectada ainda"
+        )
+        trend_subtitle.setObjectName("muted")
+        trend_layout.addWidget(trend_title)
+        trend_layout.addWidget(trend_subtitle)
+        trend_layout.addWidget(SalesTrendChart(preview_mode))
+        analytics_grid.addWidget(trend_card, 0, 0)
+
+        category_card = QFrame()
+        category_card.setObjectName("analyticsCard")
+        category_layout = QVBoxLayout(category_card)
+        category_layout.setContentsMargins(18, 16, 18, 16)
+        category_layout.setSpacing(12)
+        category_title = QLabel("Distribuição do catálogo")
+        category_title.setObjectName("chartTitle")
+        category_subtitle = QLabel(
+            "Exemplo ilustrativo de categorias" if preview_mode
+            else "A distribuição aparecerá após integrar o catálogo"
+        )
+        category_subtitle.setObjectName("muted")
+        category_layout.addWidget(category_title)
+        category_layout.addWidget(category_subtitle)
+        for category, amount, color in [
+            ("Armações", 78, "#315FE8"),
+            ("Lentes", 61, "#0F9F83"),
+            ("Óculos de sol", 46, "#C18A28"),
+            ("Acessórios", 29, "#8B6CE0"),
+        ]:
+            labels = QHBoxLayout()
+            name_label = QLabel(category)
+            name_label.setObjectName("chartCategoryLabel")
+            value_label = QLabel(str(amount) if preview_mode else "—")
+            value_label.setObjectName("chartValue")
+            labels.addWidget(name_label)
+            labels.addStretch()
+            labels.addWidget(value_label)
+            bar = QProgressBar()
+            bar.setObjectName("categoryProgress")
+            bar.setTextVisible(False)
+            bar.setRange(0, 100)
+            bar.setValue(amount if preview_mode else 0)
+            bar.setFixedHeight(8)
+            bar.setStyleSheet(
+                f"QProgressBar#categoryProgress {{ background:#EAF0F8; border:none; "
+                f"border-radius:4px; }} QProgressBar#categoryProgress::chunk "
+                f"{{ background:{color}; border-radius:4px; }}"
+            )
+            category_layout.addLayout(labels)
+            category_layout.addWidget(bar)
+        if not preview_mode:
+            note = QLabel("Os valores reais serão exibidos quando o catálogo for conectado.")
+            note.setObjectName("muted")
+            note.setWordWrap(True)
+            category_layout.addWidget(note)
+        analytics_grid.addWidget(category_card, 0, 1)
+        analytics_grid.setColumnStretch(0, 3)
+        analytics_grid.setColumnStretch(1, 2)
+        root.addLayout(analytics_grid)
 
         section_heading = QHBoxLayout()
         modules_title = QLabel("Acesso rápido")
