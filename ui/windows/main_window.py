@@ -27,6 +27,7 @@ from core.session_manager import session_manager
 from modules.products.page import ProductsPage
 from modules.inventory.page import InventoryPage
 from modules.suppliers.page import SuppliersPage
+from modules.finance.page import FinancePage
 from ui.pages.dashboard_page import DashboardPage
 from ui.components.ai_results_panel import BusinessAnalysisPanel
 from core.ai_analysis_service import AIAnalysisWorker
@@ -238,9 +239,12 @@ class MainWindow(QMainWindow):
             self._nav_buttons["Visão geral"].setChecked(True)
             return
 
-        if module in ("Produtos", "Estoque", "Fornecedores"):
+        if module in ("Produtos", "Estoque", "Fornecedores", "Financeiro"):
             try:
-                if module == "Produtos":
+                if module == "Financeiro":
+                    finance_window = FinancePage(preview_mode=self._preview_mode, parent=self)
+                    finance_window.exec()
+                elif module == "Produtos":
                     if self._products_window is None:
                         self._products_window = ProductsPage(
                             preview_mode=self._preview_mode,
