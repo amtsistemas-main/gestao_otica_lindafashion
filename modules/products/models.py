@@ -31,6 +31,7 @@ class Product:
     stock_quantity: int = 0
     minimum_stock: int = 0
     description: str = ""
+    image_url: str = ""
     active: bool = True
 
     @property
@@ -72,6 +73,7 @@ class Product:
             stock_quantity=int(data.get("stock_quantity") or 0),
             minimum_stock=int(data.get("minimum_stock") or 0),
             description=str(data.get("description") or ""),
+            image_url=str(data.get("image_url") or ""),
             active=bool(data.get("active", True)),
         )
 
