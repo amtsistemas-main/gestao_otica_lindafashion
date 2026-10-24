@@ -9,6 +9,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# This URL is public project metadata, not a credential. The publishable key
+# must still be supplied locally and is never committed to the repository.
+DEFAULT_SUPABASE_URL = "https://swlccwcykxmvwptzxrxt.supabase.co"
+
 
 @dataclass(frozen=True, slots=True)
 class Settings:
@@ -29,7 +33,7 @@ class Settings:
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings(
-        supabase_url=os.getenv("SUPABASE_URL", "").strip(),
+        supabase_url=os.getenv("SUPABASE_URL", DEFAULT_SUPABASE_URL).strip(),
         supabase_publishable_key=os.getenv("SUPABASE_PUBLISHABLE_KEY", "").strip(),
         log_level=os.getenv("LOG_LEVEL", "INFO").strip() or "INFO",
     )
