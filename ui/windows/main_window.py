@@ -147,7 +147,10 @@ class MainWindow(QMainWindow):
         menu_button.setObjectName("topbarIconButton")
         menu_button.setFixedSize(36, 36)
         menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        menu_button.setCheckable(True)
         menu_button.setToolTip("Recolher ou expandir menu lateral")
+        menu_button.setAccessibleName("Recolher ou expandir menu lateral")
+        self._menu_button = menu_button
         menu_button.clicked.connect(self._toggle_sidebar)
         topbar_layout.addWidget(menu_button)
 
@@ -236,36 +239,40 @@ class MainWindow(QMainWindow):
         self.setStatusBar(status)
 
     def _toggle_sidebar(self) -> None:
-        """Collapse the sidebar to icon-only navigation or restore its full labels."""
+        """Alterna entre a navegação completa e a barra compacta somente com ícones."""
         self._sidebar_collapsed = not self._sidebar_collapsed
-        if self._sidebar_collapsed:
-            self._sidebar.setFixedWidth(76)
-            self._sidebar_layout.setContentsMargins(8, 16, 8, 14)
-            self._sidebar_layout.setSpacing(8)
-            self._sidebar_logo.hide()
-            self._brand_subtitle.hide()
-            self._nav_label.hide()
-            self._sidebar_footer.hide()
-            for label, button in self._nav_buttons.items():
-                button.setText("")
-                button.setToolTip(label)
-                button.setMinimumWidth(0)
-                button.setMaximumWidth(60)
-                button.setStyleSheet("text-align: center; padding: 10px 0;")
-        else:
-            self._sidebar.setFixedWidth(230)
-            self._sidebar_layout.setContentsMargins(18, 22, 18, 18)
-            self._sidebar_layout.setSpacing(8)
-            self._sidebar_logo.show()
-            self._brand_subtitle.show()
-            self._nav_label.show()
-            self._sidebar_footer.show()
-            for label, button in self._nav_buttons.items():
-                button.setText(label)
-                button.setToolTip(label)
-                button.setMinimumWidth(0)
-                button.setMaximumWidth(16777215)
-                button.setStyleSheet("")
+        collapsed = self._sidebar_collapsed
+        self._menu_button.setChecked(collapsed)
+
+        self._sidebar.setFixedWidth(76 if collapsed else 230)
+        self._sidebar_layout.setContentsMargins(
+            8 if collapsed else 18,
+            16 if collapsed else 22,
+            8 if collapsed else 18,
+            14 if collapsed else 18,
+        )
+        self._sidebar_layout.setSpacing(8)
+
+        for widget in (
+            self._sidebar_logo,
+            self._brand_subtitle,
+            self._nav_label,
+            self._sidebar_footer,
+        ):
+            widget.setVisible(not collapsed)
+
+        for label, button in self._nav_buttons.items():
+            button.setText("" if collapsed else label)
+            # O nome do módulo aparece ao passar o mouse somente no modo compacto.
+            button.setToolTip(label if collapsed else "")
+            button.setAccessibleName(label)
+            button.setMinimumWidth(0)
+            button.setMaximumWidth(60 if collapsed else 16777215)
+            button.setStyleSheet(
+                "text-align: center; padding: 10px 0;"
+                if collapsed
+                else ""
+            )
 
     def _navigate(self, module: str | None) -> None:
         for label, _abbreviation, target in NAV_ITEMS:
