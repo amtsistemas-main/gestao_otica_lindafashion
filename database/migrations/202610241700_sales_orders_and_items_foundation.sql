@@ -15,7 +15,7 @@ create table if not exists public.sales_orders (
  updated_at timestamptz not null default now(),
  unique (organization_id, order_number),
  unique (id, organization_id),
- constraint sales_orders_customer_org_fk foreign key (customer_id, organization_id) references public.customers(id, organization_id) on delete set null
+ constraint sales_orders_customer_org_fk foreign key (customer_id, organization_id) references public.customers(id, organization_id) on delete restrict
 );
 create table if not exists public.sales_order_items (
  id uuid primary key default gen_random_uuid(),
@@ -30,7 +30,7 @@ create table if not exists public.sales_order_items (
  line_total numeric(12,2) not null check (line_total >= 0),
  created_at timestamptz not null default now(),
  constraint sales_order_items_order_org_fk foreign key (sales_order_id, organization_id) references public.sales_orders(id, organization_id) on delete cascade,
- constraint sales_order_items_product_org_fk foreign key (product_id, organization_id) references public.products(id, organization_id) on delete set null
+ constraint sales_order_items_product_org_fk foreign key (product_id, organization_id) references public.products(id, organization_id) on delete restrict
 );
 create index if not exists sales_orders_org_created_idx on public.sales_orders (organization_id, created_at desc);
 create index if not exists sales_orders_org_status_idx on public.sales_orders (organization_id, status);
