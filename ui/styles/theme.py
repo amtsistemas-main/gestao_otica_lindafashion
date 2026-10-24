@@ -411,6 +411,46 @@ QHeaderView::section {
     padding: 10px 8px;
     font-weight: 750;
 }
+/* Shared form controls: consistent rhythm and legibility across business modules. */
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit, QDateTimeEdit,
+QTimeEdit, QPlainTextEdit, QTextEdit {
+    background: #FFFFFF;
+    color: #19243A;
+    border: 1px solid #D7E0ED;
+    border-radius: 7px;
+    padding: 7px 9px;
+    selection-background-color: #315FE8;
+    selection-color: #FFFFFF;
+}
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus,
+QDateEdit:focus, QDateTimeEdit:focus, QTimeEdit:focus,
+QPlainTextEdit:focus, QTextEdit:focus {
+    border: 1px solid #6F91F0;
+    background: #FFFFFF;
+}
+QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled,
+QDoubleSpinBox:disabled, QDateEdit:disabled, QDateTimeEdit:disabled,
+QTimeEdit:disabled, QPlainTextEdit:disabled, QTextEdit:disabled {
+    background: #F1F4F8;
+    color: #8793A6;
+    border-color: #E1E7F0;
+}
+QComboBox::drop-down, QDateEdit::drop-down, QDateTimeEdit::drop-down,
+QTimeEdit::drop-down { border: none; width: 24px; }
+QPushButton {
+    color: #294265;
+    background: #FFFFFF;
+    border: 1px solid #D7E0ED;
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-weight: 600;
+}
+QPushButton:hover { background: #F3F7FD; border-color: #B9C9F2; }
+QPushButton:pressed { background: #E8EFFB; }
+QPushButton:disabled {
+    color: #8793A6; background: #F1F4F8; border-color: #E1E7F0;
+}
+QTableWidget QLineEdit { padding: 4px 6px; border-radius: 4px; }
 """
 
 
