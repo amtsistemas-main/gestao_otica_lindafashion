@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, QSize, QUrl
 from PySide6.QtGui import QBrush, QColor, QPixmap, QIcon
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QHeaderView, QScrollArea,
+    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QGridLayout, QHeaderView, QScrollArea,
     QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
     QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
@@ -60,11 +60,11 @@ class ProductFormDialog(QDialog):
         subtitle.setWordWrap(True)
         root.addWidget(subtitle)
 
-        form = QFormLayout()
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
-        form.setFormAlignment(Qt.AlignmentFlag.AlignTop)
-        form.setHorizontalSpacing(18)
+        form = QGridLayout()
+        form.setHorizontalSpacing(22)
         form.setVerticalSpacing(12)
+        form.setColumnStretch(1, 1)
+        form.setColumnStretch(3, 1)
 
         self.barcode = QLineEdit()
         self.barcode.setPlaceholderText("Bipe o produto ou digite o código")
@@ -122,18 +122,25 @@ class ProductFormDialog(QDialog):
         self.active = QCheckBox("Produto ativo para venda")
         self.active.setChecked(True)
 
-        form.addRow("Código de barras", self.barcode)
-        form.addRow("Código interno / SKU", self.sku)
-        form.addRow("Nome *", self.name)
-        form.addRow("Categoria", self.category)
-        form.addRow("Marca", self.brand)
-        form.addRow("Preço de custo", self.cost_price)
-        form.addRow("Preço de venda", self.sale_price)
-        form.addRow("Desconto padrão", self.discount)
-        form.addRow("Quantidade em estoque", self.stock)
-        form.addRow("Estoque mínimo", self.minimum_stock)
-        form.addRow("Descrição", self.description)
-        form.addRow("", self.active)
+        fields = [
+            ("Código de barras", self.barcode), ("Código interno / SKU", self.sku),
+            ("Nome *", self.name), ("Categoria", self.category),
+            ("Marca", self.brand), ("Preço de custo", self.cost_price),
+            ("Preço de venda", self.sale_price), ("Desconto padrão", self.discount),
+            ("Quantidade em estoque", self.stock), ("Estoque mínimo", self.minimum_stock),
+        ]
+        for index, (label_text, field) in enumerate(fields):
+            row, column = divmod(index, 2)
+            label = QLabel(label_text)
+            label.setObjectName("productFieldLabel")
+            form.addWidget(label, row, column * 2)
+            form.addWidget(field, row, column * 2 + 1)
+        details_row = (len(fields) + 1) // 2
+        description_label = QLabel("Descrição")
+        description_label.setObjectName("productFieldLabel")
+        form.addWidget(description_label, details_row, 0)
+        form.addWidget(self.description, details_row, 1, 1, 3)
+        form.addWidget(self.active, details_row + 1, 0, 1, 4)
         root.addLayout(form)
 
         self.final_price_label = QLabel("Preço final: R$ 0,00")
