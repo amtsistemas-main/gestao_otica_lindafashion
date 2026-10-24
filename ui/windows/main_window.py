@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QPixmap
 import qtawesome as qta
 from PySide6.QtWidgets import (
+    QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -27,6 +28,7 @@ from modules.products.page import ProductsPage
 from modules.inventory.page import InventoryPage
 from modules.suppliers.page import SuppliersPage
 from ui.pages.dashboard_page import DashboardPage
+from ui.components.ai_results_panel import AIResultsPanel
 
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
 
@@ -37,6 +39,7 @@ NAV_ITEMS = [
     ("Fornecedores", "fa5s.truck", "Fornecedores"),
     ("Financeiro", "fa5s.wallet", "Financeiro"),
     ("Relatórios", "fa5s.chart-bar", "Relatórios"),
+    ("Análises IA", "fa5s.chart-line", "Análises IA"),
     ("Configurações", "fa5s.cog", "Configurações"),
 ]
 
@@ -229,6 +232,11 @@ class MainWindow(QMainWindow):
     def _open_module(self, module: str) -> None:
         for label, _abbreviation, target in NAV_ITEMS:
             self._nav_buttons[label].setChecked(target == module)
+        if module == "Análises IA":
+            self._open_ai_insights()
+            self._nav_buttons["Visão geral"].setChecked(True)
+            return
+
         if module in ("Produtos", "Estoque", "Fornecedores"):
             try:
                 if module == "Produtos":
@@ -262,6 +270,40 @@ class MainWindow(QMainWindow):
             f"O módulo {module.lower()} será implementado na próxima etapa.",
         )
         self._nav_buttons["Visão geral"].setChecked(True)
+
+    def _open_ai_insights(self) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Análises inteligentes — Ótica Linda Fashion")
+        dialog.resize(1040, 780)
+        dialog.setMinimumSize(820, 620)
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(24, 24, 24, 24)
+        panel = AIResultsPanel(dialog)
+        panel.generate_requested.connect(
+            lambda request: self._ai_generation_unavailable(panel, request)
+        )
+        panel.regenerate_requested.connect(
+            lambda request: self._ai_generation_unavailable(panel, request)
+        )
+        scroll = QScrollArea(dialog)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(panel)
+        layout.addWidget(scroll)
+        dialog.exec()
+
+    @staticmethod
+    def _ai_generation_unavailable(panel: AIResultsPanel, request: dict) -> None:
+        panel.set_loading(False)
+        QMessageBox.information(
+            panel,
+            "Integração de IA pendente",
+            "A interface de resultados está pronta, mas este repositório ainda não possui "
+            "um serviço de IA conectado. Nenhuma análise foi simulada. "
+            "A solicitação selecionada foi: "
+            f"{request.get('analysis_label', 'Análise')} — {request.get('period_label', 'período')}.",
+        )
 
     def _logout(self) -> None:
         self._auth_service.sign_out()
