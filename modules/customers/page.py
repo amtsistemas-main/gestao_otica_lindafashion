@@ -254,6 +254,9 @@ class CustomersPage(QDialog):
         self.history_button = QPushButton("Ver histórico CRM")
         self.history_button.clicked.connect(self._view_interactions)
         crm_actions.addWidget(self.history_button)
+        self.whatsapp_templates_button = QPushButton("Mensagens automáticas WhatsApp")
+        self.whatsapp_templates_button.clicked.connect(self._manage_whatsapp_templates)
+        crm_actions.addWidget(self.whatsapp_templates_button)
         self.crm_button = QPushButton("Registrar interação / follow-up")
         self.crm_button.setObjectName("primaryButton")
         self.crm_button.clicked.connect(self._add_interaction)
@@ -588,6 +591,107 @@ class CustomersPage(QDialog):
             QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
         """)
         dialog.exec()
+
+
+    def _manage_whatsapp_templates(self) -> None:
+        if self._preview_mode:
+            QMessageBox.information(self, "Pré-visualização", "A configuração das mensagens WhatsApp exige uma sessão autenticada.")
+            return
+        templates = [
+            ("order_em_desenvolvimento", "Em desenvolvimento", "Olá, {{cliente}}! Seu pedido {{pedido}} ({{descricao}}) está em desenvolvimento. Previsão: {{previsao}}. — Ótica Linda Fashion"),
+            ("order_pronto", "Óculos pronto", "Olá, {{cliente}}! Boas notícias: seu pedido {{pedido}} ({{descricao}}) está pronto para retirada. — Ótica Linda Fashion"),
+            ("order_entregue", "Entregue", "Olá, {{cliente}}! Registramos a entrega do pedido {{pedido}} ({{descricao}}). Obrigado por escolher a Ótica Linda Fashion!"),
+            ("order_cancelado", "Cancelado", "Olá, {{cliente}}. O pedido {{pedido}} ({{descricao}}) foi cancelado. Entre em contato conosco se precisar de ajuda. — Ótica Linda Fashion"),
+        ]
+        try:
+            existing = self._client.table("customer_whatsapp_templates").select(
+                "event_type,message_body,enabled"
+            ).eq("organization_id", self._organization_id).execute().data or []
+        except Exception as exc:
+            QMessageBox.critical(self, "Erro ao carregar mensagens", f"Não foi possível carregar os modelos de WhatsApp.\\n\\n{exc}")
+            return
+        existing_by_type = {str(row.get("event_type")): row for row in existing}
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Modelos automáticos de WhatsApp")
+        dialog.resize(820, 760)
+        root = QVBoxLayout(dialog)
+        root.setContentsMargins(22, 20, 22, 20)
+        root.setSpacing(12)
+        title_bar = QFrame()
+        title_bar.setObjectName("windowTitleBar")
+        title_layout = QVBoxLayout(title_bar)
+        title_layout.setContentsMargins(18, 12, 18, 12)
+        title = QLabel("Mensagens automáticas de pedidos")
+        title.setObjectName("windowTitle")
+        subtitle = QLabel("Personalize o texto enviado quando o status do pedido mudar.")
+        subtitle.setObjectName("windowSubtitle")
+        title_layout.addWidget(title)
+        title_layout.addWidget(subtitle)
+        root.addWidget(title_bar)
+        help_text = QLabel("Variáveis disponíveis: {{cliente}}, {{pedido}}, {{descricao}}, {{status}}, {{previsao}}. A mensagem entra na fila apenas se o cliente estiver ativo, tiver WhatsApp cadastrado e consentimento marcado.")
+        help_text.setWordWrap(True)
+        help_text.setStyleSheet("color:#475569;padding:4px;")
+        root.addWidget(help_text)
+        editors: dict[str, tuple[QTextEdit, QCheckBox]] = {}
+        for event_type, label, default_body in templates:
+            row = existing_by_type.get(event_type, {})
+            section = QFrame()
+            section.setStyleSheet("QFrame { background:#F7F9FD; border:1px solid #E0E8F4; border-radius:8px; }")
+            section_layout = QVBoxLayout(section)
+            section_layout.setContentsMargins(12, 10, 12, 10)
+            section_layout.setSpacing(6)
+            heading = QHBoxLayout()
+            heading_label = QLabel(label)
+            heading_label.setStyleSheet("font-weight:700;color:#102957;background:transparent;border:none;")
+            enabled = QCheckBox("Ativar")
+            enabled.setChecked(bool(row.get("enabled", True)))
+            heading.addWidget(heading_label)
+            heading.addStretch(1)
+            heading.addWidget(enabled)
+            section_layout.addLayout(heading)
+            editor = QTextEdit()
+            editor.setMinimumHeight(86)
+            editor.setPlainText(str(row.get("message_body") or default_body))
+            section_layout.addWidget(editor)
+            root.addWidget(section)
+            editors[event_type] = (editor, enabled)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Salvar modelos")
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        root.addWidget(buttons)
+        dialog.setStyleSheet("""
+            QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; }
+            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
+            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
+            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
+            QTextEdit { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:7px; padding:8px; }
+            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 14px; }
+            QPushButton:hover { background:#F3F7FF; }
+        """)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        payload = []
+        for event_type, _label, _default_body in templates:
+            editor, enabled = editors[event_type]
+            body = editor.toPlainText().strip()
+            if enabled.isChecked() and not body:
+                QMessageBox.warning(dialog, "Mensagem vazia", "Preencha o texto de cada modelo ativado ou desative-o.")
+                return
+            payload.append({
+                "organization_id": self._organization_id,
+                "event_type": event_type,
+                "message_body": body,
+                "enabled": enabled.isChecked(),
+                "updated_by": self._user_id,
+            })
+        try:
+            self._client.table("customer_whatsapp_templates").upsert(
+                payload, on_conflict="organization_id,event_type"
+            ).execute()
+            QMessageBox.information(self, "Modelos salvos", "Os modelos foram salvos. As mudanças de status passarão a gerar mensagens na fila quando houver consentimento e WhatsApp cadastrado. O envio externo depende da configuração do provedor WhatsApp.")
+        except Exception as exc:
+            QMessageBox.critical(self, "Erro ao salvar modelos", f"Não foi possível salvar os modelos.\\n\\n{exc}")
 
     def _view_interactions(self) -> None:
         customer = self._selected_customer()
