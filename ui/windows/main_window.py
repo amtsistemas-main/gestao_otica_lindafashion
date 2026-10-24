@@ -32,7 +32,6 @@ from modules.customers.page import CustomersPage
 from modules.sales.page import SalesPage
 from ui.pages.dashboard_page import DashboardPage
 from ui.components.ai_results_panel import BusinessAnalysisPanel
-from ui.components.window_header import make_window_header
 from core.ai_analysis_service import AIAnalysisWorker
 
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
@@ -127,7 +126,6 @@ class MainWindow(QMainWindow):
         workspace_layout = QVBoxLayout(workspace)
         workspace_layout.setContentsMargins(0, 0, 0, 0)
         workspace_layout.setSpacing(0)
-        workspace_layout.addWidget(make_window_header(APP_NAME, workspace))
 
         topbar = QFrame()
         topbar.setObjectName("topbar")
