@@ -67,4 +67,4 @@ O módulo separa modelos, regras de negócio, repositório e interface em `modul
 
 ## Limitações desta fase
 
-O modo de pré-visualização exibe a interface inicial e os cartões de navegação; ele não representa módulos funcionais completos. A conexão real com Supabase exige URL, chave pública/anon ou publishable key e um esquema de banco configurado. O fluxo de pagamentos será implementado após a definição do provedor.
+O modo de pré-visualização permite testar a interface e o cadastro local do módulo Produtos, mas não representa a integração online com Supabase. A conexão real com Supabase exige URL, chave pública/anon ou publishable key e um esquema de banco configurado. O fluxo de pagamentos será implementado após a definição do provedor.
