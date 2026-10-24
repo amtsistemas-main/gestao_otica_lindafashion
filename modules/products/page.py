@@ -43,10 +43,13 @@ class ProductFormDialog(QDialog):
             }
             QWidget#productFormContent { background: #ffffff; }
             QLabel#pageTitle {
-                color: #142b4e;
-                font-size: 23pt;
+                background: #102957;
+                color: #FFFFFF;
+                font-size: 18pt;
                 font-weight: 750;
-                padding: 2px 0 0;
+                padding: 14px 18px;
+                border: 1px solid #203D68;
+                border-radius: 8px;
             }
             QLabel#muted { color: #64748b; font-size: 10pt; }
             QLabel#sectionTitle {
