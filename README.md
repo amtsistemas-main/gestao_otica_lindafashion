@@ -4,33 +4,46 @@ Aplicativo desktop de gestão para ótica, desenvolvido em Python e PySide6 para
 
 ## Estado do projeto
 
-Esta é a estrutura inicial do projeto. A autenticação online será feita pelo Supabase Auth; dados e permissões deverão ser protegidos por políticas RLS no banco. Nenhuma chave privilegiada do Supabase deve ser distribuída dentro do aplicativo desktop.
+A interface inicial está em desenvolvimento. A autenticação online será feita pelo Supabase Auth; dados e permissões deverão ser protegidos por políticas RLS no banco. Nenhuma chave privilegiada do Supabase deve ser distribuída dentro do aplicativo desktop.
 
 ## Requisitos
 
 - Windows 10 ou 11 (64 bits)
 - Python 3.11 ou superior
-- Projeto Supabase configurado para o ambiente
 
-## Configuração local
+## Configuração local no Windows
 
-1. Crie e ative um ambiente virtual:
+1. Abra o PowerShell na pasta do projeto.
+2. Crie e ative um ambiente virtual:
    ```powershell
    py -3.11 -m venv .venv
    .\.venv\Scripts\Activate.ps1
    ```
-2. Instale as dependências:
+3. Instale as dependências:
    ```powershell
    python -m pip install --upgrade pip
    pip install -r requirements.txt
    ```
-3. Copie `.env.example` para `.env` e preencha somente as credenciais públicas necessárias.
-4. Execute:
-   ```powershell
-   python app.py
-   ```
 
-## Módulos planejados
+### Abrir a interface sem login (modo de pré-visualização)
+
+Para visualizar o painel principal sem configurar Supabase, credenciais ou autenticação, execute:
+
+```powershell
+python app.py --preview
+```
+
+Esse modo serve apenas para inspecionar a interface localmente. Ele não cria uma sessão autenticada nem habilita operações reais de dados. Os cartões dos módulos que ainda não foram implementados mostrarão um aviso informativo.
+
+Para abrir a tela de acesso normal, use:
+
+```powershell
+python app.py
+```
+
+O fluxo de login requer as configurações públicas do Supabase no arquivo `.env`. Para isso, copie `.env.example` para `.env` e preencha os valores necessários.
+
+## Módulos previstos
 
 - Início e indicadores
 - Produtos e leitura de código de barras
@@ -50,4 +63,4 @@ Esta é a estrutura inicial do projeto. A autenticação online será feita pelo
 
 ## Limitações desta fase
 
-A conexão real com Supabase exige URL, chave pública/anon ou publishable key e um esquema de banco configurado. O fluxo de pagamentos será implementado após a definição do provedor.
+O modo de pré-visualização exibe a interface inicial e os cartões de navegação; ele não representa módulos funcionais completos. A conexão real com Supabase exige URL, chave pública/anon ou publishable key e um esquema de banco configurado. O fluxo de pagamentos será implementado após a definição do provedor.
