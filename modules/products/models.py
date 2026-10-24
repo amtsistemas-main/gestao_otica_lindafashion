@@ -25,6 +25,8 @@ class Product:
     name: str = ""
     category: str = ""
     brand: str = ""
+    supplier_id: str | None = None
+    supplier_name: str = ""
     cost_price: Decimal = Decimal("0.00")
     sale_price: Decimal = Decimal("0.00")
     discount_percent: Decimal = Decimal("0.00")
@@ -67,6 +69,8 @@ class Product:
             name=str(data.get("name") or ""),
             category=str(data.get("category") or ""),
             brand=str(data.get("brand") or ""),
+            supplier_id=str(data["supplier_id"]) if data.get("supplier_id") else None,
+            supplier_name=str(data.get("supplier_name") or ""),
             cost_price=_decimal(data.get("cost_price"), "preço de custo"),
             sale_price=_decimal(data.get("sale_price"), "preço de venda"),
             discount_percent=_decimal(data.get("discount_percent"), "desconto"),
@@ -83,6 +87,7 @@ class Product:
         record["sale_price"] = str(self.sale_price.quantize(Decimal("0.01")))
         record["discount_percent"] = str(self.discount_percent.quantize(Decimal("0.01")))
         record.pop("id", None)
+        record.pop("supplier_name", None)
         if not include_id:
             record.pop("organization_id", None)
         return record
