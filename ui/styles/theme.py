@@ -854,6 +854,12 @@ QLabel#accountAvatar {
     border-radius: 20px;
     font-size: 17pt;
 }
+QLabel#profileName {
+    background: transparent;
+    color: #102957;
+    font-size: 9pt;
+    font-weight: 750;
+}
 QLabel#profileRole {
     background: transparent;
     color: #60799E;
