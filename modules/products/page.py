@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, QSize, QUrl
 from PySide6.QtGui import QBrush, QColor, QPixmap, QIcon
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QHeaderView,
+    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QHeaderView, QScrollArea,
     QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
     QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
@@ -30,12 +30,28 @@ class ProductFormDialog(QDialog):
     def __init__(self, product: Product | None = None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Editar produto" if product else "Novo produto")
-        self.setMinimumWidth(560)
+        self.setMinimumSize(900, 620)
         self.setModal(True)
+        self.setWindowState(self.windowState() | Qt.WindowState.WindowMaximized)
         self._product = product
         self.image_path = ""
 
-        root = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(18, 18, 18, 18)
+        outer.setSpacing(12)
+        scroll = QScrollArea(self)
+        scroll.setObjectName("productFormScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        content = QWidget()
+        content.setObjectName("productFormContent")
+        root = QVBoxLayout(content)
+        root.setContentsMargins(18, 14, 18, 18)
+        root.setSpacing(18)
+        scroll.setWidget(content)
+        outer.addWidget(scroll, 1)
+
         title = QLabel("Dados do produto")
         title.setObjectName("pageTitle")
         root.addWidget(title)
@@ -131,7 +147,7 @@ class ProductFormDialog(QDialog):
         buttons.button(QDialogButtonBox.StandardButton.Save).setObjectName("primaryButton")
         buttons.accepted.connect(self._validate_and_accept)
         buttons.rejected.connect(self.reject)
-        root.addWidget(buttons)
+        outer.addWidget(buttons)
 
         if product:
             self.barcode.setText(product.barcode)
