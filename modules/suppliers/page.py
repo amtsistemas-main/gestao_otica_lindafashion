@@ -4,7 +4,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox, QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel,
-    QLineEdit, QMessageBox, QPushButton, QScrollArea, QTabWidget, QTableWidget,
+    QHeaderView, QLineEdit, QMessageBox, QPushButton, QScrollArea, QTabWidget, QTableWidget,
     QTableWidgetItem, QVBoxLayout, QWidget, QTextEdit,
 )
 
@@ -148,6 +148,7 @@ class SuppliersPage(QDialog):
         self._client = None
         self._organization_id = None
         self._rows: list[dict] = []
+        self._products: list[dict] = []
         if not preview_mode:
             if not session_manager.is_authenticated or not get_settings().supabase_configured:
                 raise ConfigurationError("O módulo Fornecedores exige login e configuração do Supabase.")
@@ -181,15 +182,15 @@ class SuppliersPage(QDialog):
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self._render)
         root.addWidget(self.search)
-        self.table = QTableWidget(0, 7)
-        self.table.setHorizontalHeaderLabels(["Fornecedor", "CPF / CNPJ", "Contato", "Telefone / WhatsApp", "E-mail", "Cidade / UF", "Status"])
+        self.table = QTableWidget(0, 8)
+        self.table.setHorizontalHeaderLabels(["Fornecedor", "CPF / CNPJ", "Contato", "Telefone / WhatsApp", "E-mail", "Cidade / UF", "Produtos", "Status"])
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.horizontalHeader().setSectionResizeMode(0, self.table.horizontalHeader().ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.doubleClicked.connect(self._edit)
         root.addWidget(self.table, 1)
         actions = QHBoxLayout()
@@ -197,10 +198,13 @@ class SuppliersPage(QDialog):
         self.edit_button.clicked.connect(self._edit)
         self.toggle_button = QPushButton("Ativar / desativar")
         self.toggle_button.clicked.connect(self._toggle_active)
+        self.products_button = QPushButton("Ver produtos vinculados")
+        self.products_button.clicked.connect(self._show_products)
         self.refresh_button = QPushButton("Atualizar")
         self.refresh_button.clicked.connect(self._load)
         actions.addWidget(self.edit_button)
         actions.addWidget(self.toggle_button)
+        actions.addWidget(self.products_button)
         actions.addStretch()
         actions.addWidget(self.refresh_button)
         root.addLayout(actions)
@@ -209,7 +213,7 @@ class SuppliersPage(QDialog):
             note.setWordWrap(True)
             note.setStyleSheet("background:#FFF7DF;color:#79550B;padding:10px;border-radius:8px;")
             root.addWidget(note)
-            for button in (self.new_button, self.edit_button, self.toggle_button):
+            for button in (self.new_button, self.edit_button, self.toggle_button, self.products_button):
                 button.setEnabled(False)
         self._load()
 
@@ -220,6 +224,7 @@ class SuppliersPage(QDialog):
             return
         try:
             self._rows = list(self._client.table("suppliers").select("*").eq("organization_id", self._organization_id).order("name").execute().data or [])
+            self._products = list(self._client.table("products").select("id,name,sku,barcode,supplier_id,active").eq("organization_id", self._organization_id).order("name").execute().data or [])
             self._render()
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao carregar fornecedores", f"{exc}\n\nConfirme se a migration 202610240005_complete_supplier_catalog_and_product_link.sql foi aplicada.")
@@ -236,6 +241,7 @@ class SuppliersPage(QDialog):
                 " / ".join(value for value in (row.get("phone") or "", row.get("whatsapp") or "") if value) or "—",
                 row.get("email") or "—",
                 " / ".join(value for value in (row.get("city") or "", row.get("state") or "") if value) or "—",
+                str(sum(1 for product in self._products if product.get("supplier_id") == row.get("id"))),
                 "Ativo" if row.get("active", True) else "Inativo",
             ]
             for col, value in enumerate(values):
@@ -276,6 +282,33 @@ class SuppliersPage(QDialog):
             QMessageBox.information(self, "Fornecedor salvo", "Os dados do fornecedor foram salvos.")
         except Exception as exc:
             QMessageBox.critical(self, "Não foi possível salvar o fornecedor", str(exc))
+
+    def _show_products(self) -> None:
+        supplier = self._selected()
+        if not supplier:
+            return
+        products = [
+            product for product in self._products
+            if product.get("supplier_id") == supplier.get("id")
+        ]
+        if not products:
+            QMessageBox.information(
+                self, "Nenhum produto vinculado",
+                f"Não há produtos vinculados ao fornecedor {supplier.get('name')}. "
+                "Para vincular, abra Produtos, edite o cadastro e selecione este fornecedor.",
+            )
+            return
+        lines = [
+            f"{product.get('name', 'Produto')} — "
+            f"SKU: {product.get('sku') or '—'} — "
+            f"Código: {product.get('barcode') or '—'} — "
+            f"{'Ativo' if product.get('active', True) else 'Inativo'}"
+            for product in products
+        ]
+        QMessageBox.information(
+            self, f"Produtos de {supplier.get('trade_name') or supplier.get('name')}",
+            f"{len(products)} produto(s) vinculado(s):\n\n" + "\n".join(lines),
+        )
 
     def _toggle_active(self) -> None:
         supplier = self._selected()
