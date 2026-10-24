@@ -87,7 +87,7 @@ class SupplierFormDialog(QDialog):
                     widget.setClearButtonEnabled(True)
                     widget.setPlaceholderText(label)
                 widget.setMinimumWidth(260)
-                widget.setStyleSheet("background:white;color:#172B4D;border:1px solid #D9E3F1;border-radius:7px;padding:8px;")
+                
                 widget.setText(self._supplier.get(key, "") or "") if isinstance(widget, QLineEdit) else widget.setPlainText(self._supplier.get(key, "") or "")
                 self.fields[key] = widget
                 form.addRow(label, widget)
