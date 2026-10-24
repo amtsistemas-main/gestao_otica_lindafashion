@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, QSize, QUrl
 from PySide6.QtGui import QBrush, QColor, QPixmap, QIcon
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QGridLayout, QHeaderView, QScrollArea,
+    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QGridLayout, QHeaderView, QScrollArea,
     QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
     QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 from config.settings import get_settings
 from core.exceptions import ConfigurationError
 from core.session_manager import session_manager
+from core.supabase_client import get_supabase_client
 from modules.products.catalog_io import create_template, export_pdf, read_products
 from modules.products.models import Product
 from modules.products.repository import MemoryProductRepository, SupabaseProductRepository
@@ -27,7 +28,7 @@ def _currency(value: Decimal | float | int) -> str:
 
 
 class ProductFormDialog(QDialog):
-    def __init__(self, product: Product | None = None, parent: QWidget | None = None) -> None:
+    def __init__(self, product: Product | None = None, parent: QWidget | None = None, suppliers: list[dict] | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Editar produto" if product else "Novo produto")
         self.setMinimumSize(900, 620)
@@ -160,6 +161,10 @@ class ProductFormDialog(QDialog):
         self.category.setPlaceholderText("Ex.: Óculos de sol")
         self.brand = QLineEdit()
         self.brand.setPlaceholderText("Marca")
+        self.supplier = QComboBox()
+        self.supplier.addItem("Sem fornecedor vinculado", None)
+        for supplier_row in suppliers or []:
+            self.supplier.addItem(str(supplier_row.get("trade_name") or supplier_row.get("name") or supplier_row.get("legal_name") or "Fornecedor"), supplier_row.get("id"))
         self.cost_price = self._money_input()
         self.sale_price = self._money_input()
         self.discount = QDoubleSpinBox()
@@ -208,7 +213,7 @@ class ProductFormDialog(QDialog):
         fields = [
             ("Código de barras", self.barcode), ("Código interno / SKU", self.sku),
             ("Nome *", self.name), ("Categoria", self.category),
-            ("Marca", self.brand), ("Preço de custo", self.cost_price),
+            ("Marca", self.brand), ("Fornecedor principal", self.supplier), ("Preço de custo", self.cost_price),
             ("Preço de venda", self.sale_price), ("Desconto padrão", self.discount),
             ("Quantidade em estoque", self.stock), ("Estoque mínimo", self.minimum_stock),
         ]
@@ -245,6 +250,8 @@ class ProductFormDialog(QDialog):
             self.name.setText(product.name)
             self.category.setText(product.category)
             self.brand.setText(product.brand)
+            supplier_index = self.supplier.findData(product.supplier_id)
+            self.supplier.setCurrentIndex(max(0, supplier_index))
             self.cost_price.setValue(float(product.cost_price))
             self.sale_price.setValue(float(product.sale_price))
             self.discount.setValue(float(product.discount_percent))
@@ -344,6 +351,8 @@ class ProductFormDialog(QDialog):
             name=self.name.text().strip(),
             category=self.category.text().strip(),
             brand=self.brand.text().strip(),
+            supplier_id=str(self.supplier.currentData()) if self.supplier.currentData() else None,
+            supplier_name=self.supplier.currentText() if self.supplier.currentData() else "",
             cost_price=Decimal(str(self.cost_price.value())).quantize(Decimal("0.01")),
             sale_price=Decimal(str(self.sale_price.value())).quantize(Decimal("0.01")),
             discount_percent=Decimal(str(self.discount.value())).quantize(Decimal("0.01")),
@@ -376,9 +385,12 @@ class ProductsPage(QDialog):
         self._repository = repository
         self._service = ProductService(repository)
         self._visible_products: list[Product] = []
+        self._suppliers: list[dict] = []
         self._image_network = QNetworkAccessManager(self)
         self._image_cache: dict[str, QPixmap] = {}
         self._image_requests: set[str] = set()
+        if not preview_mode:
+            self._load_suppliers()
 
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 22, 24, 22)
@@ -445,9 +457,9 @@ class ProductsPage(QDialog):
         search_row.addWidget(search_button)
         root.addLayout(search_row)
 
-        self.table = QTableWidget(0, 9)
+        self.table = QTableWidget(0, 10)
         self.table.setHorizontalHeaderLabels([
-            "Imagem", "Código / SKU", "Produto", "Categoria", "Custo", "Venda", "Desconto", "Preço final", "Estoque",
+            "Imagem", "Código / SKU", "Produto", "Categoria", "Custo", "Venda", "Desconto", "Preço final", "Estoque", "Fornecedor",
         ])
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -457,6 +469,7 @@ class ProductsPage(QDialog):
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.ResizeToContents)
         self.table.setColumnWidth(0, 68)
         self.table.setColumnWidth(1, 135)
         for column in (4, 5, 6, 7, 8):
@@ -480,6 +493,33 @@ class ProductsPage(QDialog):
 
         self._search_products()
 
+    def _load_suppliers(self) -> None:
+        """Load active suppliers from the current organization for product assignment."""
+        try:
+            session = session_manager.current
+            if session is None:
+                return
+            memberships = (
+                get_supabase_client().table("organization_members")
+                .select("organization_id").eq("user_id", session.user_id)
+                .eq("active", True).limit(1).execute().data or []
+            )
+            if not memberships:
+                return
+            organization_id = memberships[0].get("organization_id")
+            self._suppliers = list(
+                get_supabase_client().table("suppliers")
+                .select("id,name,legal_name,trade_name")
+                .eq("organization_id", organization_id).eq("active", True)
+                .order("name").execute().data or []
+            )
+        except Exception as exc:
+            QMessageBox.warning(
+                self, "Fornecedores indisponíveis",
+                f"Não foi possível carregar a lista de fornecedores. Você ainda pode consultar produtos, mas não poderá vincular um fornecedor agora.\n\n{exc}",
+            )
+            self._suppliers = []
+
     def _search_products(self, *_args: object) -> None:
         """Refresh results while typing without interrupting a scanner input."""
         self._load_products(offer_barcode=False)
@@ -492,6 +532,9 @@ class ProductsPage(QDialog):
         term = self.search.text().strip()
         try:
             self._visible_products = self._service.list_products(term)
+            supplier_names = {str(row.get("id")): str(row.get("trade_name") or row.get("name") or row.get("legal_name") or "") for row in self._suppliers}
+            for product in self._visible_products:
+                product.supplier_name = supplier_names.get(str(product.supplier_id), "") if product.supplier_id else ""
             self._render_table()
             # A scanner usually appends Enter; if the exact barcode isn't present,
             # offer to start a new product with the scanned value prefilled.
@@ -536,7 +579,7 @@ class ProductsPage(QDialog):
                 product.barcode or product.sku or "—", product.name, product.category or "—",
                 _currency(product.cost_price), _currency(product.sale_price),
                 f"{product.discount_percent:.2f}%".replace(".", ","), _currency(product.final_price),
-                str(product.stock_quantity),
+                str(product.stock_quantity), product.supplier_name or "—",
             ]
             for offset, value in enumerate(values, start=1):
                 item = QTableWidgetItem(value)
@@ -582,7 +625,7 @@ class ProductsPage(QDialog):
         return next((item for item in self._visible_products if item.id == selected_id), None)
 
     def _new_product(self, prefill_barcode: str = "") -> None:
-        dialog = ProductFormDialog(parent=self)
+        dialog = ProductFormDialog(parent=self, suppliers=self._suppliers)
         if prefill_barcode:
             dialog.barcode.setText(prefill_barcode)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -592,7 +635,7 @@ class ProductsPage(QDialog):
         product = self._selected_product()
         if product is None:
             return
-        dialog = ProductFormDialog(product, self)
+        dialog = ProductFormDialog(product, self, self._suppliers)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._save_dialog_product(dialog)
 
