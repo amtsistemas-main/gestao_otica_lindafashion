@@ -164,7 +164,10 @@ class ProductFormDialog(QDialog):
         self.supplier = QComboBox()
         self.supplier.addItem("Sem fornecedor vinculado", None)
         for supplier_row in suppliers or []:
-            self.supplier.addItem(str(supplier_row.get("trade_name") or supplier_row.get("name") or supplier_row.get("legal_name") or "Fornecedor"), supplier_row.get("id"))
+            supplier_label = str(supplier_row.get("trade_name") or supplier_row.get("name") or supplier_row.get("legal_name") or "Fornecedor")
+            if not supplier_row.get("active", True):
+                supplier_label += " (inativo)"
+            self.supplier.addItem(supplier_label, supplier_row.get("id"))
         self.cost_price = self._money_input()
         self.sale_price = self._money_input()
         self.discount = QDoubleSpinBox()
@@ -509,8 +512,8 @@ class ProductsPage(QDialog):
             organization_id = memberships[0].get("organization_id")
             self._suppliers = list(
                 get_supabase_client().table("suppliers")
-                .select("id,name,legal_name,trade_name")
-                .eq("organization_id", organization_id).eq("active", True)
+                .select("id,name,legal_name,trade_name,active")
+                .eq("organization_id", organization_id)
                 .order("name").execute().data or []
             )
         except Exception as exc:
