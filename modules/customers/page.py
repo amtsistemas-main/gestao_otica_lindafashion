@@ -343,7 +343,49 @@ class CustomersPage(QDialog):
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
             QPushButton:hover { background:#F3F7FF; }
             QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
-        """)
+        
+            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
+            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                selection-background-color: #DCE8FF;
+                selection-color: #17365D;
+                outline: 0;
+            }
+            QComboBox QAbstractItemView::item, QComboBox QListView::item {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                min-height: 24px;
+                padding: 5px 8px;
+            }
+            QComboBox QAbstractItemView::item:selected,
+            QComboBox QAbstractItemView::item:selected:active,
+            QComboBox QAbstractItemView::item:selected:!active,
+            QComboBox QListView::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                padding: 4px;
+            }
+            QMenu::item {
+                background-color: transparent;
+                color: #172B4D;
+                padding: 7px 28px 7px 10px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu::item:disabled {
+                color: #8793A6;
+            }
+""")
         self._load_customers()
 
     def _load_customers(self) -> None:
@@ -867,7 +909,49 @@ class CustomersPage(QDialog):
             QHeaderView::section { background:#102957; color:#FFFFFF; border:none; padding:9px; }
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; }
             QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
-        """)
+        
+            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
+            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                selection-background-color: #DCE8FF;
+                selection-color: #17365D;
+                outline: 0;
+            }
+            QComboBox QAbstractItemView::item, QComboBox QListView::item {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                min-height: 24px;
+                padding: 5px 8px;
+            }
+            QComboBox QAbstractItemView::item:selected,
+            QComboBox QAbstractItemView::item:selected:active,
+            QComboBox QAbstractItemView::item:selected:!active,
+            QComboBox QListView::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                padding: 4px;
+            }
+            QMenu::item {
+                background-color: transparent;
+                color: #172B4D;
+                padding: 7px 28px 7px 10px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu::item:disabled {
+                color: #8793A6;
+            }
+""")
         dialog.exec()
 
 
