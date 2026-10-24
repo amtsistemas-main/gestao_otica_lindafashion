@@ -47,8 +47,8 @@ O fluxo de login requer as configurações públicas do Supabase no arquivo `.en
 
 - Início e indicadores
 - Produtos: cadastro, código de barras, SKU, custo, preço de venda, desconto, estoque mínimo e desativação
-- Estoque
-- Fornecedores
+- Estoque: saldo, estoque mínimo, histórico auditável de entradas/saídas/ajustes, alertas e solicitações de compra vinculadas a fornecedores
+- Fornecedores: cadastro básico integrado às solicitações de compra do Estoque
 - Financeiro
 - Autenticação e sessão
 - Integrações de pagamento (provedor a definir)
