@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1120, 720)
         self._auth_service = AuthService()
         self._products_window: ProductsPage | None = None
-        self._nav_buttons: dict[str, QPushButton] = {}
+        self._nav_buttons: dict[str, QPushButton] = {}\n        self._sidebar_collapsed = False
 
         shell = QWidget()
         shell.setObjectName("appShell")
@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
             button = QPushButton(label)
             button.setIcon(qta.icon(icon_name, color="#FFFFFF" if module is None else "#D5E1F5"))
             button.setIconSize(QSize(18, 18))
-            button.setObjectName("navButton")
+            button.setObjectName("navButton")\n            button.setToolTip(label)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setCheckable(True)
             button.setMinimumHeight(43)
@@ -140,7 +140,7 @@ class MainWindow(QMainWindow):
         menu_button.setObjectName("topbarIconButton")
         menu_button.setFixedSize(36, 36)
         menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        menu_button.clicked.connect(lambda: self._scroll.verticalScrollBar().setValue(0))
+        menu_button.setToolTip("Recolher ou expandir menu lateral")\n        menu_button.clicked.connect(self._toggle_sidebar)
         topbar_layout.addWidget(menu_button)
 
         search_box = QLineEdit()
@@ -225,6 +225,38 @@ class MainWindow(QMainWindow):
             else "Sistema pronto • módulos em evolução"
         )
         self.setStatusBar(status)
+
+    def _toggle_sidebar(self) -> None:
+        """Collapse the sidebar to icon-only navigation or restore its full labels."""
+        self._sidebar_collapsed = not self._sidebar_collapsed
+        if self._sidebar_collapsed:
+            self._sidebar.setFixedWidth(76)
+            self._sidebar_layout.setContentsMargins(8, 16, 8, 14)
+            self._sidebar_layout.setSpacing(8)
+            self._sidebar_logo.hide()
+            self._brand_subtitle.hide()
+            self._nav_label.hide()
+            self._sidebar_footer.hide()
+            for label, button in self._nav_buttons.items():
+                button.setText("")
+                button.setToolTip(label)
+                button.setMinimumWidth(0)
+                button.setMaximumWidth(60)
+                button.setStyleSheet("text-align: center; padding: 10px 0;")
+        else:
+            self._sidebar.setFixedWidth(230)
+            self._sidebar_layout.setContentsMargins(18, 22, 18, 18)
+            self._sidebar_layout.setSpacing(8)
+            self._sidebar_logo.show()
+            self._brand_subtitle.show()
+            self._nav_label.show()
+            self._sidebar_footer.show()
+            for label, button in self._nav_buttons.items():
+                button.setText(label)
+                button.setToolTip(label)
+                button.setMinimumWidth(0)
+                button.setMaximumWidth(16777215)
+                button.setStyleSheet("")
 
     def _navigate(self, module: str | None) -> None:
         for label, _abbreviation, target in NAV_ITEMS:
