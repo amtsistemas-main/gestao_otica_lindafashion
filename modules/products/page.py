@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Callable
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
+    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QHeaderView,
     QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
     QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
@@ -114,7 +114,7 @@ class ProductFormDialog(QDialog):
             self.description.setPlainText(product.description)
             self.active.setChecked(product.active)
         else:
-            self.name.setFocus()
+            self.barcode.setFocus()
         self._update_final_price()
 
     @staticmethod
@@ -241,8 +241,8 @@ class ProductsPage(QDialog):
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(False)
-        self.table.horizontalHeader().setSectionResizeMode(1, self.table.horizontalHeader().ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, self.table.horizontalHeader().ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.table.setColumnWidth(0, 150)
         for column in (3, 4, 5, 6, 7):
             self.table.setColumnWidth(column, 105)
@@ -313,10 +313,10 @@ class ProductsPage(QDialog):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.table.setItem(row, column, item)
             if product.stock_quantity <= product.minimum_stock:
-                self.table.item(row, 7).setForeground(Qt.GlobalColor.darkRed)
+                self.table.item(row, 7).setForeground(QBrush(QColor("#b42318")))
             if not product.active:
                 for column in range(self.table.columnCount()):
-                    self.table.item(row, column).setForeground(Qt.GlobalColor.gray)
+                    self.table.item(row, column).setForeground(QBrush(QColor("#8a94a6")))
         self.count_label.setText(f"{len(self._visible_products)} produto(s)")
         low_stock = sum(1 for item in self._visible_products if item.stock_quantity <= item.minimum_stock)
         self.stock_alert_label.setText(f"{low_stock} no estoque mínimo ou abaixo")
