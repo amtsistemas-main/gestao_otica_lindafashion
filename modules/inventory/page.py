@@ -116,6 +116,15 @@ class InventoryPage(QDialog):
 
         requests_tab = QWidget()
         requests_layout = QVBoxLayout(requests_tab)
+        request_actions = QHBoxLayout()
+        request_hint = QLabel("Selecione uma solicitação para registrar o recebimento das mercadorias.")
+        request_hint.setObjectName("muted")
+        request_actions.addWidget(request_hint, 1)
+        self.receive_button = QPushButton("Receber mercadoria")
+        self.receive_button.setObjectName("primaryButton")
+        self.receive_button.clicked.connect(self._receive_purchase_request_item)
+        request_actions.addWidget(self.receive_button)
+        requests_layout.addLayout(request_actions)
         self.requests_table = self._table(["Solicitação", "Fornecedor", "Status", "Criada em", "Itens"])
         self.requests_table.doubleClicked.connect(self._show_request_details)
         requests_layout.addWidget(self.requests_table)
@@ -364,6 +373,93 @@ class InventoryPage(QDialog):
             QMessageBox.information(self, "Solicitação criada", f"Solicitação PC-{request.get('request_number',request['id'])} criada e vinculada ao fornecedor {supplier.currentText()}.")
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao criar solicitação", f"{exc}\n\nVerifique se a migration foi aplicada. Se a solicitação foi criada mas os itens falharam, confira a lista antes de tentar novamente.")
+
+    def _receive_purchase_request_item(self) -> None:
+        row = self.requests_table.currentRow()
+        if row < 0:
+            QMessageBox.information(self, "Selecione uma solicitação", "Selecione uma solicitação de compra para registrar o recebimento.")
+            return
+        request_id = self.requests_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+        try:
+            rows = self._client.table("purchase_requests").select("*,suppliers(name),purchase_request_items(*,products(name,sku,barcode))").eq("id", request_id).eq("organization_id", self._organization_id).limit(1).execute().data or []
+            if not rows:
+                raise RuntimeError("A solicitação não foi encontrada.")
+            request = rows[0]
+            if request.get("status") not in ("solicitada", "aprovada", "recebida_parcial"):
+                QMessageBox.information(self, "Recebimento indisponível", "Esta solicitação não aceita recebimento no status atual.")
+                return
+            pending_items = []
+            for item in request.get("purchase_request_items") or []:
+                remaining = int(item.get("quantity_requested") or 0) - int(item.get("quantity_received") or 0)
+                if remaining > 0:
+                    pending_items.append((item, remaining))
+            if not pending_items:
+                QMessageBox.information(self, "Pedido completo", "Todos os itens desta solicitação já foram recebidos.")
+                return
+
+            dialog = QDialog(self)
+            dialog.setWindowTitle(f"Receber mercadoria — PC-{request.get('request_number', request_id)}")
+            dialog.setMinimumWidth(540)
+            layout = QVBoxLayout(dialog)
+            form = QFormLayout()
+            item_combo = QComboBox()
+            for item, remaining in pending_items:
+                product = item.get("products") or {}
+                item_combo.addItem(
+                    f"{product.get('name', 'Produto')} • pendente: {remaining}",
+                    item.get("id"),
+                )
+            quantity = QSpinBox()
+            quantity.setRange(1, pending_items[0][1])
+            quantity.setValue(pending_items[0][1])
+            item_combo.currentIndexChanged.connect(
+                lambda index: (
+                    quantity.setRange(1, pending_items[index][1]),
+                    quantity.setValue(pending_items[index][1]),
+                )
+            )
+            reference = QLineEdit()
+            reference.setPlaceholderText("Número da nota fiscal ou referência (opcional)")
+            form.addRow("Item pendente", item_combo)
+            form.addRow("Quantidade recebida agora", quantity)
+            form.addRow("Nota fiscal / referência", reference)
+            layout.addLayout(form)
+            hint = QLabel("O recebimento atualiza o saldo do produto, registra a entrada no histórico e recalcula o status da solicitação em uma única transação.")
+            hint.setWordWrap(True)
+            hint.setObjectName("muted")
+            layout.addWidget(hint)
+            buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save)
+            buttons.button(QDialogButtonBox.StandardButton.Save).setText("Confirmar recebimento")
+            buttons.accepted.connect(dialog.accept)
+            buttons.rejected.connect(dialog.reject)
+            layout.addWidget(buttons)
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+
+            result = self._client.rpc(
+                "receive_purchase_request_item",
+                {
+                    "p_purchase_request_item_id": item_combo.currentData(),
+                    "p_quantity_to_receive": quantity.value(),
+                    "p_reference": reference.text().strip(),
+                },
+            ).execute()
+            self._load()
+            self.tabs.setCurrentIndex(1)
+            data = result.data if isinstance(result.data, dict) else {}
+            QMessageBox.information(
+                self,
+                "Recebimento registrado",
+                f"Entrada de {quantity.value()} unidade(s) registrada. "
+                f"Saldo atualizado de {data.get('stock_before', '—')} para {data.get('stock_after', '—')}. "
+                f"Status da solicitação: {data.get('request_status', 'atualizado')}.",
+            )
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Falha no recebimento",
+                f"{exc}\\n\\nConfirme se a migration 202610240003_purchase_receiving.sql foi aplicada no Supabase.",
+            )
 
     def _show_request_details(self) -> None:
         row = self.requests_table.currentRow()
