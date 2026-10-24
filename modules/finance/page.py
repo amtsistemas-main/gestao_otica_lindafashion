@@ -153,7 +153,11 @@ class FinancePage(QDialog):
             QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
             QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
             QLabel#muted { color:#7184A1; }
-            QLabel#metric { background:#FFFFFF; color:#17365D; border:1px solid #DFE7F3; border-radius:10px; padding:14px; font-size:11pt; font-weight:700; }
+            QLabel#metric { background:#FFFFFF; color:#17365D; border:1px solid #DFE7F3; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
+            QLabel#incomeMetric { background:#F0FBF5; color:#167447; border:1px solid #BFE8D1; border-left:5px solid #21A366; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
+            QLabel#expenseMetric { background:#FFF3F2; color:#B42318; border:1px solid #F5CBC7; border-left:5px solid #E5484D; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
+            QLabel#balanceMetric { background:#F0F5FF; color:#244BAA; border:1px solid #D5E2FF; border-left:5px solid #3973E6; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
+            QLabel#pendingMetric { background:#FFF9E9; color:#8A5A00; border:1px solid #F2E2B5; border-left:5px solid #E8AB28; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
             QLineEdit, QComboBox, QDateEdit, QDoubleSpinBox, QTextEdit { background:#FFFFFF; color:#172B4D; border:1px solid #D9E3F1; border-radius:8px; padding:8px; min-height:18px; }
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
             QPushButton:hover { background:#F0F5FF; }
@@ -201,8 +205,11 @@ class FinancePage(QDialog):
         root.addLayout(header)
 
         filters = QHBoxLayout()
+        filters.setSpacing(10)
         self.period = QComboBox()
         self.period.addItems(["Este mês", "Últimos 7 dias", "Últimos 30 dias", "Este ano", "Todo o período"])
+        self.period.setMinimumWidth(165)
+        self.period.setToolTip("Filtra indicadores e tabelas pelo período selecionado.")
         self.period.currentIndexChanged.connect(self._render)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Buscar descrição, categoria, cliente ou referência…")
@@ -216,15 +223,18 @@ class FinancePage(QDialog):
         filters.addWidget(self.refresh_button)
         root.addLayout(filters)
 
+        dashboard_label = QLabel("Visão geral")
+        dashboard_label.setStyleSheet("color:#17365D;font-size:12pt;font-weight:750;padding:2px 0;")
+        root.addWidget(dashboard_label)
         metrics = QHBoxLayout()
         self.income_metric = QLabel("Entradas no período\nR$ 0,00")
-        self.income_metric.setObjectName("metric")
+        self.income_metric.setObjectName("incomeMetric")
         self.expense_metric = QLabel("Saídas no período\nR$ 0,00")
-        self.expense_metric.setObjectName("metric")
+        self.expense_metric.setObjectName("expenseMetric")
         self.balance_metric = QLabel("Saldo do período\nR$ 0,00")
-        self.balance_metric.setObjectName("metric")
+        self.balance_metric.setObjectName("balanceMetric")
         self.pending_metric = QLabel("Em aberto\nR$ 0,00")
-        self.pending_metric.setObjectName("metric")
+        self.pending_metric.setObjectName("pendingMetric")
         for label in (self.income_metric, self.expense_metric, self.balance_metric, self.pending_metric):
             label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
             label.setMinimumHeight(68)
@@ -349,6 +359,13 @@ class FinancePage(QDialog):
         self._populate(self.receivables_table, [e for e in entries if e.get("direction") == "entrada" and e.get("status") != "pago"], ["due_date", "description", "counterparty", "category", "amount", "status"])
         self._populate(self.sales_table, [e for e in entries if e.get("direction") == "entrada" and str(e.get("category") or "").casefold() == "venda"], ["due_date", "description", "counterparty", "payment_method", "amount", "status", "reference"])
 
+    @staticmethod
+    def _bold_font():
+        from PySide6.QtGui import QFont
+        font = QFont()
+        font.setBold(True)
+        return font
+
     def _populate(self, table: QTableWidget, rows: list[dict[str, Any]], fields: list[str]) -> None:
         table.setRowCount(len(rows))
         for row_index, entry in enumerate(rows):
@@ -372,6 +389,24 @@ class FinancePage(QDialog):
                 item.setData(Qt.ItemDataRole.UserRole, entry.get("id"))
                 if field == "amount":
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                # Apply restrained semantic colors to reinforce income and expense meaning.
+                is_receivable = table is self.receivables_table
+                is_payable = table is self.payables_table
+                is_income = entry.get("direction") == "entrada"
+                if field == "amount":
+                    if is_receivable or (not is_payable and is_income):
+                        item.setForeground(Qt.GlobalColor.darkGreen)
+                        item.setFont(self._bold_font())
+                    elif is_payable or (table is self.cash_table and not is_income):
+                        item.setForeground(Qt.GlobalColor.red)
+                        item.setFont(self._bold_font())
+                if field == "status":
+                    if entry.get("status") == "pago":
+                        item.setForeground(Qt.GlobalColor.darkGreen)
+                    elif value == "Atrasado":
+                        item.setForeground(Qt.GlobalColor.red)
+                    elif entry.get("status") == "pendente":
+                        item.setForeground(Qt.GlobalColor.darkYellow)
                 table.setItem(row_index, column, item)
         table.resizeColumnsToContents()
         table.horizontalHeader().setStretchLastSection(True)
