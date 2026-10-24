@@ -70,8 +70,10 @@ class MainWindow(QMainWindow):
 
         sidebar = QFrame()
         sidebar.setObjectName("appSidebar")
+        self._sidebar = sidebar
         sidebar.setFixedWidth(230)
         side_layout = QVBoxLayout(sidebar)
+        self._sidebar_layout = side_layout
         side_layout.setContentsMargins(18, 22, 18, 18)
         side_layout.setSpacing(8)
 
@@ -94,22 +96,26 @@ class MainWindow(QMainWindow):
         if logo.pixmap() is None or logo.pixmap().isNull():
             logo.setText("ÓTICA\nLINDA FASHION")
             logo.setObjectName("logoFallback")
+        self._sidebar_logo = logo
         side_layout.addWidget(logo)
         brand_subtitle = QLabel("VISÃO  •  ESTILO  •  VOCÊ")
         brand_subtitle.setObjectName("sidebarEyebrow")
         brand_subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._brand_subtitle = brand_subtitle
         side_layout.addWidget(brand_subtitle)
 
         side_layout.addSpacing(26)
         nav_label = QLabel("MENU PRINCIPAL")
         nav_label.setObjectName("sidebarSection")
+        self._nav_label = nav_label
         side_layout.addWidget(nav_label)
 
         for label, icon_name, module in NAV_ITEMS:
             button = QPushButton(label)
             button.setIcon(qta.icon(icon_name, color="#FFFFFF" if module is None else "#D5E1F5"))
             button.setIconSize(QSize(18, 18))
-            button.setObjectName("navButton")\n            button.setToolTip(label)
+            button.setObjectName("navButton")
+            button.setToolTip(label)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setCheckable(True)
             button.setMinimumHeight(43)
@@ -141,7 +147,8 @@ class MainWindow(QMainWindow):
         menu_button.setObjectName("topbarIconButton")
         menu_button.setFixedSize(36, 36)
         menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        menu_button.setToolTip("Recolher ou expandir menu lateral")\n        menu_button.clicked.connect(self._toggle_sidebar)
+        menu_button.setToolTip("Recolher ou expandir menu lateral")
+        menu_button.clicked.connect(self._toggle_sidebar)
         topbar_layout.addWidget(menu_button)
 
         search_box = QLineEdit()
@@ -213,6 +220,7 @@ class MainWindow(QMainWindow):
 
         side_footer = QLabel("AMT SISTEMAS  •  DESKTOP")
         side_footer.setObjectName("sidebarFooter")
+        self._sidebar_footer = side_footer
         side_layout.addWidget(side_footer)
 
         shell_layout.addWidget(sidebar)
