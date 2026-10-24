@@ -33,6 +33,89 @@ class ProductFormDialog(QDialog):
         self.setMinimumSize(900, 620)
         self.setModal(True)
         self.setWindowState(self.windowState() | Qt.WindowState.WindowMaximized)
+        self.setStyleSheet("""
+            QDialog {
+                background: #f4f7fb;
+                color: #172b4d;
+                font-family: "Segoe UI";
+                font-size: 10pt;
+            }
+            QWidget#productFormContent { background: #f4f7fb; }
+            QLabel#pageTitle {
+                color: #142b4e;
+                font-size: 23pt;
+                font-weight: 750;
+                padding: 2px 0 0;
+            }
+            QLabel#muted { color: #64748b; font-size: 10pt; }
+            QLabel#sectionTitle {
+                color: #17365d;
+                font-size: 12pt;
+                font-weight: 700;
+                padding-bottom: 4px;
+            }
+            QLabel#productFieldLabel {
+                color: #334766;
+                font-size: 9pt;
+                font-weight: 650;
+                padding-left: 2px;
+            }
+            QLineEdit, QDoubleSpinBox, QSpinBox, QTextEdit {
+                background: #ffffff;
+                color: #172b4d;
+                border: 1px solid #d7e0ec;
+                border-radius: 8px;
+                padding: 9px 11px;
+                selection-background-color: #2457d6;
+                min-height: 20px;
+            }
+            QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus, QTextEdit:focus {
+                border: 1px solid #3975e8;
+                background: #ffffff;
+            }
+            QLineEdit::placeholder, QTextEdit::placeholder { color: #94a3b8; }
+            QLabel#productImagePreview {
+                background: #ffffff;
+                color: #94a3b8;
+                border: 1px dashed #b9c8dc;
+                border-radius: 12px;
+                font-size: 9pt;
+                padding: 4px;
+            }
+            QPushButton {
+                background: #ffffff;
+                color: #334766;
+                border: 1px solid #d4deeb;
+                border-radius: 8px;
+                padding: 9px 15px;
+                min-height: 20px;
+                font-weight: 600;
+            }
+            QPushButton:hover { background: #eef4ff; border-color: #9bb8ed; }
+            QPushButton:pressed { background: #e0eaff; }
+            QPushButton#primaryButton {
+                background: #2457d6;
+                color: #ffffff;
+                border: 1px solid #2457d6;
+                padding: 11px 22px;
+                font-weight: 700;
+            }
+            QPushButton#primaryButton:hover { background: #1948bd; border-color: #1948bd; }
+            QCheckBox { color: #243b5a; font-weight: 600; spacing: 9px; padding: 8px 2px; }
+            QCheckBox::indicator {
+                width: 18px; height: 18px;
+                border: 1px solid #b8c6d8;
+                border-radius: 5px;
+                background: #ffffff;
+            }
+            QCheckBox::indicator:checked { background: #2457d6; border-color: #2457d6; }
+            QScrollArea { background: transparent; border: none; }
+            QScrollBar:vertical { background: #e9eef5; width: 10px; margin: 2px; border-radius: 5px; }
+            QScrollBar::handle:vertical { background: #bdcadd; min-height: 28px; border-radius: 5px; }
+            QScrollBar::handle:vertical:hover { background: #93a6c0; }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+            QDialogButtonBox { border-top: 1px solid #e0e7f0; padding-top: 10px; }
+        """)
         self._product = product
         self.image_path = ""
 
