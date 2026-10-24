@@ -415,7 +415,7 @@ QHeaderView::section {
 
 
 def apply_theme(app: QApplication) -> None:
-    app.setFont(QFont("Segoe UI", 10))
+    app.setFont(QFont("Aptos", 10))
     app.setStyleSheet(THEME_QSS + DASHBOARD_EXTRA_QSS)
 
 
@@ -981,6 +981,126 @@ QPushButton#moduleCard {
 QPushButton#moduleCard:hover {
     background: #F8FAFF;
     border-color: #B9CCF3;
+}
+
+
+/* Ótica Linda Fashion — visual system refinement */
+QWidget {
+    font-family: "Aptos", "Segoe UI";
+    font-size: 9pt;
+    color: #24334B;
+}
+QMainWindow, QDialog {
+    background: #F3F5F8;
+}
+QFrame#appSidebar {
+    background: #102957;
+    border-right: 1px solid #203D68;
+}
+QFrame#topbar {
+    background: #FFFFFF;
+    border-bottom: 1px solid #DDE3EC;
+}
+QPushButton#navButton {
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 9pt;
+    font-weight: 550;
+}
+QPushButton#navButton:checked {
+    background: #FFFFFF;
+    color: #102957;
+    border: 1px solid #FFFFFF;
+    font-weight: 750;
+}
+QPushButton#navButton:checked:hover {
+    background: #F1F5FC;
+    color: #102957;
+}
+QFrame#analyticsCard, QFrame#metricCard {
+    background: #FFFFFF;
+    border: 1px solid #DCE3ED;
+    border-radius: 8px;
+}
+QFrame#metricCard {
+    border-top: 3px solid #2165F5;
+}
+QLabel#bannerGreeting {
+    color: #48617F;
+    font-size: 9pt;
+    font-weight: 600;
+}
+QLabel#bannerTitle {
+    font-family: "Aptos Display", "Aptos", "Segoe UI";
+    font-size: 22pt;
+    font-weight: 700;
+    letter-spacing: 0px;
+}
+QLabel#bannerDescription {
+    color: #526782;
+    font-size: 9pt;
+}
+QLabel#cardTitle {
+    font-family: "Aptos Display", "Aptos", "Segoe UI";
+    color: #102957;
+    font-size: 10pt;
+    font-weight: 700;
+}
+QLabel#sectionTitle {
+    font-family: "Aptos Display", "Aptos", "Segoe UI";
+    font-size: 12pt;
+    font-weight: 750;
+}
+QLabel#metricLabel {
+    color: #64748B;
+    font-size: 8.5pt;
+    font-weight: 600;
+}
+QLabel#metricValue {
+    font-family: "Aptos Display", "Aptos", "Segoe UI";
+    color: #102957;
+    font-size: 21pt;
+    font-weight: 700;
+    letter-spacing: 0px;
+}
+QPushButton#quickTile {
+    border-radius: 7px;
+    border: 1px solid #D9E2EE;
+    padding: 2px;
+}
+QPushButton#quickTile:hover {
+    background: #F4F7FC;
+    border: 1px solid #8FA9D2;
+}
+QLabel#quickTitle {
+    color: #102957;
+    font-size: 9.5pt;
+    font-weight: 700;
+}
+QLineEdit#dashboardSearch {
+    background: #F6F8FB;
+    border: 1px solid #DDE4EE;
+    border-radius: 7px;
+}
+QLineEdit#dashboardSearch:focus {
+    background: #FFFFFF;
+    border: 1px solid #7898D4;
+}
+QComboBox#periodSelector, QComboBox#aiSelect {
+    border-radius: 6px;
+}
+QLabel#productName, QLabel#activityTitle {
+    color: #253D5D;
+    font-size: 8.5pt;
+    font-weight: 650;
+}
+QLabel#footerBrand {
+    letter-spacing: 0.5px;
+}
+QStatusBar {
+    background: #FFFFFF;
+    color: #64748B;
+    border-top: 1px solid #DDE3EC;
 }
 
 /* Product catalog: refined SaaS surface and clear actions */
