@@ -24,6 +24,7 @@ from config.branding import APP_NAME, WINDOW_TITLE
 from core.auth_service import AuthService
 from core.session_manager import session_manager
 from modules.products.page import ProductsPage
+from modules.inventory.page import InventoryPage
 from ui.pages.dashboard_page import DashboardPage
 
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
@@ -227,16 +228,23 @@ class MainWindow(QMainWindow):
     def _open_module(self, module: str) -> None:
         for label, _abbreviation, target in NAV_ITEMS:
             self._nav_buttons[label].setChecked(target == module)
-        if module == "Produtos":
+        if module in ("Produtos", "Estoque"):
             try:
-                if self._products_window is None:
-                    self._products_window = ProductsPage(
+                if module == "Produtos":
+                    if self._products_window is None:
+                        self._products_window = ProductsPage(
+                            preview_mode=self._preview_mode,
+                            parent=self,
+                        )
+                    self._products_window.exec()
+                else:
+                    inventory_window = InventoryPage(
                         preview_mode=self._preview_mode,
                         parent=self,
                     )
-                self._products_window.exec()
+                    inventory_window.exec()
             except Exception as exc:
-                QMessageBox.critical(self, "Não foi possível abrir Produtos", str(exc))
+                QMessageBox.critical(self, f"Não foi possível abrir {module}", str(exc))
             finally:
                 self._nav_buttons["Visão geral"].setChecked(True)
             return
