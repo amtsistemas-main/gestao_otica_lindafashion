@@ -1642,8 +1642,33 @@ QComboBox QAbstractItemView::item {
 }
 QComboBox QAbstractItemView::item:selected,
 QComboBox QAbstractItemView::item:selected:active,
+
 QComboBox QAbstractItemView::item:selected:!active {
     background-color: #DCE8FF;
     color: #17365D;
+}
+/* Native menus and list popups must follow the same light system palette. */
+QMenu {
+    background-color: #FFFFFF;
+    color: #172B4D;
+    border: 1px solid #D6E0EF;
+    padding: 4px;
+}
+QMenu::item {
+    background-color: transparent;
+    color: #172B4D;
+    padding: 7px 28px 7px 10px;
+    border-radius: 4px;
+}
+QMenu::item:selected {
+    background-color: #DCE8FF;
+    color: #17365D;
+}
+QMenu::item:disabled {
+    color: #8793A6;
+}
+QCalendarWidget QMenu {
+    background-color: #FFFFFF;
+    color: #172B4D;
 }
 """;
