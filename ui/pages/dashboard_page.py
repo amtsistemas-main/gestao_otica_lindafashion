@@ -392,7 +392,7 @@ class DashboardPage(QWidget):
         columns.addWidget(side,0,1)
         root.addLayout(columns)
 
-         footer=QHBoxLayout()
+        footer=QHBoxLayout()
         footer.addWidget(label("●", "statusDot"))
         footer.addWidget(label("Pré-visualização ativa — dados demonstrativos não são persistidos." if preview_mode else "Painel pronto para receber os dados da sua operação.", "muted"))
         footer.addStretch()
