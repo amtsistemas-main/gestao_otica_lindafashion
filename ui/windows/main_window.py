@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QStatusBar,
+    QLineEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -27,13 +28,13 @@ from ui.pages.dashboard_page import DashboardPage
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
 
 NAV_ITEMS = [
-    ("Visão geral", "VG", None),
-    ("Produtos", "PR", "Produtos"),
-    ("Estoque", "ES", "Estoque"),
-    ("Fornecedores", "FO", "Fornecedores"),
-    ("Financeiro", "FI", "Financeiro"),
-    ("Relatórios", "RE", "Relatórios"),
-    ("Configurações", "CO", "Configurações"),
+    ("Visão geral", "⌂", None),
+    ("Produtos", "◇", "Produtos"),
+    ("Estoque", "▤", "Estoque"),
+    ("Fornecedores", "♧", "Fornecedores"),
+    ("Financeiro", "R$", "Financeiro"),
+    ("Relatórios", "▥", "Relatórios"),
+    ("Configurações", "⚙", "Configurações"),
 ]
 
 
