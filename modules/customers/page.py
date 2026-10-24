@@ -463,25 +463,6 @@ class CustomersPage(QDialog):
                 self._client.table("customer_orders").update(payload).eq("id", order_id).eq(
                     "organization_id", self._organization_id
                 ).eq("customer_id", customer["id"]).execute()
-                try:
-                    self._client.table("customer_order_events").insert({
-                        "organization_id": self._organization_id,
-                        "customer_id": customer["id"],
-                        "order_id": order_id,
-                        "previous_status": previous_status,
-                        "new_status": new_status,
-                        "changed_by": self._user_id,
-                        "note": "",
-                    }).execute()
-                except Exception as history_exc:
-                    QMessageBox.warning(
-                        dialog, "Status salvo com ressalva",
-                        "O status foi atualizado, mas não foi possível registrar o histórico. "
-                        "Verifique as permissões e tente consultar o histórico novamente.\\n\\n"
-                        f"{history_exc}",
-                    )
-                    load_orders()
-                    return
                 QMessageBox.information(
                     dialog, "Status atualizado",
                     "Status atualizado e registrado no histórico. Nenhuma mensagem externa foi enviada.",
@@ -558,25 +539,7 @@ class CustomersPage(QDialog):
                 "delivered_at": now if order_status == "entregue" else None,
             }
             try:
-                created_order = self._client.table("customer_orders").insert(record).select("id").single().execute().data
-                order_id = created_order.get("id") if created_order else None
-                if order_id:
-                    try:
-                        self._client.table("customer_order_events").insert({
-                            "organization_id": self._organization_id,
-                            "customer_id": customer["id"],
-                            "order_id": order_id,
-                            "previous_status": "",
-                            "new_status": order_status,
-                            "changed_by": self._user_id,
-                            "note": "Status inicial do pedido",
-                        }).execute()
-                    except Exception as history_exc:
-                        QMessageBox.warning(
-                            dialog, "Pedido salvo com ressalva",
-                            "O pedido foi cadastrado, mas não foi possível registrar seu status inicial no histórico.\\n\\n"
-                            f"{history_exc}",
-                        )
+                self._client.table("customer_orders").insert(record).execute()
                 QMessageBox.information(dialog, "Pedido cadastrado", "Pedido salvo. Nenhuma mensagem externa foi enviada.")
                 number.clear()
                 description.clear()
