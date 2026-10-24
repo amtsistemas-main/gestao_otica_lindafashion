@@ -190,7 +190,12 @@ class ProductFormDialog(QDialog):
     def _show_image_url_hint(self, value: str) -> None:
         if value.strip():
             self.image_path = ""
-            self._render_image(value.strip())
+            parsed = QUrl(value.strip())
+            if parsed.scheme().lower() in {"http", "https"} and parsed.host():
+                self.image_preview.setPixmap(QPixmap())
+                self.image_preview.setText("URL definida\nA imagem será usada no catálogo")
+            else:
+                self._render_image(value.strip())
 
     def _render_image(self, source: str) -> None:
         pixmap = QPixmap(source)
@@ -211,6 +216,11 @@ class ProductFormDialog(QDialog):
             return
         if self.stock.value() < 0 or self.minimum_stock.value() < 0:
             QMessageBox.warning(self, "Estoque inválido", "As quantidades não podem ser negativas.")
+            return
+        image_url = self.image_url.text().strip()
+        if image_url and not image_url.startswith(("https://", "http://")):
+            QMessageBox.warning(self, "URL de imagem inválida", "Informe uma URL pública iniciada por http:// ou https://.")
+            self.image_url.setFocus()
             return
         self.accept()
 
