@@ -136,7 +136,11 @@ class SuppliersPage(QDialog):
         self.resize(1180, 760)
         self.setMinimumSize(900, 620)
         self.setStyleSheet("""
-            QDialog { background:#F5F8FD; color:#172B4D; font-family:"Segoe UI"; font-size:10pt; }
+            QDialog { background:#F3F5F8; color:#24334B; font-family:"Arial"; font-size:10pt; }
+            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
+            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
+            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
+            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; border-right:1px solid #28456F; padding:11px 8px; min-height:22px; font-weight:700; }
             QLabel#pageTitle { color:#102957; font-size:23pt; font-weight:800; }
             QLabel#muted { color:#7184A1; }
             QLineEdit { background:#FFFFFF; color:#172B4D; border:1px solid #D9E3F1; border-radius:8px; padding:9px; }
@@ -164,13 +168,20 @@ class SuppliersPage(QDialog):
         root.setSpacing(14)
         header = QHBoxLayout()
         titles = QVBoxLayout()
+        title_bar = QFrame()
+        title_bar.setObjectName("windowTitleBar")
+        title_layout = QVBoxLayout(title_bar)
+        title_layout.setContentsMargins(18, 13, 18, 13)
+        title_layout.setSpacing(4)
         title = QLabel("Fornecedores")
-        title.setObjectName("pageTitle")
+        title.setObjectName("windowTitle")
+        title.setWordWrap(True)
         subtitle = QLabel("Centralize dados fiscais, contatos, endereço, condições comerciais e produtos fornecidos.")
-        subtitle.setObjectName("muted")
+        subtitle.setObjectName("windowSubtitle")
         subtitle.setWordWrap(True)
-        titles.addWidget(title)
-        titles.addWidget(subtitle)
+        title_layout.addWidget(title)
+        title_layout.addWidget(subtitle)
+        titles.addWidget(title_bar)
         header.addLayout(titles, 1)
         self.new_button = QPushButton("+ Novo fornecedor")
         self.new_button.setObjectName("primaryButton")
@@ -189,8 +200,15 @@ class SuppliersPage(QDialog):
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header_view = self.table.horizontalHeader()
+        header_view.setMinimumSectionSize(92)
+        header_view.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        header_view.setStretchLastSection(False)
+        for column, width in enumerate((210, 125, 145, 175, 205, 135, 82, 88)):
+            self.table.setColumnWidth(column, width)
+        self.table.verticalHeader().setDefaultSectionSize(40)
+        self.table.setWordWrap(False)
+        self.table.setHorizontalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
         self.table.doubleClicked.connect(self._edit)
         root.addWidget(self.table, 1)
         actions = QHBoxLayout()
@@ -246,7 +264,10 @@ class SuppliersPage(QDialog):
             ]
             for col, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
+                item.setToolTip(str(value))
                 item.setData(Qt.ItemDataRole.UserRole, row.get("id"))
+                if col == 6:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.table.setItem(index, col, item)
         self._visible_rows = rows
 
