@@ -5,7 +5,8 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from pathlib import Path
 from PySide6.QtCore import Qt, QSize, QUrl
-from PySide6.QtGui import QBrush, QColor, QPixmap
+from PySide6.QtGui import QBrush, QColor, QPixmap, QIcon
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from PySide6.QtWidgets import (
     QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QHeaderView,
     QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
@@ -266,6 +267,9 @@ class ProductsPage(QDialog):
         self._repository = repository
         self._service = ProductService(repository)
         self._visible_products: list[Product] = []
+        self._image_network = QNetworkAccessManager(self)
+        self._image_cache: dict[str, QPixmap] = {}
+        self._image_requests: set[str] = set()
 
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 22, 24, 22)
@@ -401,7 +405,18 @@ class ProductsPage(QDialog):
                 image_path = QUrl(product.image_url).toLocalFile()
                 pixmap = QPixmap(image_path)
                 if not pixmap.isNull():
-                    image_item.setData(Qt.ItemDataRole.DecorationRole, pixmap.scaled(44, 44, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                    image_item.setData(Qt.ItemDataRole.DecorationRole, QIcon(pixmap.scaled(44, 44, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)))
+            elif product.image_url.startswith(("https://", "http://")):
+                cached = self._image_cache.get(product.image_url)
+                if cached is not None:
+                    image_item.setData(Qt.ItemDataRole.DecorationRole, QIcon(cached))
+                elif product.image_url not in self._image_requests:
+                    self._image_requests.add(product.image_url)
+                    reply = self._image_network.get(QNetworkRequest(QUrl(product.image_url)))
+                    reply.finished.connect(
+                        lambda current=reply, image_url=product.image_url, product_id=product.id:
+                        self._finish_image_request(current, image_url, product_id)
+                    )
             self.table.setItem(row, 0, image_item)
             values = [
                 product.barcode or product.sku or "—", product.name, product.category or "—",
@@ -423,6 +438,26 @@ class ProductsPage(QDialog):
         self.count_label.setText(f"{len(self._visible_products)} produto(s)")
         low_stock = sum(1 for item in self._visible_products if item.stock_quantity <= item.minimum_stock)
         self.stock_alert_label.setText(f"{low_stock} no estoque mínimo ou abaixo")
+
+    def _finish_image_request(self, reply: object, image_url: str, product_id: str | None) -> None:
+        try:
+            if reply.error() == reply.NetworkError.NoError:
+                pixmap = QPixmap()
+                if pixmap.loadFromData(bytes(reply.readAll())):
+                    scaled = pixmap.scaled(
+                        44, 44, Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                    self._image_cache[image_url] = scaled
+                    for row, product in enumerate(self._visible_products):
+                        if product.id == product_id:
+                            item = self.table.item(row, 0)
+                            if item is not None:
+                                item.setData(Qt.ItemDataRole.DecorationRole, QIcon(scaled))
+                            break
+        finally:
+            self._image_requests.discard(image_url)
+            reply.deleteLater()
 
     def _selected_product(self) -> Product | None:
         row = self.table.currentRow()
