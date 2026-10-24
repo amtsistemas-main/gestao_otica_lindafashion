@@ -65,7 +65,7 @@ drop policy if exists "finance_insert_organization_members" on public.financial_
 create policy "finance_insert_organization_members"
 on public.financial_entries for insert to authenticated
 with check (
-    created_by is null or created_by = (select auth.uid())
+    (created_by is null or created_by = (select auth.uid()))
     and exists (
         select 1 from public.organization_members m
         where m.organization_id = financial_entries.organization_id
