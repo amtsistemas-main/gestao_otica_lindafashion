@@ -146,7 +146,49 @@ class ProductFormDialog(QDialog):
             QScrollBar::handle:vertical:hover { background: #a9bbd5; }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
             QDialogButtonBox { background: #ffffff; border-top: 1px solid #e0e7f0; padding-top: 10px; }
-        """)
+        
+            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
+            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                selection-background-color: #DCE8FF;
+                selection-color: #17365D;
+                outline: 0;
+            }
+            QComboBox QAbstractItemView::item, QComboBox QListView::item {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                min-height: 24px;
+                padding: 5px 8px;
+            }
+            QComboBox QAbstractItemView::item:selected,
+            QComboBox QAbstractItemView::item:selected:active,
+            QComboBox QAbstractItemView::item:selected:!active,
+            QComboBox QListView::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                padding: 4px;
+            }
+            QMenu::item {
+                background-color: transparent;
+                color: #172B4D;
+                padding: 7px 28px 7px 10px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu::item:disabled {
+                color: #8793A6;
+            }
+""")
         self._product = product
         self.image_path = ""
 
@@ -453,7 +495,49 @@ class ProductsPage(QDialog):
             QPushButton:hover { background:#F0F5FF; }
             QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
             QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
-        """)
+        
+            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
+            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                selection-background-color: #DCE8FF;
+                selection-color: #17365D;
+                outline: 0;
+            }
+            QComboBox QAbstractItemView::item, QComboBox QListView::item {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                min-height: 24px;
+                padding: 5px 8px;
+            }
+            QComboBox QAbstractItemView::item:selected,
+            QComboBox QAbstractItemView::item:selected:active,
+            QComboBox QAbstractItemView::item:selected:!active,
+            QComboBox QListView::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                padding: 4px;
+            }
+            QMenu::item {
+                background-color: transparent;
+                color: #172B4D;
+                padding: 7px 28px 7px 10px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu::item:disabled {
+                color: #8793A6;
+            }
+""")
 
         if preview_mode:
             repository = MemoryProductRepository()
