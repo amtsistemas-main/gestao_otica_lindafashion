@@ -1,7 +1,8 @@
-"""Reusable module navigation card."""
+"""Reusable premium module navigation card."""
 from __future__ import annotations
 
-from PySide6.QtWidgets import QPushButton, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 
 class ModuleCard(QPushButton):
@@ -9,18 +10,40 @@ class ModuleCard(QPushButton):
         self,
         title: str,
         description: str,
+        abbreviation: str = "AP",
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("moduleCard")
-        self.setCursor(__import__("PySide6.QtCore", fromlist=["Qt"]).Qt.CursorShape.PointingHandCursor)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(4, 2, 4, 2)
-        layout.setSpacing(7)
-        title_label = __import__("PySide6.QtWidgets", fromlist=["QLabel"]).QLabel(title)
-        title_label.setStyleSheet("font-size: 13pt; font-weight: 700; color: #172c52;")
-        description_label = __import__("PySide6.QtWidgets", fromlist=["QLabel"]).QLabel(description)
-        description_label.setObjectName("muted")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setMinimumHeight(112)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+
+        icon = QLabel(abbreviation)
+        icon.setObjectName("moduleIcon")
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon.setFixedSize(42, 42)
+
+        copy = QVBoxLayout()
+        copy.setSpacing(6)
+        title_label = QLabel(title)
+        title_label.setObjectName("moduleTitle")
+        description_label = QLabel(description)
+        description_label.setObjectName("moduleDescription")
         description_label.setWordWrap(True)
-        layout.addWidget(title_label)
-        layout.addWidget(description_label)
+        description_label.setMinimumWidth(0)
+        copy.addWidget(title_label)
+        copy.addWidget(description_label)
+        copy.addStretch()
+
+        arrow = QLabel("›")
+        arrow.setObjectName("moduleDescription")
+        arrow.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        arrow.setFixedWidth(12)
+
+        layout.addWidget(icon, 0, Qt.AlignmentFlag.AlignTop)
+        layout.addLayout(copy, 1)
+        layout.addWidget(arrow, 0, Qt.AlignmentFlag.AlignCenter)
