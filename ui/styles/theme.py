@@ -455,8 +455,8 @@ QTableWidget QLineEdit { padding: 4px 6px; border-radius: 4px; }
 
 
 def apply_theme(app: QApplication) -> None:
-    app.setFont(QFont("Arial", 10))
-    app.setStyleSheet(THEME_QSS + DASHBOARD_EXTRA_QSS + SHARED_INPUT_QSS)
+    app.setFont(QFont("Inter", 10))
+    app.setStyleSheet(THEME_QSS + DASHBOARD_EXTRA_QSS + SHARED_INPUT_QSS + DASHBOARD_REFERENCE_QSS)
 
 
 DASHBOARD_EXTRA_QSS = """
@@ -1464,3 +1464,90 @@ QComboBox#periodSelector:disabled {
     border-color: #E1E7F0;
 }
 """
+
+
+DASHBOARD_REFERENCE_QSS = """
+/* Final dashboard reference overrides: consistent white surfaces and compact SaaS shell. */
+QWidget {
+    font-family: "Inter", "Segoe UI", sans-serif;
+}
+QFrame#appSidebar {
+    background: #0B2A6B;
+    border-right: 1px solid #16366E;
+}
+QPushButton#navButton {
+    color: #E5EDFC;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    padding: 10px 12px;
+    min-height: 22px;
+}
+QPushButton#navButton:hover {
+    background: #173B7B;
+    color: #FFFFFF;
+}
+QPushButton#navButton:checked {
+    background: #1E5BE0;
+    color: #FFFFFF;
+    border: 1px solid #2D6BEA;
+}
+QFrame#workspace, QFrame#topbar, QWidget#appShell {
+    background: #FFFFFF;
+    border: none;
+}
+QFrame#topbar {
+    border-bottom: 1px solid #E4EAF5;
+}
+QLineEdit#dashboardSearch {
+    background: #FFFFFF;
+    color: #0F1B3D;
+    border: 1px solid #E4EAF5;
+    border-radius: 10px;
+    padding: 9px 12px;
+}
+QLineEdit#dashboardSearch:focus {
+    background: #FFFFFF;
+    border-color: #1E5BE0;
+}
+QFrame#welcomeBanner {
+    background: #FFFFFF;
+    border: 1px solid #E4EAF5;
+    border-radius: 12px;
+}
+QFrame#analyticsCard, QFrame#metricCard, QFrame#quickActionsCard {
+    background: #FFFFFF;
+    border: 1px solid #E4EAF5;
+    border-radius: 12px;
+}
+QFrame#metricCard {
+    border-top: 1px solid #E4EAF5;
+}
+QLabel#bannerGreeting, QLabel#bannerTitle, QLabel#cardTitle,
+QLabel#sectionTitle, QLabel#metricValue {
+    color: #0F1B3D;
+}
+QLabel#bannerDescription, QLabel#actionHint, QLabel#muted {
+    color: #4B5675;
+}
+QPushButton#quickTile {
+    background: #FFFFFF;
+    border: 1px solid #E4EAF5;
+    border-radius: 10px;
+}
+QPushButton#quickTile:hover {
+    background: #FFFFFF;
+    border-color: #9DB8F2;
+}
+QFrame#promoCard {
+    border: 1px solid #D6E2F5;
+    border-radius: 10px;
+}
+QLabel#activityTime, QLabel#activityDetail, QLabel#productCode {
+    color: #667A9B;
+}
+QStatusBar {
+    background: #FFFFFF;
+    color: #667A9B;
+    border-top: 1px solid #E4EAF5;
+}
+""";
