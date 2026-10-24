@@ -251,6 +251,9 @@ class CustomersPage(QDialog):
         self.orders_button = QPushButton("Pedidos e status")
         self.orders_button.clicked.connect(self._manage_orders)
         crm_actions.addWidget(self.orders_button)
+        self.sales_history_button = QPushButton("Histórico de vendas")
+        self.sales_history_button.clicked.connect(self._view_sales_history)
+        crm_actions.addWidget(self.sales_history_button)
         self.history_button = QPushButton("Ver histórico CRM")
         self.history_button.clicked.connect(self._view_interactions)
         crm_actions.addWidget(self.history_button)
@@ -366,6 +369,196 @@ class CustomersPage(QDialog):
             self._load_customers()
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao salvar cliente", f"Não foi possível salvar o cadastro.\n\n{exc}")
+
+    def _view_sales_history(self) -> None:
+        customer = self._selected_customer()
+        if not customer:
+            QMessageBox.information(self, "Selecione um cliente", "Selecione um cliente para consultar o histórico de vendas.")
+            return
+
+        if self._preview_mode:
+            orders = [
+                {"id": "demo-sale-1", "order_number": "V-20261015-001", "status": "completed", "total": 649.90, "discount": 50.00, "payment_method": "Pix", "created_at": "2026-10-15T14:32:00"},
+                {"id": "demo-sale-2", "order_number": "V-20260902-002", "status": "completed", "total": 389.00, "discount": 0.00, "payment_method": "Cartão de crédito", "created_at": "2026-09-02T10:10:00"},
+            ] if customer.get("id") == "demo-1" else []
+        else:
+            try:
+                orders = (
+                    self._client.table("sales_orders")
+                    .select("id,order_number,status,total,discount,payment_method,created_at")
+                    .eq("organization_id", self._organization_id)
+                    .eq("customer_id", customer["id"])
+                    .order("created_at", desc=True)
+                    .limit(500)
+                    .execute()
+                    .data or []
+                )
+            except Exception as exc:
+                QMessageBox.critical(self, "Erro ao carregar vendas", f"Não foi possível consultar o histórico de vendas.\\n\\n{exc}")
+                return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Histórico de vendas — {customer.get('full_name', 'Cliente')}")
+        dialog.resize(980, 620)
+        dialog.setMinimumSize(780, 480)
+        root = QVBoxLayout(dialog)
+        root.setContentsMargins(22, 20, 22, 20)
+        root.setSpacing(12)
+
+        title_bar = QFrame()
+        title_bar.setObjectName("windowTitleBar")
+        title_layout = QVBoxLayout(title_bar)
+        title_layout.setContentsMargins(18, 12, 18, 12)
+        heading = QLabel(f"Histórico de vendas de {customer.get('full_name', 'Cliente')}")
+        heading.setObjectName("windowTitle")
+        subtitle = QLabel("Consulte compras anteriores, valores, pagamentos e os itens de cada venda.")
+        subtitle.setObjectName("windowSubtitle")
+        title_layout.addWidget(heading)
+        title_layout.addWidget(subtitle)
+        root.addWidget(title_bar)
+
+        total_spent = sum(float(order.get("total") or 0) for order in orders)
+        last_purchase = str(orders[0].get("created_at") or "")[:10] if orders else "—"
+        metrics = QHBoxLayout()
+        for text in (
+            f"{len(orders)} venda(s)",
+            f"Total comprado: {self._format_sales_history_money(total_spent)}",
+            f"Última compra: {last_purchase}",
+        ):
+            metric = QLabel(text)
+            metric.setStyleSheet("background:#F7F9FD;border:1px solid #E0E8F4;border-radius:8px;padding:11px;color:#102957;font-weight:650;")
+            metrics.addWidget(metric)
+        root.addLayout(metrics)
+
+        table = QTableWidget(0, 6)
+        table.setHorizontalHeaderLabels(["Nº venda", "Data", "Status", "Pagamento", "Desconto", "Total"])
+        for column in range(6):
+            table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        table.verticalHeader().setVisible(False)
+        table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        table.setAlternatingRowColors(True)
+        root.addWidget(table, 1)
+
+        status_labels = {
+            "completed": "Concluída", "pending": "Pendente", "cancelled": "Cancelada",
+            "canceled": "Cancelada", "refunded": "Estornada",
+        }
+        for index, order in enumerate(orders):
+            table.insertRow(index)
+            created_at = str(order.get("created_at") or "").replace("T", " ")[:16]
+            values = [
+                order.get("order_number") or "—", created_at or "—",
+                status_labels.get(str(order.get("status") or "").lower(), str(order.get("status") or "—")),
+                order.get("payment_method") or "—",
+                self._format_sales_history_money(order.get("discount")),
+                self._format_sales_history_money(order.get("total")),
+            ]
+            for column, value in enumerate(values):
+                cell = QTableWidgetItem(str(value))
+                if column == 0:
+                    cell.setData(Qt.ItemDataRole.UserRole, order.get("id"))
+                table.setItem(index, column, cell)
+
+        if not orders:
+            empty = QLabel("Este cliente ainda não possui vendas registradas.")
+            empty.setStyleSheet("color:#64748b;padding:12px;")
+            root.addWidget(empty)
+
+        actions = QHBoxLayout()
+        details_button = QPushButton("Ver itens da venda selecionada")
+        details_button.setObjectName("primaryButton")
+        close_button = QPushButton("Fechar")
+        actions.addWidget(details_button)
+        actions.addStretch(1)
+        actions.addWidget(close_button)
+        root.addLayout(actions)
+
+        def show_sale_details() -> None:
+            row_index = table.currentRow()
+            if row_index < 0 or table.item(row_index, 0) is None:
+                QMessageBox.information(dialog, "Selecione uma venda", "Selecione uma venda para visualizar seus itens.")
+                return
+            order_id = table.item(row_index, 0).data(Qt.ItemDataRole.UserRole)
+            order = next((item for item in orders if item.get("id") == order_id), None)
+            if not order:
+                return
+            if self._preview_mode:
+                items = [
+                    {"product_name": "Armação premium", "sku": "ARM-001", "quantity": 1, "unit_price": 499.90, "line_total": 449.90},
+                    {"product_name": "Lentes antirreflexo", "sku": "LEN-002", "quantity": 1, "unit_price": 200.00, "line_total": 200.00},
+                ] if order_id == "demo-sale-1" else [
+                    {"product_name": "Óculos de sol", "sku": "SOL-003", "quantity": 1, "unit_price": 389.00, "line_total": 389.00},
+                ]
+            else:
+                try:
+                    items = (
+                        self._client.table("sales_order_items")
+                        .select("product_name,sku,quantity,unit_price,line_total")
+                        .eq("organization_id", self._organization_id)
+                        .eq("sales_order_id", order_id)
+                        .order("created_at")
+                        .execute()
+                        .data or []
+                    )
+                except Exception as exc:
+                    QMessageBox.critical(dialog, "Erro ao carregar itens", f"Não foi possível consultar os itens da venda.\\n\\n{exc}")
+                    return
+
+            detail = QDialog(dialog)
+            detail.setWindowTitle(f"Itens da venda {order.get('order_number') or ''}")
+            detail.resize(760, 420)
+            detail_layout = QVBoxLayout(detail)
+            detail_title = QLabel(f"Venda {order.get('order_number') or '—'} · {self._format_sales_history_money(order.get('total'))}")
+            detail_title.setStyleSheet("font-size:14pt;font-weight:700;color:#102957;padding:6px;")
+            detail_layout.addWidget(detail_title)
+            detail_table = QTableWidget(0, 5)
+            detail_table.setHorizontalHeaderLabels(["Produto", "SKU", "Qtd.", "Preço unitário", "Total do item"])
+            detail_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+            for column in range(1, 5):
+                detail_table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
+            detail_table.verticalHeader().setVisible(False)
+            detail_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+            detail_table.setRowCount(len(items))
+            for row_number, item in enumerate(items):
+                values = [
+                    item.get("product_name") or "Produto", item.get("sku") or "—",
+                    str(item.get("quantity") or 0),
+                    self._format_sales_history_money(item.get("unit_price")),
+                    self._format_sales_history_money(item.get("line_total")),
+                ]
+                for column, value in enumerate(values):
+                    detail_table.setItem(row_number, column, QTableWidgetItem(str(value)))
+            detail_layout.addWidget(detail_table, 1)
+            if not items:
+                detail_layout.addWidget(QLabel("Não há itens disponíveis para esta venda."))
+            done = QPushButton("Fechar")
+            done.clicked.connect(detail.accept)
+            detail_layout.addWidget(done, alignment=Qt.AlignmentFlag.AlignRight)
+            detail.setStyleSheet(dialog.styleSheet())
+            detail.exec()
+
+        details_button.clicked.connect(show_sale_details)
+        close_button.clicked.connect(dialog.accept)
+        dialog.setStyleSheet("""
+            QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; }
+            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
+            QLabel#windowTitle { color:#FFFFFF; background:transparent; font-size:15pt; font-weight:700; }
+            QLabel#windowSubtitle { color:#DCE7F7; background:transparent; }
+            QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; gridline-color:#EDF1F7; selection-background-color:#DCE8FF; selection-color:#17365D; }
+            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; padding:9px; font-weight:700; }
+            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
+            QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
+        """)
+        dialog.exec()
+
+    @staticmethod
+    def _format_sales_history_money(value: object) -> str:
+        from decimal import Decimal, ROUND_HALF_UP
+        amount = Decimal(str(value or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return f"R$ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
     def _manage_orders(self) -> None:
         customer = self._selected_customer()
