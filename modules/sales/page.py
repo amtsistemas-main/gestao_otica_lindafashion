@@ -83,6 +83,10 @@ class SalesOrderDialog(QDialog):
         self.items_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         self.items_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         root.addWidget(self.items_table, 1)
+        self.payment_method = QComboBox()
+        self.payment_method.addItems(["Dinheiro", "Pix", "Cartão de débito", "Cartão de crédito", "Transferência", "A prazo / pendente"])
+        root.addWidget(QLabel("Forma de pagamento"))
+        root.addWidget(self.payment_method)
         self.notes = QTextEdit()
         self.notes.setMaximumHeight(85)
         self.notes.setPlaceholderText("Observações da venda ou da ordem de serviço")
@@ -163,20 +167,21 @@ class SalesOrderDialog(QDialog):
         discount = sum((Decimal(str(r["discount"])) for r in rows), Decimal("0"))
         total = sum((Decimal(str(r["line_total"])) for r in rows), Decimal("0"))
         order_number = "V-" + datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:20]
-        customer_id = self.customer.currentData()
-        order = {"organization_id": self._organization_id, "customer_id": customer_id, "order_number": order_number, "status": "draft", "subtotal": float(subtotal), "discount": float(discount), "total": float(total), "notes": self.notes.toPlainText().strip(), "created_by": self._user_id}
+        payload = [{"product_id": r["product_id"], "quantity": r["quantity"], "unit_price": r["unit_price"], "discount": r["discount"], "line_total": r["line_total"]} for r in rows]
+        params = {"p_organization_id": self._organization_id, "p_customer_id": self.customer.currentData(), "p_order_number": order_number, "p_subtotal": float(subtotal), "p_discount": float(discount), "p_total": float(total), "p_payment_method": self.payment_method.currentText(), "p_notes": self.notes.toPlainText().strip(), "p_items": payload}
+        self.save_button.setEnabled(False)
         try:
-            saved = self._client.table("sales_orders").insert(order).execute().data
-            if not saved:
-                raise RuntimeError("O banco não retornou o pedido criado.")
-            order_id = saved[0]["id"]
-            payload = [{**row, "organization_id": self._organization_id, "sales_order_id": order_id} for row in rows]
-            self._client.table("sales_order_items").insert(payload).execute()
+            result = self._client.rpc("finalize_sales_order", params).execute().data
+            if isinstance(result, list):
+                result = result[0] if result else None
+            if not isinstance(result, dict) or not result.get("id"):
+                raise RuntimeError("O banco não confirmou a finalização da venda.")
         except Exception as exc:
-            QMessageBox.critical(self, "Falha ao salvar", f"Não foi possível salvar o pedido. Verifique a conexão e tente novamente.\n\n{exc}")
+            self.save_button.setEnabled(True)
+            QMessageBox.critical(self, "Venda não finalizada", f"Nenhuma confirmação foi recebida.\n\n{exc}")
             return
-        self._saved_order = {"id": order_id, **order, "items": rows}
-        QMessageBox.information(self, "Pedido salvo", f"Pedido {order_number} salvo.\nTotal: {_money(total)}\n\nO estoque e o financeiro não foram alterados automaticamente nesta primeira etapa.")
+        self._saved_order = {"id": result["id"], "order_number": result.get("order_number", order_number), "total": float(total), "status": result.get("status", "completed")}
+        QMessageBox.information(self, "Venda finalizada", f"Venda {self._saved_order['order_number']} finalizada.\nTotal: {_money(total)}\n\nItens, baixa de estoque e lançamento financeiro foram processados na mesma transação.")
         self.accept()
 
 
