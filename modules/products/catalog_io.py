@@ -8,6 +8,7 @@ from io import BytesIO
 from urllib.parse import urlparse
 from urllib.request import urlopen
 from pathlib import Path
+from PySide6.QtCore import QUrl
 from typing import Any, Iterable
 
 from modules.products.models import Product
@@ -215,7 +216,7 @@ def export_pdf(path: str, products: Iterable[Product]) -> None:
             try:
                 parsed = urlparse(product.image_url)
                 if parsed.scheme == "file":
-                    image_bytes = Path(parsed.path).read_bytes()
+                    image_bytes = Path(QUrl(product.image_url).toLocalFile()).read_bytes()
                 elif parsed.scheme in {"http", "https"}:
                     with urlopen(product.image_url, timeout=3) as response:
                         image_bytes = response.read(8 * 1024 * 1024 + 1)
