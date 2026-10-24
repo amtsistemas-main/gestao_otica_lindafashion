@@ -4,7 +4,7 @@ Aplicativo desktop de gestão para ótica, desenvolvido em Python e PySide6 para
 
 ## Estado do projeto
 
-A interface inicial está em desenvolvimento. A autenticação online será feita pelo Supabase Auth; dados e permissões deverão ser protegidos por políticas RLS no banco. Nenhuma chave privilegiada do Supabase deve ser distribuída dentro do aplicativo desktop.
+A interface inicial e o módulo Produtos estão em desenvolvimento. A autenticação online usa Supabase Auth; os dados do catálogo são isolados por organização e protegidos por políticas RLS. Nenhuma chave privilegiada do Supabase deve ser distribuída dentro do aplicativo desktop.
 
 ## Requisitos
 
@@ -33,7 +33,7 @@ Para visualizar o painel principal sem configurar Supabase, credenciais ou auten
 python app.py --preview
 ```
 
-Esse modo serve apenas para inspecionar a interface localmente. Ele não cria uma sessão autenticada nem habilita operações reais de dados. Os cartões dos módulos que ainda não foram implementados mostrarão um aviso informativo.
+Esse modo serve para inspecionar a interface e experimentar o módulo Produtos localmente. Não cria sessão autenticada nem grava dados online. O catálogo usa armazenamento temporário em memória e os produtos são descartados ao fechar o aplicativo. Os outros módulos ainda em construção mostram um aviso informativo.
 
 Para abrir a tela de acesso normal, use:
 
@@ -46,14 +46,14 @@ O fluxo de login requer as configurações públicas do Supabase no arquivo `.en
 ## Módulos previstos
 
 - Início e indicadores
-- Produtos e leitura de código de barras
+- Produtos: cadastro, código de barras, SKU, custo, preço de venda, desconto, estoque mínimo e desativação
 - Estoque
 - Fornecedores
 - Financeiro
 - Autenticação e sessão
 - Integrações de pagamento (provedor a definir)
 
-## Segurança e integridade
+## Módulo Produtos e Supabase\n\nO módulo separa modelos, regras de negócio, repositório e interface em `modules/products/`. Leitores de código de barras USB que funcionam como teclado são compatíveis; configure o leitor para enviar Enter ao final da leitura. Para habilitar dados online, aplique `database/migrations/202610240001_products.sql` no SQL Editor do Supabase e crie uma organização e um vínculo ativo em `organization_members` para o usuário autenticado. Sem esse vínculo, o catálogo online não será carregado.\n\n## Segurança e integridade
 
 - Nunca configure `service_role` ou qualquer segredo privilegiado do Supabase no cliente desktop.
 - Aplique políticas RLS restritivas nas tabelas acessadas pela aplicação.
