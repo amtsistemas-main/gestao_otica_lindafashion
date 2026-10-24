@@ -456,7 +456,7 @@ QTableWidget QLineEdit { padding: 4px 6px; border-radius: 4px; }
 
 def apply_theme(app: QApplication) -> None:
     app.setFont(QFont("Arial", 10))
-    app.setStyleSheet(THEME_QSS + DASHBOARD_EXTRA_QSS)
+    app.setStyleSheet(THEME_QSS + DASHBOARD_EXTRA_QSS + SHARED_INPUT_QSS)
 
 
 DASHBOARD_EXTRA_QSS = """
@@ -1311,5 +1311,107 @@ QTableWidget::item {
 QTableWidget::item:selected {
     background: #E8F0FF;
     color: #102957;
+}
+"""
+
+
+SHARED_INPUT_QSS = """
+/* Shared premium form controls for every application window. */
+QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QDateEdit, QTimeEdit,
+QDateTimeEdit, QSpinBox, QDoubleSpinBox {
+    background-color: #FFFFFF;
+    color: #172B4D;
+    border: 1px solid #CFD9E8;
+    border-radius: 8px;
+    padding: 8px 10px;
+    min-height: 20px;
+    selection-background-color: #315FE8;
+    selection-color: #FFFFFF;
+}
+QLineEdit:hover, QTextEdit:hover, QPlainTextEdit:hover, QComboBox:hover,
+QDateEdit:hover, QTimeEdit:hover, QDateTimeEdit:hover, QSpinBox:hover,
+QDoubleSpinBox:hover {
+    border-color: #9DB4D8;
+}
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus,
+QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus, QSpinBox:focus,
+QDoubleSpinBox:focus {
+    background-color: #FFFFFF;
+    border: 1px solid #3973E6;
+}
+QLineEdit:disabled, QTextEdit:disabled, QComboBox:disabled, QDateEdit:disabled,
+QSpinBox:disabled, QDoubleSpinBox:disabled {
+    background-color: #F1F4F8;
+    color: #8793A6;
+    border-color: #E1E7F0;
+}
+QLineEdit::placeholder, QTextEdit::placeholder, QPlainTextEdit::placeholder {
+    color: #8796AB;
+}
+QComboBox {
+    padding-right: 28px;
+}
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 26px;
+    border-left: 1px solid #E3EAF4;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background: #F7F9FD;
+}
+QComboBox::down-arrow {
+    width: 8px;
+    height: 8px;
+}
+QComboBox QAbstractItemView {
+    background: #FFFFFF;
+    color: #172B4D;
+    border: 1px solid #D6E0EF;
+    selection-background-color: #EAF0FF;
+    selection-color: #17365D;
+    padding: 5px;
+    outline: 0;
+}
+QDateEdit::drop-down, QDateTimeEdit::drop-down {
+    width: 26px;
+    border-left: 1px solid #E3EAF4;
+    background: #F7F9FD;
+}
+QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
+    width: 18px;
+    border: none;
+    background: #F7F9FD;
+}
+QCheckBox, QRadioButton {
+    spacing: 9px;
+    color: #334766;
+    padding: 5px 2px;
+}
+QCheckBox::indicator, QRadioButton::indicator {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #BCC9DA;
+    background: #FFFFFF;
+    border-radius: 5px;
+}
+QCheckBox::indicator:checked, QRadioButton::indicator:checked {
+    background: #315FE8;
+    border-color: #315FE8;
+}
+QSlider::groove:horizontal {
+    height: 5px;
+    background: #E2E8F2;
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    width: 16px;
+    margin: -6px 0;
+    border-radius: 8px;
+    background: #315FE8;
+}
+QDialogButtonBox QPushButton {
+    min-width: 92px;
+    min-height: 20px;
 }
 """
