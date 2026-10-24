@@ -1,4 +1,4 @@
-"""Structured AI results panel for the Ótica Linda Fashion desktop app.
+"""Business analysis panel for the Ótica Linda Fashion desktop app.
 
 This component intentionally contains no chat transcript or token-by-token renderer.
 The AI/service layer should call set_loading(True) before a request and set_result(...)
@@ -32,8 +32,8 @@ from PySide6.QtWidgets import (
 )
 
 
-class AIResultsPanel(QWidget):
-    """Form-driven AI analysis view with structured results and contextual actions."""
+class BusinessAnalysisPanel(QWidget):
+    """Form-driven business analysis view using the application’s established brand identity."""
 
     generate_requested = Signal(dict)
     regenerate_requested = Signal(dict)
@@ -44,20 +44,20 @@ class AIResultsPanel(QWidget):
         self._result: dict[str, Any] = {}
         self._last_request: dict[str, str] = {}
         self._editing = False
-        self.setObjectName("aiResultsPanel")
+        self.setObjectName("businessAnalysisPanel")
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(16)
 
         heading = QVBoxLayout()
-        eyebrow = QLabel("INTELIGÊNCIA DE NEGÓCIO")
+        eyebrow = QLabel("GESTÃO ÓTICA LINDA FASHION")
         eyebrow.setObjectName("aiEyebrow")
-        title = QLabel("Análises inteligentes")
+        title = QLabel("Análise da operação")
         title.setObjectName("aiPageTitle")
         description = QLabel(
-            "Gere análises objetivas da operação e visualize os resultados em indicadores, "
-            "tabelas e recomendações."
+            "Consulte indicadores calculados a partir dos dados cadastrados e visualize os resultados em "
+            "tabelas e recomendações práticas."
         )
         description.setObjectName("aiDescription")
         description.setWordWrap(True)
@@ -203,9 +203,9 @@ class AIResultsPanel(QWidget):
         root.addStretch(1)
 
         self.setStyleSheet("""
-            #aiResultsPanel { color: #172C52; }
-            #aiEyebrow { color: #2165F5; font-size: 9pt; font-weight: 800; letter-spacing: 1px; }
-            #aiPageTitle { color: #172C52; font-size: 23pt; font-weight: 800; }
+            ##businessAnalysisPanel { color: #102957; }
+            #aiEyebrow { color: #16A889; font-size: 9pt; font-weight: 800; letter-spacing: 1px; }
+            #aiPageTitle { color: #102957; font-size: 23pt; font-weight: 800; }
             #aiDescription { color: #657795; font-size: 10pt; }
             #aiFormCard, #aiLoadingCard, #aiResultsCard {
                 background: #FFFFFF; border: 1px solid #E4EAF3; border-radius: 14px;
@@ -219,7 +219,7 @@ class AIResultsPanel(QWidget):
                 color: #FFFFFF; background: #2165F5; border: 0; border-radius: 8px;
                 padding: 10px 16px; font-weight: 700; min-height: 18px;
             }
-            #primaryButton:hover { background: #174FD0; }
+            #primaryButton:hover { background: #1B3C72; }
             #secondaryButton {
                 color: #294265; background: #FFFFFF; border: 1px solid #DCE4F0;
                 border-radius: 8px; padding: 8px 11px; font-weight: 600;
@@ -231,7 +231,7 @@ class AIResultsPanel(QWidget):
             #aiSkeleton, #aiSkeletonLine { background: #EDF2F8; border: 0; border-radius: 8px; }
             #aiMetricCard { background: #F8FAFE; border: 1px solid #E6ECF5; border-radius: 10px; }
             #aiMetricLabel { color: #71819A; font-size: 9pt; }
-            #aiMetricValue { color: #172C52; font-size: 17pt; font-weight: 800; }
+            #aiMetricValue { color: #102957; font-size: 17pt; font-weight: 800; }
             #aiEditableText { color: #172C52; background: #FFFFFF; border: 1px solid #DCE4F0; border-radius: 8px; padding: 8px; }
             #aiResultTable { color: #263B5E; gridline-color: #E8EDF5; border: 1px solid #E4EAF3; }
         """)
@@ -382,7 +382,7 @@ class AIResultsPanel(QWidget):
         if not self.table.columnCount():
             QMessageBox.information(self, "Exportar CSV", "Esta análise não contém uma tabela para exportar.")
             return
-        path, _ = QFileDialog.getSaveFileName(self, "Exportar análise", "analise_ia.csv", "CSV (*.csv)")
+        path, _ = QFileDialog.getSaveFileName(self, "Exportar análise", "analise_otica_linda_fashion.csv", "CSV (*.csv)")
         if not path:
             return
         try:
@@ -401,7 +401,7 @@ class AIResultsPanel(QWidget):
             QMessageBox.critical(self, "Falha ao exportar CSV", str(exc))
 
     def export_pdf(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Exportar análise", "analise_ia.pdf", "PDF (*.pdf)")
+        path, _ = QFileDialog.getSaveFileName(self, "Exportar análise", "analise_otica_linda_fashion.pdf", "PDF (*.pdf)")
         if not path:
             return
         try:
