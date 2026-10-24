@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from decimal import Decimal, ROUND_HALF_UP
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor
+from pathlib import Path
+from PySide6.QtCore import Qt, QSize, QUrl
+from PySide6.QtGui import QBrush, QColor, QPixmap
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QHeaderView,
+    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QHeaderView,
     QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
     QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
 from config.settings import get_settings
 from core.exceptions import ConfigurationError
 from core.session_manager import session_manager
+from modules.products.catalog_io import create_template, export_pdf, read_products
 from modules.products.models import Product
 from modules.products.repository import MemoryProductRepository, SupabaseProductRepository
 from modules.products.service import ProductService
@@ -30,6 +32,7 @@ class ProductFormDialog(QDialog):
         self.setMinimumWidth(560)
         self.setModal(True)
         self._product = product
+        self.image_path = ""
 
         root = QVBoxLayout(self)
         title = QLabel("Dados do produto")
@@ -70,6 +73,35 @@ class ProductFormDialog(QDialog):
         self.description = QTextEdit()
         self.description.setPlaceholderText("Detalhes adicionais, cor, tamanho, material...")
         self.description.setMaximumHeight(78)
+
+        image_section = QVBoxLayout()
+        image_section.setSpacing(8)
+        image_heading = QLabel("Imagem do produto")
+        image_heading.setObjectName("sectionTitle")
+        image_section.addWidget(image_heading)
+        image_row = QHBoxLayout()
+        self.image_preview = QLabel("Sem imagem")
+        self.image_preview.setObjectName("productImagePreview")
+        self.image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_preview.setFixedSize(112, 92)
+        image_row.addWidget(self.image_preview)
+        image_controls = QVBoxLayout()
+        self.image_url = QLineEdit()
+        self.image_url.setPlaceholderText("https://... URL pública da imagem")
+        self.image_url.setClearButtonEnabled(True)
+        self.image_url.textChanged.connect(self._show_image_url_hint)
+        self.upload_image_button = QPushButton("Enviar imagem do computador")
+        self.upload_image_button.clicked.connect(self._choose_image)
+        self.clear_image_button = QPushButton("Remover imagem")
+        self.clear_image_button.clicked.connect(self._clear_image)
+        image_controls.addWidget(self.image_url)
+        image_controls.addWidget(self.upload_image_button)
+        image_controls.addWidget(self.clear_image_button)
+        image_row.addLayout(image_controls, 1)
+        image_section.addLayout(image_row)
+        image_section.addWidget(QLabel("PNG, JPG ou WEBP • máximo 8 MB. Upload online usa o armazenamento da organização."))
+        root.addLayout(image_section)
+
         self.active = QCheckBox("Produto ativo para venda")
         self.active.setChecked(True)
 
@@ -112,6 +144,8 @@ class ProductFormDialog(QDialog):
             self.stock.setValue(product.stock_quantity)
             self.minimum_stock.setValue(product.minimum_stock)
             self.description.setPlainText(product.description)
+            self.image_url.setText(product.image_url)
+            self._render_image(product.image_url)
             self.active.setChecked(product.active)
         else:
             self.barcode.setFocus()
@@ -132,6 +166,43 @@ class ProductFormDialog(QDialog):
             * (Decimal("1") - Decimal(str(self.discount.value())) / Decimal("100"))
         ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         self.final_price_label.setText(f"Preço final com desconto: {_currency(final)}")
+
+    def _choose_image(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Selecionar imagem do produto", "",
+            "Imagens (*.png *.jpg *.jpeg *.webp)",
+        )
+        if not path:
+            return
+        if Path(path).stat().st_size > 8 * 1024 * 1024:
+            QMessageBox.warning(self, "Imagem muito grande", "Selecione uma imagem de até 8 MB.")
+            return
+        self.image_path = path
+        self.image_url.clear()
+        self._render_image(path)
+
+    def _clear_image(self) -> None:
+        self.image_path = ""
+        self.image_url.clear()
+        self.image_preview.setPixmap(QPixmap())
+        self.image_preview.setText("Sem imagem")
+
+    def _show_image_url_hint(self, value: str) -> None:
+        if value.strip():
+            self.image_path = ""
+            self._render_image(value.strip())
+
+    def _render_image(self, source: str) -> None:
+        pixmap = QPixmap(source)
+        if pixmap.isNull():
+            self.image_preview.setPixmap(QPixmap())
+            self.image_preview.setText("Prévia indisponível")
+            return
+        self.image_preview.setText("")
+        self.image_preview.setPixmap(pixmap.scaled(
+            QSize(104, 84), Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        ))
 
     def _validate_and_accept(self) -> None:
         if not self.name.text().strip():
@@ -159,6 +230,7 @@ class ProductFormDialog(QDialog):
             stock_quantity=self.stock.value(),
             minimum_stock=self.minimum_stock.value(),
             description=self.description.toPlainText().strip(),
+            image_url=self.image_url.text().strip(),
             active=self.active.isChecked(),
         )
         product.validate()
@@ -181,6 +253,7 @@ class ProductsPage(QDialog):
             if not session_manager.is_authenticated or not get_settings().supabase_configured:
                 raise ConfigurationError("O catálogo online exige login e configuração do Supabase.")
             repository = SupabaseProductRepository.for_current_user()
+        self._repository = repository
         self._service = ProductService(repository)
         self._visible_products: list[Product] = []
 
@@ -198,9 +271,21 @@ class ProductsPage(QDialog):
         headings.addWidget(subtitle)
         header.addLayout(headings)
         header.addStretch()
+        self.export_button = QPushButton("Exportar catálogo PDF")
+        self.export_button.setObjectName("secondaryQuickAction")
+        self.export_button.clicked.connect(self._export_pdf)
+        self.template_button = QPushButton("Baixar modelo XLS")
+        self.template_button.setObjectName("secondaryQuickAction")
+        self.template_button.clicked.connect(self._download_template)
+        self.import_button = QPushButton("Importar planilha")
+        self.import_button.setObjectName("secondaryQuickAction")
+        self.import_button.clicked.connect(self._import_spreadsheet)
         self.new_button = QPushButton("+ Novo produto")
         self.new_button.setObjectName("primaryButton")
         self.new_button.clicked.connect(self._new_product)
+        header.addWidget(self.export_button)
+        header.addWidget(self.template_button)
+        header.addWidget(self.import_button)
         header.addWidget(self.new_button)
         root.addLayout(header)
 
@@ -232,9 +317,9 @@ class ProductsPage(QDialog):
         search_row.addWidget(search_button)
         root.addLayout(search_row)
 
-        self.table = QTableWidget(0, 8)
+        self.table = QTableWidget(0, 9)
         self.table.setHorizontalHeaderLabels([
-            "Código / SKU", "Produto", "Categoria", "Custo", "Venda", "Desconto", "Preço final", "Estoque",
+            "Imagem", "Código / SKU", "Produto", "Categoria", "Custo", "Venda", "Desconto", "Preço final", "Estoque",
         ])
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -242,11 +327,13 @@ class ProductsPage(QDialog):
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(False)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.setColumnWidth(0, 150)
-        for column in (3, 4, 5, 6, 7):
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setColumnWidth(0, 68)
+        self.table.setColumnWidth(1, 135)
+        for column in (4, 5, 6, 7, 8):
             self.table.setColumnWidth(column, 105)
+        self.table.verticalHeader().setDefaultSectionSize(58)
         self.table.doubleClicked.connect(lambda *_: self._edit_product())
         root.addWidget(self.table, 1)
 
@@ -297,24 +384,29 @@ class ProductsPage(QDialog):
     def _render_table(self) -> None:
         self.table.setRowCount(len(self._visible_products))
         for row, product in enumerate(self._visible_products):
+            image_item = QTableWidgetItem()
+            image_item.setData(Qt.ItemDataRole.UserRole, product.id)
+            image_item.setToolTip(product.image_url or "")
+            if product.image_url.startswith("file://"):
+                image_path = QUrl(product.image_url).toLocalFile()
+                pixmap = QPixmap(image_path)
+                if not pixmap.isNull():
+                    image_item.setData(Qt.ItemDataRole.DecorationRole, pixmap.scaled(44, 44, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            self.table.setItem(row, 0, image_item)
             values = [
-                product.barcode or product.sku or "—",
-                product.name,
-                product.category or "—",
-                _currency(product.cost_price),
-                _currency(product.sale_price),
-                f"{product.discount_percent:.2f}%".replace(".", ","),
-                _currency(product.final_price),
+                product.barcode or product.sku or "—", product.name, product.category or "—",
+                _currency(product.cost_price), _currency(product.sale_price),
+                f"{product.discount_percent:.2f}%".replace(".", ","), _currency(product.final_price),
                 str(product.stock_quantity),
             ]
-            for column, value in enumerate(values):
+            for offset, value in enumerate(values, start=1):
                 item = QTableWidgetItem(value)
                 item.setData(Qt.ItemDataRole.UserRole, product.id)
-                if column in (3, 4, 5, 6, 7):
+                if offset in (4, 5, 6, 7, 8):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                self.table.setItem(row, column, item)
+                self.table.setItem(row, offset, item)
             if product.stock_quantity <= product.minimum_stock:
-                self.table.item(row, 7).setForeground(QBrush(QColor("#b42318")))
+                self.table.item(row, 8).setForeground(QBrush(QColor("#b42318")))
             if not product.active:
                 for column in range(self.table.columnCount()):
                     self.table.item(row, column).setForeground(QBrush(QColor("#8a94a6")))
@@ -327,7 +419,7 @@ class ProductsPage(QDialog):
         if row < 0 or row >= len(self._visible_products):
             QMessageBox.information(self, "Selecione um produto", "Selecione um produto na tabela para continuar.")
             return None
-        selected_id = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+        selected_id = self.table.item(row, 1).data(Qt.ItemDataRole.UserRole)
         return next((item for item in self._visible_products if item.id == selected_id), None)
 
     def _new_product(self, prefill_barcode: str = "") -> None:
@@ -347,12 +439,97 @@ class ProductsPage(QDialog):
 
     def _save_dialog_product(self, dialog: ProductFormDialog) -> None:
         try:
-            self._service.save_product(dialog.build_product())
+            product = dialog.build_product()
+            if dialog.image_path:
+                if self._preview_mode:
+                    product.image_url = Path(dialog.image_path).resolve().as_uri()
+                else:
+                    uploader = getattr(self._repository, "upload_product_image", None)
+                    if uploader is None:
+                        raise ConfigurationError("O repositório atual não permite upload de imagens.")
+                    product.image_url = uploader(dialog.image_path)
+            self._service.save_product(product)
             self.search.clear()
             self._search_products()
             QMessageBox.information(self, "Produto salvo", "Os dados do produto foram salvos.")
         except Exception as exc:
             QMessageBox.critical(self, "Não foi possível salvar", str(exc))
+
+    def _download_template(self) -> None:
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Salvar modelo da planilha", "modelo_produtos.xlsx",
+            "Planilha Excel (*.xlsx)",
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".xlsx"):
+            path += ".xlsx"
+        try:
+            create_template(path)
+            QMessageBox.information(self, "Modelo criado", f"Modelo salvo em:\n{path}")
+        except Exception as exc:
+            QMessageBox.critical(self, "Erro ao criar modelo", str(exc))
+
+    def _import_spreadsheet(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Importar produtos", "", "Planilhas Excel (*.xlsx *.xls)",
+        )
+        if not path:
+            return
+        try:
+            products = read_products(path)
+            current = self._service.list_products("", include_inactive=True)
+            barcodes = {item.barcode for item in current if item.barcode}
+            skus = {item.sku for item in current if item.sku}
+            incoming_barcodes: set[str] = set()
+            incoming_skus: set[str] = set()
+            for product in products:
+                if product.barcode and (product.barcode in barcodes or product.barcode in incoming_barcodes):
+                    raise ValueError(f"Código de barras duplicado na base ou na planilha: {product.barcode}")
+                if product.sku and (product.sku in skus or product.sku in incoming_skus):
+                    raise ValueError(f"SKU duplicado na base ou na planilha: {product.sku}")
+                if product.barcode:
+                    incoming_barcodes.add(product.barcode)
+                if product.sku:
+                    incoming_skus.add(product.sku)
+            answer = QMessageBox.question(
+                self, "Confirmar importação",
+                f"Foram validados {len(products)} produtos. Deseja importá-los agora?\n\n"
+                "A importação adiciona novos produtos; não atualiza registros existentes.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+            imported = 0
+            for product in products:
+                self._service.save_product(product)
+                imported += 1
+            self.search.clear()
+            self._search_products()
+            QMessageBox.information(self, "Importação concluída", f"{imported} produto(s) importado(s).")
+        except Exception as exc:
+            QMessageBox.critical(
+                self, "Falha na importação",
+                f"{exc}\n\nSe o erro ocorreu durante a gravação, verifique a lista de produtos: "
+                "operações remotas já concluídas não são revertidas automaticamente.",
+            )
+
+    def _export_pdf(self) -> None:
+        if not self._visible_products:
+            QMessageBox.information(self, "Catálogo vazio", "Não há produtos na lista atual para exportar.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Exportar catálogo em PDF", "catalogo_produtos.pdf", "Documento PDF (*.pdf)",
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".pdf"):
+            path += ".pdf"
+        try:
+            export_pdf(path, self._visible_products)
+            QMessageBox.information(self, "Catálogo exportado", f"PDF salvo em:\n{path}")
+        except Exception as exc:
+            QMessageBox.critical(self, "Erro ao exportar catálogo", str(exc))
 
     def _archive_product(self) -> None:
         product = self._selected_product()
