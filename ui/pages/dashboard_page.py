@@ -1,188 +1,192 @@
-"""Premium home dashboard for Ótica Linda Fashion."""
+"""Dashboard inspirado na referência visual da Ótica Linda Fashion."""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal, QPointF
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF, QLinearGradient
 from PySide6.QtWidgets import (
     QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton, QSizePolicy,
-    QVBoxLayout, QWidget, QProgressBar,
+    QVBoxLayout, QWidget, QProgressBar, QComboBox,
 )
 from ui.components.module_card import ModuleCard
 
 
 MODULES = [
-    ("Produtos", "Catálogo, preços e códigos de barras", "PR"),
-    ("Estoque", "Entradas, saídas e inventário", "ES"),
-    ("Fornecedores", "Parceiros e compras", "FO"),
-    ("Financeiro", "Receitas, despesas e caixa", "FI"),
-    ("Relatórios", "Indicadores e análises", "RE"),
-    ("Configurações", "Preferências e integrações", "CO"),
+    ("Produtos", "Cadastrar / consultar produtos", "◇"),
+    ("Estoque", "Entradas, saídas e inventário", "▤"),
+    ("Fornecedores", "Parceiros e compras", "♧"),
+    ("Financeiro", "Receitas, despesas e caixa", "R$"),
+    ("Relatórios", "Indicadores e análises", "▥"),
+    ("Configurações", "Preferências e integrações", "⚙"),
 ]
 
 
-class WelcomeBanner(QFrame):
-    """Brand-led welcome banner with native vector eyeglasses artwork."""
-    def __init__(self, preview_mode: bool, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setObjectName("welcomeBanner")
-        self.setMinimumHeight(150)
-        self.setMaximumHeight(174)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(24, 18, 22, 18)
-        layout.setSpacing(10)
+def label(text: str, object_name: str, parent: QWidget | None = None) -> QLabel:
+    item = QLabel(text, parent)
+    item.setObjectName(object_name)
+    return item
 
-        copy = QVBoxLayout()
-        copy.setSpacing(5)
-        eyebrow = QLabel("ÓTICA LINDA FASHION")
-        eyebrow.setObjectName("bannerEyebrow")
-        title = QLabel("Bem-vinda à sua visão geral")
-        title.setObjectName("bannerTitle")
-        subtitle = QLabel(
-            "Ambiente de demonstração: explore os recursos do sistema."
-            if preview_mode
-            else "Acompanhe a operação da sua ótica em um só lugar."
-        )
-        subtitle.setObjectName("bannerDescription")
-        subtitle.setWordWrap(True)
-        copy.addWidget(eyebrow)
-        copy.addWidget(title)
-        copy.addWidget(subtitle)
-        copy.addStretch()
-        layout.addLayout(copy, 3)
-        artwork = GlassesArtwork()
-        artwork.setMinimumWidth(180)
-        layout.addWidget(artwork, 2)
+
+def make_card(title: str, parent: QWidget | None = None) -> tuple[QFrame, QVBoxLayout]:
+    card = QFrame(parent)
+    card.setObjectName("analyticsCard")
+    card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    layout = QVBoxLayout(card)
+    layout.setContentsMargins(16, 14, 16, 14)
+    layout.setSpacing(10)
+    layout.addWidget(label(title, "cardTitle"))
+    return card, layout
 
 
 class GlassesArtwork(QWidget):
-    """Lightweight vector illustration, so the dashboard does not depend on remote assets."""
+    """Ilustração vetorial de óculos para o banner de boas-vindas."""
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setMinimumHeight(105)
+        self.setMinimumSize(220, 100)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def paintEvent(self, event) -> None:
         del event
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
-        # Soft decorative circles
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(255, 255, 255, 24))
-        painter.drawEllipse(int(w * .58), int(h * .02), int(h * .8), int(h * .8))
-        painter.setBrush(QColor(255, 255, 255, 15))
-        painter.drawEllipse(int(w * .72), int(h * .24), int(h * .65), int(h * .65))
-        # Eyeglasses, drawn in a crisp navy/ice-blue line
-        lens_w, lens_h = int(min(w * .25, h * .54)), int(h * .48)
-        y = int(h * .27)
-        x1 = int(w * .15)
-        x2 = int(w * .53)
-        pen = QPen(QColor("#E9F1FF"), max(3, int(h * .025)))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(220, 235, 250, 80))
+        p.drawEllipse(int(w*.40), int(h*.04), int(h*.88), int(h*.88))
+        p.setBrush(QColor(230, 240, 252, 55))
+        p.drawEllipse(int(w*.61), int(h*.15), int(h*.75), int(h*.75))
+        lw, lh = int(min(w*.28, h*.65)), int(h*.48)
+        y, x1, x2 = int(h*.27), int(w*.20), int(w*.53)
+        pen = QPen(QColor("#102957"), max(3, int(h*.035)))
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        painter.setPen(pen)
-        painter.setBrush(QColor(206, 226, 255, 24))
-        painter.drawRoundedRect(x1, y, lens_w, lens_h, 17, 17)
-        painter.drawRoundedRect(x2, y, lens_w, lens_h, 17, 17)
-        painter.drawLine(x1 + lens_w, y + int(lens_h * .24),
-                         x2, y + int(lens_h * .24))
-        painter.drawLine(x1, y + int(lens_h * .2), x1 - int(w * .08), y + int(lens_h * .1))
-        painter.drawLine(x2 + lens_w, y + int(lens_h * .2),
-                         x2 + lens_w + int(w * .08), y + int(lens_h * .1))
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(QColor(180, 215, 246, 65))
+        p.drawRoundedRect(x1, y, lw, lh, 17, 17)
+        p.drawRoundedRect(x2, y, lw, lh, 17, 17)
+        p.drawLine(x1+lw, y+int(lh*.25), x2, y+int(lh*.25))
+        p.drawLine(x1, y+int(lh*.20), x1-int(w*.08), y+int(lh*.08))
+        p.drawLine(x2+lw, y+int(lh*.20), x2+lw+int(w*.08), y+int(lh*.08))
+        shine = QPen(QColor("#FFFFFF"), max(2, int(h*.018)))
+        shine.setCapStyle(Qt.PenCapStyle.RoundCap)
+        p.setPen(shine)
+        p.drawLine(x1+10, y+8, x1+int(lw*.38), y+8)
 
 
-class SalesTrendChart(QWidget):
-    """Native Qt trend chart. Preview data is explicitly marked as illustrative."""
+class TrendChart(QWidget):
     def __init__(self, preview_mode: bool, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._preview_mode = preview_mode
-        self.setMinimumHeight(166)
+        self.preview_mode = preview_mode
+        self.setMinimumHeight(160)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def paintEvent(self, event) -> None:
         del event
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        area = self.rect().adjusted(18, 12, -12, -24)
-        painter.setPen(QPen(QColor("#E8EDF6"), 1))
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        area = self.rect().adjusted(38, 8, -8, -28)
+        p.setPen(QPen(QColor("#E8EDF5"), 1))
         for i in range(4):
-            y = area.top() + i * area.height() / 3
-            painter.drawLine(int(area.left()), int(y), int(area.right()), int(y))
-        if not self._preview_mode:
-            painter.setPen(QColor("#7A879C"))
-            painter.drawText(area, Qt.AlignmentFlag.AlignCenter,
-                             "O gráfico será exibido quando as vendas forem integradas.")
+            y = area.top() + i * area.height()/3
+            p.drawLine(area.left(), int(y), area.right(), int(y))
+        p.setPen(QColor("#7186A8"))
+        for i, value in enumerate(["R$ 6.000", "R$ 4.000", "R$ 2.000", "R$ 0"]):
+            y = int(area.top() + i * area.height()/3)
+            p.drawText(0, y-7, 34, 16, Qt.AlignmentFlag.AlignRight, value)
+        if not self.preview_mode:
+            p.drawText(area, Qt.AlignmentFlag.AlignCenter, "As vendas aparecerão após a integração do módulo.")
             return
-        values = [0.28, 0.42, 0.36, 0.58, 0.51, 0.73, 0.86]
-        points = [QPointF(area.left() + i * area.width() / 6,
-                          area.bottom() - value * area.height())
-                  for i, value in enumerate(values)]
-        fill = QLinearGradient(0, area.top(), 0, area.bottom())
-        fill.setColorAt(0, QColor(49, 95, 232, 65))
-        fill.setColorAt(1, QColor(49, 95, 232, 3))
-        polygon = QPolygonF(points + [QPointF(area.right(), area.bottom()),
-                                      QPointF(area.left(), area.bottom())])
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(fill)
-        painter.drawPolygon(polygon)
-        painter.setPen(QPen(QColor("#315FE8"), 2.5, Qt.PenStyle.SolidLine,
-                            Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-        painter.drawPolyline(QPolygonF(points))
-        painter.setBrush(QColor("#FFFFFF"))
+        values = [.23, .43, .35, .54, .68, .61, .86]
+        points = [QPointF(area.left()+i*area.width()/6, area.bottom()-v*area.height()) for i,v in enumerate(values)]
+        grad = QLinearGradient(0, area.top(), 0, area.bottom())
+        grad.setColorAt(0, QColor(49,95,232,70))
+        grad.setColorAt(1, QColor(49,95,232,3))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(grad)
+        p.drawPolygon(QPolygonF(points+[QPointF(area.right(),area.bottom()), QPointF(area.left(),area.bottom())]))
+        p.setPen(QPen(QColor("#1764F5"), 2.3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        p.drawPolyline(QPolygonF(points))
         for point in points:
-            painter.drawEllipse(point, 4, 4)
-        painter.setBrush(QColor("#315FE8"))
-        for point in points:
-            painter.drawEllipse(point, 2, 2)
-        painter.setPen(QColor("#7A879C"))
-        for i, label in enumerate(["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]):
-            x = int(area.left() + i * area.width() / 6 - 12)
-            painter.drawText(x, int(area.bottom()) + 19, 28, 18,
-                             Qt.AlignmentFlag.AlignHCenter, label)
+            p.setBrush(QColor("#FFFFFF")); p.drawEllipse(point, 4, 4)
+            p.setBrush(QColor("#1764F5")); p.drawEllipse(point, 2, 2)
+        p.setPen(QColor("#60779D"))
+        for i, day in enumerate(["10/04","11/04","12/04","13/04","14/04","15/04","16/04"]):
+            x = int(area.left()+i*area.width()/6-18)
+            p.drawText(x, int(area.bottom())+19, 38, 16, Qt.AlignmentFlag.AlignHCenter, day)
+
+
+class DonutChart(QWidget):
+    def __init__(self, preview_mode: bool, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.preview_mode = preview_mode
+        self.setMinimumSize(145, 145)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+    def paintEvent(self, event) -> None:
+        del event
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        size = min(self.width(), self.height()) - 22
+        rect_x = (self.width()-size)//2
+        rect_y = (self.height()-size)//2
+        rect = self.rect().adjusted(rect_x, rect_y, -rect_x, -rect_y)
+        colors = ["#2165F5", "#41BFA5", "#F5B844", "#8B4CE3", "#7B91B9"]
+        values = [39,24,18,11,8] if self.preview_mode else [1,1,1,1,1]
+        start = 90*16
+        total = sum(values)
+        for val, color in zip(values, colors):
+            span = -int(360*16*val/total)
+            p.setPen(QPen(QColor(color), max(13, int(size*.16),), Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
+            p.drawArc(rect, start, span)
+            start += span
+        p.setPen(QColor("#102957"))
+        p.setFont(p.font())
+        p.drawText(self.rect().adjusted(0,-6,0,-2), Qt.AlignmentFlag.AlignCenter, "248" if self.preview_mode else "—")
+        p.setPen(QColor("#637795"))
+        p.drawText(self.rect().adjusted(0,22,0,0), Qt.AlignmentFlag.AlignCenter, "Produtos")
 
 
 class MetricCard(QFrame):
-    def __init__(self, title: str, value: str, detail: str, accent: str,
-                 parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+    def __init__(self, icon: str, title: str, value: str, growth: str, color: str) -> None:
+        super().__init__()
         self.setObjectName("metricCard")
-        self.setMinimumHeight(120)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setMinimumHeight(138)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 14, 16, 14)
-        layout.setSpacing(6)
+        layout.setContentsMargins(17, 14, 17, 13)
+        layout.setSpacing(5)
         row = QHBoxLayout()
-        marker = QLabel("●")
-        marker.setStyleSheet(f"color:{accent}; font-size:10pt; background:transparent;")
-        name = QLabel(title)
-        name.setObjectName("metricLabel")
-        row.addWidget(marker)
-        row.addWidget(name)
+        badge = label(icon, "metricIcon")
+        badge.setStyleSheet(f"color:{color}; background:{color}18;")
+        row.addWidget(badge)
         row.addStretch()
         layout.addLayout(row)
-        amount = QLabel(value)
-        amount.setObjectName("metricValue")
-        layout.addWidget(amount)
-        caption = QLabel(detail)
-        caption.setObjectName("muted")
-        caption.setWordWrap(True)
-        layout.addWidget(caption)
+        layout.addWidget(label(title, "metricLabel"))
+        layout.addWidget(label(value, "metricValue"))
+        layout.addWidget(label(growth, "metricGrowth" if growth.startswith("↑") else "muted"))
 
 
-def section_card(title: str, subtitle: str = "") -> tuple[QFrame, QVBoxLayout]:
-    card = QFrame()
-    card.setObjectName("analyticsCard")
-    layout = QVBoxLayout(card)
-    layout.setContentsMargins(16, 15, 16, 15)
-    layout.setSpacing(9)
-    heading = QLabel(title)
-    heading.setObjectName("chartTitle")
-    layout.addWidget(heading)
-    if subtitle:
-        sub = QLabel(subtitle)
-        sub.setObjectName("muted")
-        sub.setWordWrap(True)
-        layout.addWidget(sub)
-    return card, layout
+class WelcomeBanner(QFrame):
+    def __init__(self, preview_mode: bool) -> None:
+        super().__init__()
+        self.setObjectName("welcomeBanner")
+        self.setMinimumHeight(150)
+        self.setMaximumHeight(164)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(20, 14, 22, 14)
+        row.setSpacing(14)
+        copy = QVBoxLayout()
+        copy.setSpacing(4)
+        copy.addWidget(label("Olá, Ana Silva!" if preview_mode else "Olá!", "bannerGreeting"))
+        copy.addWidget(label("Bem-vinda de volta!", "bannerTitle"))
+        subtitle = label("Aqui você acompanha o desempenho da sua ótica e tem acesso rápido\nàs principais funcionalidades do sistema.", "bannerDescription")
+        subtitle.setWordWrap(True)
+        copy.addWidget(subtitle)
+        row.addLayout(copy, 5)
+        row.addWidget(GlassesArtwork(), 4)
+        slogan = QVBoxLayout()
+        slogan.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        slogan.addWidget(label("Mais que óculos,\né o seu olhar\npara o mundo.", "bannerSlogan"))
+        slogan.addWidget(label("━━━━", "bannerAccent"))
+        row.addLayout(slogan, 2)
 
 
 class DashboardPage(QWidget):
@@ -190,199 +194,215 @@ class DashboardPage(QWidget):
 
     def __init__(self, preview_mode: bool = False, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._preview_mode = preview_mode
+        self.preview_mode = preview_mode
         self.setObjectName("dashboardPage")
         root = QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 8)
-        root.setSpacing(16)
-
-        heading = QHBoxLayout()
-        heading_copy = QVBoxLayout()
-        heading_copy.setSpacing(3)
-        eyebrow = QLabel("PAINEL DE CONTROLE")
-        eyebrow.setObjectName("eyebrow")
-        title = QLabel("Visão geral")
-        title.setObjectName("dashboardTitle")
-        heading_copy.addWidget(eyebrow)
-        heading_copy.addWidget(title)
-        heading.addLayout(heading_copy)
-        heading.addStretch()
-        root.addLayout(heading)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(14)
 
         root.addWidget(WelcomeBanner(preview_mode))
 
-        actions_card, actions_layout = section_card(
-            "Ações rápidas", "Acesse os principais módulos com um clique."
-        )
-        actions_row = QHBoxLayout()
-        actions_row.setSpacing(10)
-        for label, module, style in [
-            ("＋  Produtos", "Produtos", "primaryQuickAction"),
-            ("▤  Estoque", "Estoque", "secondaryQuickAction"),
-            ("R$  Financeiro", "Financeiro", "secondaryQuickAction"),
+        actions, action_layout = make_card("⚡   Ações rápidas")
+        action_row = QHBoxLayout()
+        action_row.setSpacing(12)
+        action_row.addWidget(label("Acesse os principais módulos com um clique.", "actionHint"), 1)
+        for title, desc, icon, module, tint in [
+            ("Produtos", "Cadastrar / consultar\nprodutos", "◇", "Produtos", "#3478F6"),
+            ("Estoque", "Em evolução", "▤", "Estoque", "#16A889"),
+            ("Financeiro", "Em evolução", "R$", "Financeiro", "#8955E8"),
         ]:
-            button = QPushButton(label)
-            button.setObjectName(style)
-            button.setMinimumHeight(42)
-            button.setCursor(Qt.CursorShape.PointingHandCursor)
-            button.clicked.connect(lambda checked=False, target=module: self.module_requested.emit(target))
-            actions_row.addWidget(button, 1)
-        actions_layout.addLayout(actions_row)
-        root.addWidget(actions_card)
+            tile = QPushButton()
+            tile.setObjectName("quickTile")
+            tile.setMinimumHeight(76)
+            tile.setCursor(Qt.CursorShape.PointingHandCursor)
+            tile_layout = QHBoxLayout(tile)
+            tile_layout.setContentsMargins(12, 8, 10, 8)
+            badge = label(icon, "quickIcon")
+            badge.setStyleSheet(f"color:{tint}; background:{tint}20;")
+            tile_layout.addWidget(badge)
+            texts = QVBoxLayout()
+            texts.addWidget(label(title, "quickTitle"))
+            texts.addWidget(label(desc, "quickDescription"))
+            tile_layout.addLayout(texts, 1)
+            tile_layout.addWidget(label("→", "quickArrow"))
+            tile.clicked.connect(lambda checked=False, target=module: self.module_requested.emit(target))
+            action_row.addWidget(tile, 1)
+        action_layout.addLayout(action_row)
+        root.addWidget(actions)
 
-        columns = QHBoxLayout()
-        columns.setSpacing(14)
-        main_column = QVBoxLayout()
-        main_column.setSpacing(14)
-        side_column = QVBoxLayout()
-        side_column.setSpacing(14)
+        columns = QGridLayout()
+        columns.setHorizontalSpacing(14)
+        columns.setVerticalSpacing(12)
+        columns.setColumnStretch(0, 7)
+        columns.setColumnStretch(1, 4)
+        main = QWidget()
+        main.setObjectName("transparentHost")
+        main_layout = QVBoxLayout(main)
+        main_layout.setContentsMargins(0,0,0,0)
+        main_layout.setSpacing(12)
+        side = QWidget()
+        side.setObjectName("transparentHost")
+        side_layout = QVBoxLayout(side)
+        side_layout.setContentsMargins(0,0,0,0)
+        side_layout.setSpacing(12)
 
-        metric_heading = QHBoxLayout()
-        metric_title = QLabel("Indicadores do negócio")
-        metric_title.setObjectName("sectionTitle")
-        metric_hint = QLabel("Prévia ilustrativa" if preview_mode else "Aguardando dados reais")
-        metric_hint.setObjectName("muted")
-        metric_heading.addWidget(metric_title)
-        metric_heading.addStretch()
-        metric_heading.addWidget(metric_hint)
-        main_column.addLayout(metric_heading)
+        metric_header = QHBoxLayout()
+        metric_header.addWidget(label("Indicadores do negócio", "sectionTitle"))
+        metric_header.addStretch()
+        metric_header.addWidget(label("Prévia ilustrativa" if preview_mode else "Dados da operação", "muted"))
+        main_layout.addLayout(metric_header)
+        metrics = QGridLayout()
+        metrics.setHorizontalSpacing(12)
+        metrics.setVerticalSpacing(10)
+        cards = [
+            ("◇","Produtos Cadastrados","248" if preview_mode else "—","↑ +12%   vs. mês anterior" if preview_mode else "Aguardando integração","#2165F5"),
+            ("🛒","Vendas no Mês","R$ 18.742,90" if preview_mode else "—","↑ +8%   vs. mês anterior" if preview_mode else "Aguardando integração","#F0A52B"),
+            ("♙","Clientes Ativos","132" if preview_mode else "—","↑ +15%   vs. mês anterior" if preview_mode else "Aguardando integração","#17A982"),
+        ]
+        for i, data in enumerate(cards):
+            metrics.addWidget(MetricCard(*data),0,i)
+        for i in range(3): metrics.setColumnStretch(i,1)
+        main_layout.addLayout(metrics)
 
-        metrics_grid = QGridLayout()
-        metrics_grid.setHorizontalSpacing(10)
-        metrics_grid.setVerticalSpacing(10)
-        for index, data in enumerate([
-            ("Produtos cadastrados", "—", "Itens no catálogo", "#315FE8"),
-            ("Itens em estoque", "—", "Unidades disponíveis", "#0F9F83"),
-            ("Contas a receber", "—", "Valores pendentes", "#C18A28"),
-            ("Contas a pagar", "—", "Compromissos financeiros", "#D45D64"),
-        ]):
-            metrics_grid.addWidget(MetricCard(*data), index // 2, index % 2)
-        main_column.addLayout(metrics_grid)
+        trend, trend_layout = make_card("Vendas dos Últimos 7 Dias")
+        period = QComboBox()
+        period.addItems(["7 dias", "30 dias", "90 dias"])
+        period.setObjectName("periodSelector")
+        trend_layout.itemAt(0).widget().setParent(None)
+        trend_header = QHBoxLayout()
+        trend_header.addWidget(label("Vendas dos Últimos 7 Dias", "cardTitle"))
+        trend_header.addStretch()
+        trend_header.addWidget(period)
+        trend_layout.insertLayout(0, trend_header)
+        trend_layout.addWidget(TrendChart(preview_mode))
+        main_layout.addWidget(trend, 1)
 
-        trend, trend_layout = section_card(
-            "Vendas dos últimos 7 dias",
-            "Exemplo visual, sem representar vendas reais." if preview_mode
-            else "Os dados serão exibidos após a integração do módulo de vendas."
-        )
-        trend_layout.addWidget(SalesTrendChart(preview_mode))
-        main_column.addWidget(trend)
-
-        categories, category_layout = section_card(
-            "Categorias de produtos",
-            "Distribuição ilustrativa." if preview_mode
-            else "A distribuição será calculada a partir do catálogo."
-        )
-        for name, value, color in [
-            ("Armações", 78, "#315FE8"), ("Lentes", 61, "#37BFA4"),
-            ("Óculos de sol", 46, "#F0B544"), ("Acessórios", 29, "#8B6CE0"),
-        ]:
-            labels = QHBoxLayout()
-            category_label = QLabel(name)
-            category_label.setObjectName("chartCategoryLabel")
-            number = QLabel(str(value) if preview_mode else "—")
-            number.setObjectName("chartValue")
-            labels.addWidget(category_label)
-            labels.addStretch()
-            labels.addWidget(number)
-            category_layout.addLayout(labels)
-            bar = QProgressBar()
-            bar.setObjectName("categoryProgress")
-            bar.setTextVisible(False)
-            bar.setRange(0, 100)
-            bar.setValue(value if preview_mode else 0)
-            bar.setFixedHeight(7)
-            bar.setStyleSheet(
-                f"QProgressBar#categoryProgress {{ background:#EAF0F8; border:none; border-radius:3px; }}"
-                f"QProgressBar#categoryProgress::chunk {{ background:{color}; border-radius:3px; }}"
-            )
-            category_layout.addWidget(bar)
-        main_column.addWidget(categories)
-
-        activity, activity_layout = section_card(
-            "Atividades recentes",
-            "As movimentações aparecerão aqui quando os módulos estiverem conectados."
-        )
-        activity_empty = QLabel("Ainda não há atividades para exibir.")
-        activity_empty.setObjectName("emptyState")
-        activity_empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        activity_empty.setMinimumHeight(74)
-        activity_layout.addWidget(activity_empty)
-        side_column.addWidget(activity)
-
-        agenda, agenda_layout = section_card(
-            "Próximos compromissos",
-            "A agenda ficará disponível nesta área em uma próxima evolução."
-        )
-        agenda_empty = QLabel("Nenhum compromisso conectado.")
-        agenda_empty.setObjectName("emptyState")
-        agenda_empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        agenda_empty.setMinimumHeight(74)
-        agenda_layout.addWidget(agenda_empty)
-        side_column.addWidget(agenda)
-
-        stock, stock_layout = section_card("Resumo do estoque")
-        for label, detail, color in [
-            ("Total de produtos", "Catálogo cadastrado", "#315FE8"),
-            ("Disponibilidade", "Unidades em estoque", "#0F9F83"),
-            ("Estoque baixo", "Itens que exigem atenção", "#D45D64"),
-        ]:
+        category, category_layout = make_card("Categorias de Produtos")
+        category_row = QHBoxLayout()
+        category_row.addWidget(DonutChart(preview_mode), 1)
+        legend = QVBoxLayout()
+        for name, value, color in [("Armações","39%","#2165F5"),("Lentes","24%","#41BFA5"),("Óculos de Sol","18%","#F5B844"),("Acessórios","11%","#8B4CE3"),("Outros","8%","#7B91B9")]:
             line = QHBoxLayout()
-            dot = QLabel("●")
+            dot = label("●", "legendDot")
             dot.setStyleSheet(f"color:{color}; background:transparent;")
-            text_box = QVBoxLayout()
-            text_box.setSpacing(2)
-            title_label = QLabel(label)
-            title_label.setObjectName("chartCategoryLabel")
-            detail_label = QLabel(detail)
-            detail_label.setObjectName("muted")
-            text_box.addWidget(title_label)
-            text_box.addWidget(detail_label)
-            value = QLabel("—")
-            value.setObjectName("chartValue")
             line.addWidget(dot)
-            line.addLayout(text_box, 1)
-            line.addWidget(value)
-            stock_layout.addLayout(line)
-        side_column.addWidget(stock)
+            line.addWidget(label(name, "legendLabel"),1)
+            line.addWidget(label(value if preview_mode else "—", "legendValue"))
+            legend.addLayout(line)
+        category_row.addLayout(legend, 1)
+        category_layout.addLayout(category_row)
+        main_layout.addWidget(category)
 
-        columns.addLayout(main_column, 7)
-        columns.addLayout(side_column, 4)
+        bottom = QGridLayout()
+        bottom.setHorizontalSpacing(12)
+        products, products_layout = make_card("Produtos Mais Vendidos")
+        if preview_mode:
+            for name, code, trend_text in [("Armação Ray-Ban","RBS228","↑ 12%"),("Óculos de Sol Oakley","OO9186","↑ 6%"),("Lente Zeiss","ZEISS 1.60","↑ 9%"),("Armação Vogue","VO5338","↑ 5%")]:
+                line = QHBoxLayout()
+                line.addWidget(label("◉", "productThumb"))
+                item_text = QVBoxLayout()
+                item_text.addWidget(label(name, "productName"))
+                item_text.addWidget(label(code, "productCode"))
+                line.addLayout(item_text,1)
+                line.addWidget(label(trend_text, "metricGrowth"))
+                products_layout.addLayout(line)
+        else:
+            products_layout.addWidget(label("Os produtos mais vendidos aparecerão após integração.", "emptyState"))
+        bottom.addWidget(products,0,0)
+        promo = QFrame()
+        promo.setObjectName("promoCard")
+        promo_layout = QVBoxLayout(promo)
+        promo_layout.addStretch()
+        promo_layout.addWidget(label("Qualidade, estilo\ne confiança em cada olhar.", "promoTitle"))
+        promo_layout.addWidget(label("Ótica Linda Fashion", "promoCaption"))
+        bottom.addWidget(promo,0,1)
+        stock, stock_layout = make_card("Resumo do Estoque")
+        for title, amount, tint in [("Total de Produtos","248" if preview_mode else "—","#2165F5"),("Em Estoque","224" if preview_mode else "—","#16A889"),("Estoque Baixo","12" if preview_mode else "—","#E64C5A")]:
+            line=QHBoxLayout()
+            line.addWidget(label("●", "legendDot"))
+            line.addWidget(label(title, "stockLabel"),1)
+            val=label(amount, "stockValue")
+            if title=="Estoque Baixo": val.setStyleSheet("color:#E64C5A; background:transparent;")
+            line.addWidget(val)
+            stock_layout.addLayout(line)
+        bottom.addWidget(stock,0,2)
+        for i in range(3): bottom.setColumnStretch(i,1)
+        main_layout.addLayout(bottom)
+
+        activity, activity_layout = make_card("Atividades Recentes")
+        view_all = QPushButton("Ver todas")
+        view_all.setObjectName("textAction")
+        activity_layout.itemAt(0).widget().setParent(None)
+        header = QHBoxLayout()
+        header.addWidget(label("Atividades Recentes","cardTitle"))
+        header.addStretch()
+        header.addWidget(view_all)
+        activity_layout.insertLayout(0,header)
+        activities = [
+            ("◇","Novo produto cadastrado","Armação Ray-Ban","Hoje, 10:24","#EAF2FF","#2165F5"),
+            ("🛒","Venda realizada","R$ 348,90","Hoje, 09:17","#E4F8F2","#14A887"),
+            ("♙","Cliente cadastrado","Mariana Costa","Hoje, 08:42","#FFF0F2","#F05B72"),
+            ("▧","Produto atualizado","Lente Zeiss","Hoje, 08:15","#EAF2FF","#3478F6"),
+            ("▣","Usuário realizou login","Ana Silva","Hoje, 07:58","#F0ECFF","#7958D7"),
+        ]
+        if preview_mode:
+            for ico, title, detail, time, bg, fg in activities:
+                row=QHBoxLayout()
+                ico_label=label(ico,"activityIcon")
+                ico_label.setStyleSheet(f"background:{bg}; color:{fg};")
+                row.addWidget(ico_label)
+                text_box=QVBoxLayout()
+                text_box.addWidget(label(title,"activityTitle"))
+                text_box.addWidget(label(detail,"activityDetail"))
+                row.addLayout(text_box,1)
+                row.addWidget(label(time,"activityTime"))
+                activity_layout.addLayout(row)
+        else:
+            activity_layout.addWidget(label("As movimentações reais aparecerão aqui.", "emptyState"))
+        side_layout.addWidget(activity)
+
+        agenda, agenda_layout = make_card("Próximos Compromissos")
+        agenda_header=QHBoxLayout()
+        agenda_header.addWidget(label("Próximos Compromissos","cardTitle"))
+        agenda_header.addStretch()
+        agenda_header.addWidget(QPushButton("Ver agenda", objectName="textAction"))
+        agenda_layout.itemAt(0).widget().setParent(None)
+        agenda_layout.insertLayout(0,agenda_header)
+        if preview_mode:
+            agenda_layout.addWidget(label("Hoje, 16 de Abril", "agendaDate"))
+            for time, title, detail in [("09:00","Atendimento - João Santos","Consulta de armações"),("10:30","Consulta - Maria Oliveira","Revisão de grau"),("14:00","Venda - Carlos Lima","Lentes e armação"),("16:00","Atendimento - Ana Costa","Escolha de armação")]:
+                row=QHBoxLayout()
+                row.addWidget(label("□  "+time,"agendaTime"))
+                row.addWidget(label("●","agendaDot"))
+                text_box=QVBoxLayout()
+                text_box.addWidget(label(title,"activityTitle"))
+                text_box.addWidget(label(detail,"activityDetail"))
+                row.addLayout(text_box,1)
+                agenda_layout.addLayout(row)
+        else:
+            agenda_layout.addWidget(label("Nenhum compromisso conectado.", "emptyState"))
+        side_layout.addWidget(agenda)
+
+        columns.addWidget(main,0,0)
+        columns.addWidget(side,0,1)
         root.addLayout(columns)
 
-        modules_heading = QHBoxLayout()
-        modules_title = QLabel("Todos os módulos")
-        modules_title.setObjectName("sectionTitle")
-        modules_note = QLabel("Acesso às áreas do sistema")
-        modules_note.setObjectName("muted")
-        modules_heading.addWidget(modules_title)
-        modules_heading.addStretch()
-        modules_heading.addWidget(modules_note)
-        root.addLayout(modules_heading)
-
-        modules_grid = QGridLayout()
-        modules_grid.setHorizontalSpacing(12)
-        modules_grid.setVerticalSpacing(12)
-        for index, (name, description, abbreviation) in enumerate(MODULES):
-            card = ModuleCard(name, description, abbreviation)
-            card.clicked.connect(lambda checked=False, module=name: self.module_requested.emit(module))
-            modules_grid.addWidget(card, index // 3, index % 3)
-        root.addLayout(modules_grid)
-
-        footer = QFrame()
-        footer.setObjectName("dashboardFooter")
-        footer_layout = QHBoxLayout(footer)
-        footer_layout.setContentsMargins(14, 10, 14, 10)
-        status_dot = QLabel("●")
-        status_dot.setStyleSheet("color:#0F9F83; background:transparent;")
-        status_text = QLabel(
-            "Pré-visualização ativa — dados demonstrativos não são persistidos."
-            if preview_mode else "Painel pronto para receber os dados da sua operação."
-        )
-        status_text.setObjectName("muted")
-        footer_layout.addWidget(status_dot)
-        footer_layout.addWidget(status_text)
-        footer_layout.addStretch()
-        brand = QLabel("AMT SISTEMAS")
-        brand.setObjectName("footerBrand")
-        footer_layout.addWidget(brand)
-        root.addWidget(footer)
+        modules_header=QHBoxLayout()
+        modules_header.addWidget(label("Todos os módulos","sectionTitle"))
+        modules_header.addStretch()
+        modules_header.addWidget(label("Acesso às áreas do sistema","muted"))
+        root.addLayout(modules_header)
+        module_grid=QGridLayout()
+        module_grid.setHorizontalSpacing(12)
+        module_grid.setVerticalSpacing(12)
+        for i,(name,description,icon) in enumerate(MODULES):
+            card=ModuleCard(name,description,icon)
+            card.clicked.connect(lambda checked=False, target=name: self.module_requested.emit(target))
+            module_grid.addWidget(card,i//3,i%3)
+        root.addLayout(module_grid)
+        footer=QHBoxLayout()
+        footer.addWidget(label("●", "statusDot"))
+        footer.addWidget(label("Pré-visualização ativa — dados demonstrativos não são persistidos." if preview_mode else "Painel pronto para receber os dados da sua operação.", "muted"))
+        footer.addStretch()
+        footer.addWidget(label("ÓTICA LINDA FASHION", "footerBrand"))
+        root.addLayout(footer)
