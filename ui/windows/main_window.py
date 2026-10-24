@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
 
         sidebar = QFrame()
         sidebar.setObjectName("appSidebar")
-        sidebar.setFixedWidth(238)
+        sidebar.setFixedWidth(230)
         side_layout = QVBoxLayout(sidebar)
         side_layout.setContentsMargins(18, 22, 18, 18)
         side_layout.setSpacing(8)
@@ -125,9 +125,9 @@ class MainWindow(QMainWindow):
 
         topbar = QFrame()
         topbar.setObjectName("topbar")
-        topbar.setFixedHeight(72)
+        topbar.setFixedHeight(56)
         topbar_layout = QHBoxLayout(topbar)
-        topbar_layout.setContentsMargins(20, 10, 24, 10)
+        topbar_layout.setContentsMargins(20, 8, 24, 8)
         topbar_layout.setSpacing(12)
 
         menu_button = QPushButton()
@@ -202,7 +202,7 @@ class MainWindow(QMainWindow):
         self._scroll.setWidget(self._dashboard)
         scroll_host = QWidget()
         scroll_layout = QVBoxLayout(scroll_host)
-        scroll_layout.setContentsMargins(30, 28, 30, 24)
+        scroll_layout.setContentsMargins(20, 20, 20, 16)
         scroll_layout.addWidget(self._scroll)
         workspace_layout.addWidget(scroll_host, 1)
 
