@@ -1,14 +1,26 @@
-# Supabase migrations
+# Supabase migrations and local connection
 
-Execute os arquivos SQL desta pasta no SQL Editor do projeto Supabase, em ordem alfabética.
+The application is configured for the Ótica Linda Fashion Supabase project:
+`https://swlccwcykxmvwptzxrxt.supabase.co`.
 
-## Produtos — 202610240001_products.sql
+## Configure the desktop application
 
-A migration cria as tabelas `organizations`, `organization_members` e `products`, índices para pesquisa e unicidade, controle de atualização e políticas RLS para separar os dados por organização. O cliente desktop usa somente a chave pública/publishable do projeto; nunca use `service_role` no aplicativo.
+1. Copy `.env.example` to `.env` in the project root.
+2. In the Supabase Dashboard for this project, open **Connect** or **Settings → API Keys** and copy the **publishable** key (usually starts with `sb_publishable_`). A legacy `anon` key is also a public client key if the project has not created publishable keys yet.
+3. Paste that value into `SUPABASE_PUBLISHABLE_KEY` in your local `.env`.
+4. Restart the application. Do not commit `.env` and never use a `service_role` or secret key in this desktop application.
 
-### Provisionar a primeira organização
+The project URL is configured as a safe default in `config/settings.py`; it can still be overridden through `SUPABASE_URL`.
 
-Depois de executar a migration, crie a organização no SQL Editor e copie o UUID retornado:
+## Products — `202610240001_products.sql`
+
+Before applying this migration, inspect the target project's actual schema and migration history to avoid conflicting with existing tables. Execute SQL migrations in this directory in order only after confirming they are needed.
+
+The migration creates `organizations`, `organization_members` and `products`, indexes, an update trigger and organization-scoped RLS policies. The desktop client uses only a public/publishable key; database RLS is the authorization boundary.
+
+### Provision the first organization
+
+After confirming the migration is installed, create the organization in the SQL Editor and copy the returned UUID:
 
 ```sql
 insert into public.organizations (name)
@@ -16,7 +28,7 @@ values ('Ótica Linda Fashion')
 returning id;
 ```
 
-Localize o UUID do usuário que já consegue entrar pelo Supabase Auth (Dashboard → Authentication → Users). Em seguida, substitua os dois valores de exemplo e execute:
+Locate the UUID of the user created in Supabase Auth (Dashboard → Authentication → Users). Replace the two example values and execute:
 
 ```sql
 insert into public.organization_members (organization_id, user_id, role, active)
@@ -28,6 +40,6 @@ values (
 );
 ```
 
-Faça esse provisionamento administrativo pelo Supabase, nunca por uma chave privilegiada embutida no aplicativo. O usuário precisa ter uma associação ativa para carregar e editar o catálogo.
+Perform this administrative provisioning in the Supabase Dashboard, never from the desktop app with a privileged key. The user needs an active organization membership to load and edit the product catalog.
 
-O modo `python app.py --preview` usa armazenamento temporário em memória e não grava dados no Supabase. Os dados inseridos nessa pré-visualização são descartados ao fechar o aplicativo.
+The `python app.py --preview` mode uses temporary in-memory storage and never writes to Supabase. Preview data is discarded when the app closes.
