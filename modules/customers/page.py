@@ -235,6 +235,9 @@ class CustomersPage(QDialog):
         root.addWidget(self.table, 1)
 
         crm_actions = QHBoxLayout()
+        self.orders_button = QPushButton("Pedidos e status")
+        self.orders_button.clicked.connect(self._manage_orders)
+        crm_actions.addWidget(self.orders_button)
         self.history_button = QPushButton("Ver histórico CRM")
         self.history_button.clicked.connect(self._view_interactions)
         crm_actions.addWidget(self.history_button)
@@ -344,6 +347,122 @@ class CustomersPage(QDialog):
             self._load_customers()
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao salvar cliente", f"Não foi possível salvar o cadastro.\n\n{exc}")
+
+    def _manage_orders(self) -> None:
+        customer = self._selected_customer()
+        if not customer:
+            QMessageBox.information(self, "Selecione um cliente", "Selecione um cliente para consultar ou cadastrar pedidos.")
+            return
+        if self._preview_mode:
+            QMessageBox.information(self, "Pedidos demonstrativos", "O acompanhamento de pedidos exige uma sessão autenticada para salvar dados.")
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Pedidos — {customer.get('full_name', 'Cliente')}")
+        dialog.resize(900, 560)
+        layout = QVBoxLayout(dialog)
+        title = QLabel(f"Pedidos de {customer.get('full_name', 'Cliente')}")
+        title.setStyleSheet("font-size:17pt;font-weight:750;color:#102957;")
+        layout.addWidget(title)
+        table = QTableWidget(0, 5)
+        table.setHorizontalHeaderLabels(["Nº pedido", "Descrição", "Status", "Previsão", "Criado em"])
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        layout.addWidget(table, 1)
+        form = QFormLayout()
+        number = QLineEdit()
+        number.setPlaceholderText("Ex.: OC-2026-001 (opcional)")
+        description = QLineEdit()
+        description.setPlaceholderText("Ex.: Armação + lentes multifocais")
+        status = QComboBox()
+        status.addItem("Em desenvolvimento", "em_desenvolvimento")
+        status.addItem("Óculos pronto", "pronto")
+        status.addItem("Entregue", "entregue")
+        status.addItem("Cancelado", "cancelado")
+        expected = QDateEdit()
+        expected.setCalendarPopup(True)
+        expected.setDisplayFormat("dd/MM/yyyy")
+        expected.setDate(date.today())
+        notes = QTextEdit()
+        notes.setPlaceholderText("Observações do pedido...")
+        notes.setMaximumHeight(70)
+        form.addRow("Número", number)
+        form.addRow("Descrição *", description)
+        form.addRow("Status", status)
+        form.addRow("Previsão", expected)
+        form.addRow("Observações", notes)
+        layout.addLayout(form)
+        actions = QHBoxLayout()
+        refresh_button = QPushButton("Atualizar lista")
+        save_button = QPushButton("Cadastrar pedido")
+        save_button.setObjectName("primaryButton")
+        actions.addWidget(refresh_button)
+        actions.addStretch(1)
+        actions.addWidget(save_button)
+        layout.addLayout(actions)
+        status_labels = {"em_desenvolvimento":"Em desenvolvimento","pronto":"Óculos pronto","entregue":"Entregue","cancelado":"Cancelado"}
+
+        def load_orders() -> None:
+            try:
+                rows = self._client.table("customer_orders").select(
+                    "id,order_number,description,status,expected_at,created_at"
+                ).eq("organization_id", self._organization_id).eq(
+                    "customer_id", customer["id"]
+                ).order("created_at", desc=True).execute().data or []
+            except Exception as exc:
+                QMessageBox.critical(dialog, "Erro ao carregar pedidos", f"Não foi possível carregar os pedidos.\\n\\n{exc}")
+                return
+            table.setRowCount(len(rows))
+            for index, row in enumerate(rows):
+                values = [
+                    row.get("order_number") or "—", row.get("description") or "",
+                    status_labels.get(row.get("status", ""), row.get("status", "")),
+                    row.get("expected_at") or "—", str(row.get("created_at") or "")[:10],
+                ]
+                for column, value in enumerate(values):
+                    table.setItem(index, column, QTableWidgetItem(str(value)))
+
+        def save_order() -> None:
+            if not description.text().strip():
+                QMessageBox.warning(dialog, "Descrição obrigatória", "Informe a descrição do pedido.")
+                description.setFocus()
+                return
+            order_status = status.currentData()
+            now = __import__("datetime").datetime.now().astimezone().isoformat()
+            record = {
+                "organization_id": self._organization_id,
+                "customer_id": customer["id"],
+                "order_number": number.text().strip(),
+                "description": description.text().strip(),
+                "status": order_status,
+                "expected_at": expected.date().toString("yyyy-MM-dd"),
+                "notes": notes.toPlainText().strip(),
+                "created_by": self._user_id,
+                "completed_at": now if order_status == "pronto" else None,
+                "delivered_at": now if order_status == "entregue" else None,
+            }
+            try:
+                self._client.table("customer_orders").insert(record).execute()
+                QMessageBox.information(dialog, "Pedido cadastrado", "Pedido salvo. Nenhuma mensagem externa foi enviada.")
+                number.clear()
+                description.clear()
+                notes.clear()
+                load_orders()
+            except Exception as exc:
+                QMessageBox.critical(dialog, "Erro ao salvar pedido", f"Não foi possível salvar o pedido.\\n\\n{exc}")
+
+        refresh_button.clicked.connect(load_orders)
+        save_button.clicked.connect(save_order)
+        load_orders()
+        dialog.setStyleSheet("""
+            QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; }
+            QLineEdit, QComboBox, QDateEdit, QTextEdit { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:8px; padding:8px; }
+            QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
+            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; padding:9px; }
+            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; }
+            QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
+        """)
+        dialog.exec()
 
     def _view_interactions(self) -> None:
         customer = self._selected_customer()
