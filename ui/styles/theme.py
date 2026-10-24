@@ -1378,10 +1378,37 @@ QDateEdit::drop-down, QDateTimeEdit::drop-down {
     border-left: 1px solid #E3EAF4;
     background: #F7F9FD;
 }
+/* Premium, clearly separated increment/decrement controls. */
+QAbstractSpinBox {
+    padding-right: 7px;
+}
 QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
-    width: 18px;
+    subcontrol-origin: border;
+    subcontrol-position: right;
+    width: 25px;
     border: none;
-    background: #F7F9FD;
+    border-left: 1px solid #DCE5F2;
+    background: #F4F7FC;
+}
+QAbstractSpinBox::up-button {
+    subcontrol-position: top right;
+    border-top-right-radius: 7px;
+    border-bottom: 1px solid #E1E8F2;
+}
+QAbstractSpinBox::down-button {
+    subcontrol-position: bottom right;
+    border-bottom-right-radius: 7px;
+}
+QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover {
+    background: #E7EEFC;
+    border-left-color: #AFC4EC;
+}
+QAbstractSpinBox::up-button:pressed, QAbstractSpinBox::down-button:pressed {
+    background: #D9E5FC;
+}
+QAbstractSpinBox::up-arrow, QAbstractSpinBox::down-arrow {
+    width: 8px;
+    height: 8px;
 }
 QCheckBox, QRadioButton {
     spacing: 9px;
@@ -1413,5 +1440,27 @@ QSlider::handle:horizontal {
 QDialogButtonBox QPushButton {
     min-width: 92px;
     min-height: 20px;
+}
+
+/* Normalize named inputs too: no legacy per-window field backgrounds. */
+QLineEdit#loginInput, QLineEdit#dashboardSearch,
+QComboBox#periodSelector {
+    background-color: #FFFFFF;
+    color: #172B4D;
+    border: 1px solid #CFD9E8;
+    border-radius: 8px;
+    selection-background-color: #315FE8;
+    selection-color: #FFFFFF;
+}
+QLineEdit#loginInput:focus, QLineEdit#dashboardSearch:focus,
+QComboBox#periodSelector:focus {
+    background-color: #FFFFFF;
+    border-color: #3973E6;
+}
+QLineEdit#loginInput:disabled, QLineEdit#dashboardSearch:disabled,
+QComboBox#periodSelector:disabled {
+    background-color: #F1F4F8;
+    color: #8793A6;
+    border-color: #E1E7F0;
 }
 """
