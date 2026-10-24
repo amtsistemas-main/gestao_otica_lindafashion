@@ -203,12 +203,12 @@ class BusinessAnalysisPanel(QWidget):
         root.addStretch(1)
 
         self.setStyleSheet("""
-            ##businessAnalysisPanel { color: #102957; }
-            #aiEyebrow { color: #16A889; font-size: 9pt; font-weight: 800; letter-spacing: 1px; }
-            #aiPageTitle { color: #102957; font-size: 23pt; font-weight: 800; }
-            #aiDescription { color: #657795; font-size: 10pt; }
+            #businessAnalysisPanel { color: #24334B; font-family: "Aptos", "Segoe UI"; }
+            #aiEyebrow { color: #167E6A; font-size: 8pt; font-weight: 750; letter-spacing: 1px; }
+            #aiPageTitle { color: #102957; font-family: "Aptos Display", "Aptos", "Segoe UI"; font-size: 22pt; font-weight: 750; }
+            #aiDescription { color: #60718A; font-size: 9pt; }
             #aiFormCard, #aiLoadingCard, #aiResultsCard {
-                background: #FFFFFF; border: 1px solid #E4EAF3; border-radius: 14px;
+                background: #FFFFFF; border: 1px solid #DCE3ED; border-radius: 8px;
             }
             #aiFieldLabel { color: #263B5E; font-size: 10pt; font-weight: 700; }
             #aiSelect, #aiContextInput {
@@ -219,14 +219,14 @@ class BusinessAnalysisPanel(QWidget):
                 color: #FFFFFF; background: #2165F5; border: 0; border-radius: 8px;
                 padding: 10px 16px; font-weight: 700; min-height: 18px;
             }
-            #primaryButton:hover { background: #1B3C72; }
+            #primaryButton:hover { background: #174EC7; }
             #secondaryButton {
                 color: #294265; background: #FFFFFF; border: 1px solid #DCE4F0;
                 border-radius: 8px; padding: 8px 11px; font-weight: 600;
             }
             #secondaryButton:hover { background: #F3F7FD; }
-            #aiCardTitle { color: #172C52; font-size: 14pt; font-weight: 750; }
-            #aiSummary { color: #4E6281; font-size: 10pt; }
+            #aiCardTitle { color: #172C52; font-family: "Aptos Display", "Aptos", "Segoe UI"; font-size: 13pt; font-weight: 750; }
+            #aiSummary { color: #4E6281; font-size: 9pt; }
             #aiStatusBadge { color: #167553; background: #E4F7EF; border-radius: 10px; padding: 6px 10px; font-weight: 700; }
             #aiSkeleton, #aiSkeletonLine { background: #EDF2F8; border: 0; border-radius: 8px; }
             #aiMetricCard { background: #F8FAFE; border: 1px solid #E6ECF5; border-radius: 10px; }
