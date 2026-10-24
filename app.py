@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication
 
 from config.settings import get_settings
 from ui.styles.theme import apply_theme
+from ui.components.window_header import install_window_headers
 from ui.windows.login_window import LoginWindow
 from ui.windows.main_window import MainWindow
 
@@ -32,6 +33,7 @@ def main() -> int:
     app.setOrganizationName("AMT Sistemas")
     app.setStyle("Fusion")
     apply_theme(app)
+    install_window_headers(app)
 
     if preview_mode:
         window = MainWindow(preview_mode=True)
