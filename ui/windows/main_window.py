@@ -36,9 +36,10 @@ MODULES = [
 
 
 class MainWindow(QMainWindow):
-    def __init__(self) -> None:
+    def __init__(self, preview_mode: bool = False) -> None:
         super().__init__()
-        self.setWindowTitle(WINDOW_TITLE)
+        self._preview_mode = preview_mode
+        self.setWindowTitle(f"{WINDOW_TITLE} — Pré-visualização" if preview_mode else WINDOW_TITLE)
         self.resize(1180, 780)
         self.setMinimumSize(900, 620)
         self._auth_service = AuthService()
@@ -83,14 +84,19 @@ class MainWindow(QMainWindow):
         header.addLayout(identity)
         header.addStretch()
 
-        user_email = session_manager.current.email if session_manager.current else ""
-        account_label = QLabel(user_email)
-        account_label.setObjectName("muted")
-        header.addWidget(account_label)
+        if preview_mode:
+            account_label = QLabel("MODO DE VISUALIZAÇÃO • SEM LOGIN")
+            account_label.setObjectName("muted")
+            header.addWidget(account_label)
+        else:
+            user_email = session_manager.current.email if session_manager.current else ""
+            account_label = QLabel(user_email)
+            account_label.setObjectName("muted")
+            header.addWidget(account_label)
 
-        logout_button = QPushButton("Sair")
-        logout_button.clicked.connect(self._logout)
-        header.addWidget(logout_button)
+            logout_button = QPushButton("Sair")
+            logout_button.clicked.connect(self._logout)
+            header.addWidget(logout_button)
         root.addLayout(header)
 
         root.addWidget(DashboardPage())
@@ -114,7 +120,11 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         status = QStatusBar()
-        status.showMessage("Sistema conectado à interface inicial • Módulos em evolução")
+        status.showMessage(
+            "Pré-visualização local • login e integração online não são necessários"
+            if preview_mode
+            else "Sistema conectado à interface inicial • Módulos em evolução"
+        )
         self.setStatusBar(status)
 
     def _open_module(self, module: str) -> None:
