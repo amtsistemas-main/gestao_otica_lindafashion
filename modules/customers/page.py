@@ -234,9 +234,15 @@ class CustomersPage(QDialog):
         self.table.doubleClicked.connect(self._edit_selected)
         root.addWidget(self.table, 1)
 
+        crm_actions = QHBoxLayout()
+        self.history_button = QPushButton("Ver histórico CRM")
+        self.history_button.clicked.connect(self._view_interactions)
+        crm_actions.addWidget(self.history_button)
         self.crm_button = QPushButton("Registrar interação / follow-up")
+        self.crm_button.setObjectName("primaryButton")
         self.crm_button.clicked.connect(self._add_interaction)
-        root.addWidget(self.crm_button)
+        crm_actions.addWidget(self.crm_button)
+        root.addLayout(crm_actions)
         self.setStyleSheet("""
             QDialog { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; font-size:10pt; }
             QLineEdit, QComboBox { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:8px; padding:9px; min-height:22px; }
@@ -338,6 +344,57 @@ class CustomersPage(QDialog):
             self._load_customers()
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao salvar cliente", f"Não foi possível salvar o cadastro.\n\n{exc}")
+
+    def _view_interactions(self) -> None:
+        customer = self._selected_customer()
+        if not customer:
+            QMessageBox.information(self, "Selecione um cliente", "Selecione um cliente para consultar o histórico CRM.")
+            return
+        if self._preview_mode:
+            QMessageBox.information(self, "Histórico demonstrativo", "O histórico persistido estará disponível quando houver registros reais.")
+            return
+        try:
+            rows = (
+                self._client.table("customer_interactions").select(
+                    "interaction_type,subject,body,order_status,follow_up_at,created_at"
+                ).eq("organization_id", self._organization_id)
+                .eq("customer_id", customer["id"]).order("created_at", desc=True)
+                .limit(100).execute().data or []
+            )
+        except Exception as exc:
+            QMessageBox.critical(self, "Erro ao consultar histórico", f"Não foi possível carregar o histórico CRM.\\n\\n{exc}")
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Histórico CRM — {customer.get('full_name', 'Cliente')}")
+        dialog.resize(760, 520)
+        layout = QVBoxLayout(dialog)
+        heading = QLabel(f"Histórico de relacionamento: {customer.get('full_name', 'Cliente')}")
+        heading.setStyleSheet("font-size:16pt;font-weight:750;color:#102957;")
+        layout.addWidget(heading)
+        table = QTableWidget(0, 5)
+        table.setHorizontalHeaderLabels(["Data", "Tipo", "Assunto", "Registro", "Status do pedido"])
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        type_labels = {"observacao":"Observação","ligacao":"Ligação","email":"E-mail","whatsapp":"WhatsApp","follow_up":"Follow-up","status_pedido":"Status do pedido"}
+        status_labels = {"em_desenvolvimento":"Em desenvolvimento","pronto":"Óculos pronto","entregue":"Entregue","cancelado":"Cancelado","": "—"}
+        table.setRowCount(len(rows))
+        for index, item in enumerate(rows):
+            values = [
+                str(item.get("created_at") or "")[:16].replace("T", " "),
+                type_labels.get(item.get("interaction_type", ""), item.get("interaction_type", "")),
+                item.get("subject", ""),
+                item.get("body", ""),
+                status_labels.get(item.get("order_status", ""), "—"),
+            ]
+            for column, value in enumerate(values):
+                table.setItem(index, column, QTableWidgetItem(str(value)))
+        layout.addWidget(table)
+        close_button = QPushButton("Fechar")
+        close_button.clicked.connect(dialog.accept)
+        layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignRight)
+        dialog.exec()
 
     def _add_interaction(self) -> None:
         customer = self._selected_customer()
