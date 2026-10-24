@@ -13,11 +13,11 @@ create table if not exists public.customer_orders (
  created_by uuid references auth.users(id) on delete set null,
  created_at timestamptz not null default now(),
  updated_at timestamptz not null default now(),
- constraint customer_orders_customer_org_fk foreign key (customer_id, organization_id) references public.customers(id, organization_id) on delete cascade,
- unique (organization_id, order_number)
+ constraint customer_orders_customer_org_fk foreign key (customer_id, organization_id) references public.customers(id, organization_id) on delete cascade
 );
 create index if not exists customer_orders_org_customer_idx on public.customer_orders (organization_id, customer_id, created_at desc);
 create index if not exists customer_orders_org_status_idx on public.customer_orders (organization_id, status, expected_at);
+create unique index if not exists customer_orders_org_order_number_unique on public.customer_orders (organization_id, order_number) where order_number <> '';
 alter table public.customer_orders enable row level security;
 drop policy if exists customer_orders_select_org_member on public.customer_orders;
 create policy customer_orders_select_org_member on public.customer_orders for select to authenticated using (exists (select 1 from public.organization_members om where om.organization_id=customer_orders.organization_id and om.user_id=(select auth.uid()) and om.active=true));
