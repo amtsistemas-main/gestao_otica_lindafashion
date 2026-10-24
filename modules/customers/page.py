@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 from datetime import date
+import json
+from urllib.error import URLError, HTTPError
+from urllib.request import Request, urlopen
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFormLayout, QFrame,
+    QCheckBox, QCalendarWidget, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFormLayout, QFrame,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QInputDialog, QMessageBox, QPushButton,
     QTableWidget, QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
@@ -73,10 +77,25 @@ class CustomerFormDialog(QDialog):
             for key, label_text in fields:
                 if key == "birth_date":
                     widget = QDateEdit()
+                    widget.setObjectName("birthDateEdit")
                     widget.setCalendarPopup(True)
                     widget.setDisplayFormat("dd/MM/yyyy")
                     widget.setSpecialValueText("Não informado")
                     widget.setDate(widget.minimumDate())
+                    calendar = QCalendarWidget()
+                    calendar.setGridVisible(False)
+                    calendar.setFirstDayOfWeek(Qt.DayOfWeek.Monday)
+                    calendar.setNavigationBarVisible(True)
+                    calendar.setStyleSheet("""
+                        QCalendarWidget QWidget { background:#FFFFFF; color:#102957; }
+                        QCalendarWidget QWidget#qt_calendar_navigationbar { background:#2165F5; }
+                        QCalendarWidget QToolButton { color:#FFFFFF; background:#2165F5; border:none; padding:7px; font-weight:700; }
+                        QCalendarWidget QToolButton:hover { background:#1749C2; }
+                        QCalendarWidget QMenu { background:#FFFFFF; color:#102957; }
+                        QCalendarWidget QSpinBox { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:5px; padding:3px; }
+                        QCalendarWidget QAbstractItemView { background:#FFFFFF; color:#102957; selection-background-color:#2165F5; selection-color:#FFFFFF; outline:0; }
+                    """)
+                    widget.setCalendarWidget(calendar)
                     raw = self._customer.get(key)
                     if raw:
                         widget.setDate(date.fromisoformat(str(raw)[:10]))
@@ -86,7 +105,18 @@ class CustomerFormDialog(QDialog):
                     widget = QLineEdit()
                     widget.setClearButtonEnabled(True)
                     widget.setPlaceholderText(label_text)
-                    widget.setText(str(self._customer.get(key) or ""))
+                    raw_value = str(self._customer.get(key) or "")
+                    if key == "document":
+                        widget.setInputMask("000.000.000-00;_")
+                        widget.setPlaceholderText("000.000.000-00")
+                    elif key in ("phone", "whatsapp"):
+                        widget.setInputMask("(00) 00000-0000;_")
+                        widget.setPlaceholderText("(00) 00000-0000")
+                    elif key == "postal_code":
+                        widget.setInputMask("00000-000;_")
+                        widget.setPlaceholderText("00000-000")
+                        widget.editingFinished.connect(self._lookup_postal_code)
+                    widget.setText(raw_value)
                 widget.setMinimumHeight(38)
                 self.fields[key] = widget
                 form.addRow(label_text, widget)
@@ -136,6 +166,39 @@ class CustomerFormDialog(QDialog):
             QCheckBox { spacing:8px; padding:5px; }
         """)
 
+    def _lookup_postal_code(self) -> None:
+        cep_widget = self.fields.get("postal_code")
+        if not isinstance(cep_widget, QLineEdit):
+            return
+        cep = "".join(character for character in cep_widget.text() if character.isdigit())
+        if len(cep) != 8:
+            return
+        try:
+            request = Request(
+                f"https://viacep.com.br/ws/{cep}/json/",
+                headers={"User-Agent": "OticaLindaFashion/1.0"},
+            )
+            with urlopen(request, timeout=4) as response:
+                address = json.loads(response.read().decode("utf-8"))
+            if address.get("erro"):
+                QMessageBox.information(self, "CEP não encontrado", "Confira o CEP informado e tente novamente.")
+                return
+            mapping = {
+                "street": address.get("logradouro", ""),
+                "neighborhood": address.get("bairro", ""),
+                "city": address.get("localidade", ""),
+                "state": address.get("uf", ""),
+            }
+            for key, value in mapping.items():
+                field = self.fields.get(key)
+                if isinstance(field, QLineEdit) and value and not field.text().strip():
+                    field.setText(str(value))
+        except (HTTPError, URLError, TimeoutError, OSError, ValueError):
+            QMessageBox.warning(
+                self, "Consulta de CEP indisponível",
+                "Não foi possível consultar o CEP agora. Você pode preencher o endereço manualmente.",
+            )
+
     def _validate(self) -> None:
         name = self.fields["full_name"].text().strip()
         if not name:
@@ -155,7 +218,7 @@ class CustomerFormDialog(QDialog):
             if isinstance(widget, QDateEdit):
                 record[key] = widget.date().toString("yyyy-MM-dd") if widget.date() > widget.minimumDate() else None
             elif isinstance(widget, QLineEdit):
-                record[key] = widget.text().strip()
+                record[key] = widget.text().replace("_", "").strip()
         record["notes"] = self.notes.toPlainText().strip()
         record["marketing_email_consent"] = self.email_consent.isChecked()
         record["whatsapp_consent"] = self.whatsapp_consent.isChecked()
