@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QWidget,
+    QProgressBar,
 )
 
 from ui.components.module_card import ModuleCard
