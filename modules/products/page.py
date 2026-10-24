@@ -61,7 +61,7 @@ class ProductFormDialog(QDialog):
                 font-weight: 650;
                 padding-left: 2px;
             }
-            QLineEdit, QDoubleSpinBox, QSpinBox, QTextEdit {
+            QLineEdit, QComboBox, QDoubleSpinBox, QSpinBox, QTextEdit {
                 background: #ffffff;
                 color: #172b4d;
                 border: 1px solid #d7e0ec;
@@ -70,7 +70,7 @@ class ProductFormDialog(QDialog):
                 selection-background-color: #2457d6;
                 min-height: 20px;
             }
-            QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus, QTextEdit:focus {
+            QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus, QSpinBox:focus, QTextEdit:focus {
                 border: 1px solid #3975e8;
                 background: #ffffff;
             }
