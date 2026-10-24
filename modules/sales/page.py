@@ -123,7 +123,49 @@ class SalesOrderDialog(QDialog):
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:7px; padding:9px 14px; }
             QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border-color:#2165F5; font-weight:700; }
             QHeaderView::section { background:#EEF3FC; color:#102957; padding:8px; border:0; font-weight:700; }
-        """)
+        
+            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
+            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                selection-background-color: #DCE8FF;
+                selection-color: #17365D;
+                outline: 0;
+            }
+            QComboBox QAbstractItemView::item, QComboBox QListView::item {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                min-height: 24px;
+                padding: 5px 8px;
+            }
+            QComboBox QAbstractItemView::item:selected,
+            QComboBox QAbstractItemView::item:selected:active,
+            QComboBox QAbstractItemView::item:selected:!active,
+            QComboBox QListView::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu {
+                background-color: #FFFFFF;
+                color: #172B4D;
+                border: 1px solid #D6E0EF;
+                padding: 4px;
+            }
+            QMenu::item {
+                background-color: transparent;
+                color: #172B4D;
+                padding: 7px 28px 7px 10px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #DCE8FF;
+                color: #17365D;
+            }
+            QMenu::item:disabled {
+                color: #8793A6;
+            }
+""")
         self._load_options()
 
     def _load_options(self) -> None:
