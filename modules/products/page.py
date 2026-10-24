@@ -6,7 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from PySide6.QtCore import Qt, QSize, QUrl
 from PySide6.QtGui import QBrush, QColor, QPixmap, QIcon
-from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
     QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QHeaderView,
     QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
@@ -439,9 +439,9 @@ class ProductsPage(QDialog):
         low_stock = sum(1 for item in self._visible_products if item.stock_quantity <= item.minimum_stock)
         self.stock_alert_label.setText(f"{low_stock} no estoque mínimo ou abaixo")
 
-    def _finish_image_request(self, reply: object, image_url: str, product_id: str | None) -> None:
+    def _finish_image_request(self, reply: QNetworkReply, image_url: str, product_id: str | None) -> None:
         try:
-            if reply.error() == reply.NetworkError.NoError:
+            if reply.error() == QNetworkReply.NetworkError.NoError:
                 pixmap = QPixmap()
                 if pixmap.loadFromData(bytes(reply.readAll())):
                     scaled = pixmap.scaled(
