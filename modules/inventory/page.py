@@ -443,7 +443,8 @@ class InventoryPage(QDialog):
                 "receive_purchase_request_item",
                 {
                     "p_purchase_request_item_id": item_combo.currentData(),
-                    "p_quantity": quantity.value(),\n                    "p_reason": "Recebimento de compra",
+                    "p_quantity": quantity.value(),
+                    "p_reason": "Recebimento de compra",
                     "p_reference": reference.text().strip(),
                 },
             ).execute()
