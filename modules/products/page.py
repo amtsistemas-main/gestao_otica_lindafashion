@@ -1,7 +1,7 @@
 """Products catalog page and product editor dialog."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor
@@ -129,7 +129,7 @@ class ProductFormDialog(QDialog):
     def _update_final_price(self, *_args: object) -> None:
         final = Decimal(str(self.sale_price.value())) * (
             Decimal("1") - Decimal(str(self.discount.value())) / Decimal("100")
-        )
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         self.final_price_label.setText(f"Preço final com desconto: {_currency(final)}")
 
     def _validate_and_accept(self) -> None:
@@ -281,7 +281,7 @@ class ProductsPage(QDialog):
             # offer to start a new product with the scanned value prefilled.
             if offer_barcode and term and not self._visible_products:
                 exact = term
-                if len(exact) >= 6 and exact.replace(" ", "").isalnum():
+                if len(exact) >= 8 and " " not in exact and exact.isalnum():
                     answer = QMessageBox.question(
                         self,
                         "Código não encontrado",
