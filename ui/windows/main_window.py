@@ -29,6 +29,7 @@ from modules.inventory.page import InventoryPage
 from modules.suppliers.page import SuppliersPage
 from modules.finance.page import FinancePage
 from modules.customers.page import CustomersPage
+from modules.sales.page import SalesPage
 from ui.pages.dashboard_page import DashboardPage
 from ui.components.ai_results_panel import BusinessAnalysisPanel
 from core.ai_analysis_service import AIAnalysisWorker
@@ -39,6 +40,7 @@ NAV_ITEMS = [
     ("Visão geral", "fa5s.home", None),
     ("Produtos", "fa5s.glasses", "Produtos"),
     ("Clientes", "fa5s.users", "Clientes"),
+    ("Vendas", "fa5s.cash-register", "Vendas"),
     ("Estoque", "fa5s.warehouse", "Estoque"),
     ("Fornecedores", "fa5s.truck", "Fornecedores"),
     ("Financeiro", "fa5s.wallet", "Financeiro"),
@@ -241,7 +243,7 @@ class MainWindow(QMainWindow):
             self._nav_buttons["Visão geral"].setChecked(True)
             return
 
-        if module in ("Produtos", "Estoque", "Fornecedores", "Financeiro", "Clientes"):
+        if module in ("Produtos", "Estoque", "Fornecedores", "Financeiro", "Clientes", "Vendas"):
             try:
                 if module == "Financeiro":
                     finance_window = FinancePage(preview_mode=self._preview_mode, parent=self)
@@ -259,6 +261,9 @@ class MainWindow(QMainWindow):
                         parent=self,
                     )
                     customers_window.exec()
+                elif module == "Vendas":
+                    sales_window = SalesPage(preview_mode=self._preview_mode, parent=self)
+                    sales_window.exec()
                 elif module == "Estoque":
                     inventory_window = InventoryPage(
                         preview_mode=self._preview_mode,
