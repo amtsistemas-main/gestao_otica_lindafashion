@@ -365,7 +365,9 @@ class DashboardPage(QWidget):
         agenda_header=QHBoxLayout()
         agenda_header.addWidget(label("Próximos Compromissos","cardTitle"))
         agenda_header.addStretch()
-        agenda_header.addWidget(QPushButton("Ver agenda", objectName="textAction"))
+        agenda_action = QPushButton("Ver agenda")
+        agenda_action.setObjectName("textAction")
+        agenda_header.addWidget(agenda_action)
         agenda_layout.itemAt(0).widget().setParent(None)
         agenda_layout.insertLayout(0,agenda_header)
         if preview_mode:
