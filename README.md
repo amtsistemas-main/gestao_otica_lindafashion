@@ -48,7 +48,7 @@ O fluxo de login requer as configurações públicas do Supabase no arquivo `.en
 - Início e indicadores
 - Produtos: cadastro, código de barras, SKU, custo, preço de venda, desconto, estoque mínimo e desativação
 - Estoque: saldo, estoque mínimo, histórico auditável de entradas/saídas/ajustes, alertas e solicitações de compra vinculadas a fornecedores
-- Fornecedores: cadastro básico integrado às solicitações de compra do Estoque
+- Fornecedores: cadastro completo fiscal, comercial, contato, endereço e pagamento; ativação/desativação e consulta dos produtos vinculados
 - Financeiro
 - Autenticação e sessão
 - Integrações de pagamento (provedor a definir)
@@ -59,9 +59,15 @@ O módulo separa modelos, regras de negócio, repositório e interface em `modul
 
 ## Módulo Estoque e compras
 
-As migrations `202610240002_inventory_purchase_requests.sql`, `202610240003_receive_purchase_items.sql` e `202610240004_inventory_indexes_security.sql` criam fornecedores, histórico de movimentações, solicitações de compra, recebimento transacional de mercadorias e índices de suporte. Elas já foram aplicadas no projeto Supabase conectado. As tabelas usam RLS para isolamento por organização.
+As migrations `202610240002_inventory_purchase_requests.sql`, `202610240003_receive_purchase_items.sql`, `202610240004_inventory_indexes_security.sql` e `202610240005_complete_supplier_catalog_and_product_link.sql` criam fornecedores, histórico de movimentações, solicitações de compra, recebimento transacional, cadastro completo de fornecedores e vínculo de fornecedor principal por produto. A migration 005 foi aplicada no projeto Supabase conectado. As tabelas usam RLS para isolamento por organização.
 
 Para registrar a chegada de mercadorias, aplique também `supabase/migrations/202610240003_purchase_receiving.sql`. Na aba Solicitações de compra, selecione o pedido e use **Receber mercadoria**. É possível receber quantidades parciais por item; cada confirmação registra a entrada no estoque, atualiza o histórico e recalcula o status da solicitação atomicamente. A quantidade recebida não pode ultrapassar o saldo pendente.\n\nO saldo não deve ser alterado diretamente no cadastro do produto para registrar uma entrada ou saída operacional. Use o módulo Estoque: a função transacional `record_stock_movement` bloqueia o registro do produto, calcula o novo saldo, impede saídas abaixo de zero e grava o histórico na mesma transação. Produtos com saldo igual ou abaixo do mínimo podem ser selecionados para abrir uma solicitação vinculada a um fornecedor e quantidade sugerida. O recebimento parcial ou total pode ser registrado a partir da solicitação: o banco atualiza o saldo do produto, registra a entrada e recalcula o status na mesma transação. O envio externo ao fornecedor por e-mail/WhatsApp permanece como etapa futura.
+
+## Módulo Fornecedores e vínculo com Produtos
+
+O módulo `modules/suppliers/` permite cadastrar nome de exibição, razão social, nome fantasia, CPF/CNPJ, inscrições estadual e municipal, contato, telefone, WhatsApp, e-mail, site, endereço completo, condições de pagamento, chave PIX, dados bancários e observações internas. Fornecedores podem ser ativados ou desativados sem excluir o histórico. A lista exibe quantos produtos estão vinculados e permite consultar os respectivos produtos.
+
+No cadastro de Produtos, o campo **Fornecedor principal** vincula o produto a um fornecedor da mesma organização. O fornecedor também aparece na tabela do catálogo. O relacionamento usa `products.supplier_id` com chave estrangeira composta por fornecedor e organização, evitando vínculo cruzado entre organizações. A migration `202610240005_complete_supplier_catalog_and_product_link.sql` foi aplicada no Supabase.
 
 ## Segurança e integridade
 
