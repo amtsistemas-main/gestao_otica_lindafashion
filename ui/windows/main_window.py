@@ -59,7 +59,8 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1120, 720)
         self._auth_service = AuthService()
         self._products_window: ProductsPage | None = None
-        self._nav_buttons: dict[str, QPushButton] = {}\n        self._sidebar_collapsed = False
+        self._nav_buttons: dict[str, QPushButton] = {}
+        self._sidebar_collapsed = False
 
         shell = QWidget()
         shell.setObjectName("appShell")
