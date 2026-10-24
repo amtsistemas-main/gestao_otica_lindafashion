@@ -281,10 +281,10 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(24, 24, 24, 24)
         panel = AIResultsPanel(dialog)
         panel.generate_requested.connect(
-            lambda request: self._run_ai_analysis(panel, request)
+            lambda request: self._ai_generation_unavailable(panel, request)
         )
         panel.regenerate_requested.connect(
-            lambda request: self._run_ai_analysis(panel, request)
+            lambda request: self._ai_generation_unavailable(panel, request)
         )
         scroll = QScrollArea(dialog)
         scroll.setWidgetResizable(True)
