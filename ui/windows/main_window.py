@@ -125,19 +125,13 @@ class MainWindow(QMainWindow):
         topbar_layout.setContentsMargins(28, 10, 28, 10)
         topbar_layout.setSpacing(12)
 
-        context = QVBoxLayout()
-        context.setSpacing(2)
-        context_title = QLabel("Painel de gestão")
-        context_title.setObjectName("topbarTitle")
-        context_subtitle = QLabel(
-            "Visão unificada da Ótica Linda Fashion"
-            if not preview_mode
-            else "Ambiente de demonstração • sem conexão com o banco"
-        )
-        context_subtitle.setObjectName("muted")
-        context.addWidget(context_title)
-        context.addWidget(context_subtitle)
-        topbar_layout.addLayout(context)
+        search_box = QLineEdit()
+        search_box.setObjectName("dashboardSearch")
+        search_box.setPlaceholderText("⌕   Buscar no sistema...")
+        search_box.setClearButtonEnabled(True)
+        search_box.setMinimumHeight(42)
+        search_box.setMaximumWidth(440)
+        topbar_layout.addWidget(search_box, 1)
         topbar_layout.addStretch()
 
         if preview_mode:
