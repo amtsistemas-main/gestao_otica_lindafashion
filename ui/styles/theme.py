@@ -7,7 +7,7 @@ THEME_QSS = """
 QWidget {
     background: #F5F7FB;
     color: #19243A;
-    font-family: "Aptos";
+    font-family: "Arial";
     font-size: 10pt;
 }
 QMainWindow, QDialog {
@@ -455,7 +455,7 @@ QTableWidget QLineEdit { padding: 4px 6px; border-radius: 4px; }
 
 
 def apply_theme(app: QApplication) -> None:
-    app.setFont(QFont("Aptos", 10))
+    app.setFont(QFont("Arial", 10))
     app.setStyleSheet(THEME_QSS + DASHBOARD_EXTRA_QSS)
 
 
@@ -916,7 +916,7 @@ QStatusBar {
 }
 /* Typography and spacing refinement */
 QWidget {
-    font-family: "Aptos";
+    font-family: "Arial";
     font-size: 9pt;
 }
 QFrame#topbar {
@@ -1026,7 +1026,7 @@ QPushButton#moduleCard:hover {
 
 /* Ótica Linda Fashion — visual system refinement */
 QWidget {
-    font-family: "Aptos", "Aptos";
+    font-family: "Arial", "Arial";
     font-size: 9pt;
     color: #24334B;
 }
@@ -1071,7 +1071,7 @@ QLabel#bannerGreeting {
     font-weight: 600;
 }
 QLabel#bannerTitle {
-    font-family: "Aptos Display", "Aptos", "Aptos";
+    font-family: "Arial", "Arial";
     font-size: 22pt;
     font-weight: 700;
     letter-spacing: 0px;
@@ -1081,13 +1081,13 @@ QLabel#bannerDescription {
     font-size: 9pt;
 }
 QLabel#cardTitle {
-    font-family: "Aptos Display", "Aptos", "Aptos";
+    font-family: "Arial", "Arial";
     color: #102957;
     font-size: 10pt;
     font-weight: 700;
 }
 QLabel#sectionTitle {
-    font-family: "Aptos Display", "Aptos", "Aptos";
+    font-family: "Arial", "Arial";
     font-size: 12pt;
     font-weight: 750;
 }
@@ -1097,7 +1097,7 @@ QLabel#metricLabel {
     font-weight: 600;
 }
 QLabel#metricValue {
-    font-family: "Aptos Display", "Aptos", "Aptos";
+    font-family: "Arial", "Arial";
     color: #102957;
     font-size: 21pt;
     font-weight: 700;
@@ -1151,7 +1151,7 @@ QFrame#loginBrandPanel {
     border-radius: 14px;
 }
 QLabel#loginBrandTitle, QLabel#loginFormTitle {
-    font-family: "Aptos Display", "Aptos", "Aptos";
+    font-family: "Arial", "Arial";
     font-weight: 700;
     letter-spacing: 0px;
 }
