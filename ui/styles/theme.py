@@ -565,4 +565,307 @@ QLineEdit#dashboardSearch:focus {
     background: #FFFFFF;
     border: 1px solid #AFC2F4;
 }
+QWidget#dashboardPage, QWidget#transparentHost {
+    background: transparent;
+}
+QFrame#appSidebar {
+    background: #0E2857;
+    border-right: 1px solid #183968;
+}
+QLabel#sidebarLogo {
+    background: transparent;
+    padding: 0px;
+}
+QLabel#sidebarEyebrow {
+    background: transparent;
+    color: #D3DFF3;
+    font-size: 7pt;
+    letter-spacing: 1px;
+}
+QLabel#sidebarFooter {
+    background: transparent;
+    color: #9EB5DD;
+    padding: 8px 0px;
+}
+QPushButton#navButton {
+    background: transparent;
+    color: #E4ECFA;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    padding: 10px 9px;
+    text-align: left;
+    font-size: 9pt;
+    font-weight: 500;
+}
+QPushButton#navButton:hover {
+    background: #18396F;
+    color: #FFFFFF;
+}
+QPushButton#navButton:checked {
+    background: #1557D8;
+    color: #FFFFFF;
+    border: 1px solid #2868EA;
+    font-weight: 700;
+}
+QFrame#welcomeBanner {
+    background: #F1F6FD;
+    border: 1px solid #DFE9F8;
+    border-radius: 12px;
+}
+QLabel#bannerGreeting {
+    background: transparent;
+    color: #102957;
+    font-size: 10pt;
+    font-weight: 600;
+}
+QLabel#bannerTitle {
+    background: transparent;
+    color: #102957;
+    font-size: 20pt;
+    font-weight: 800;
+}
+QLabel#bannerDescription {
+    background: transparent;
+    color: #526D99;
+    font-size: 9pt;
+}
+QLabel#bannerSlogan {
+    background: transparent;
+    color: #1C396B;
+    font-family: Georgia;
+    font-size: 13pt;
+}
+QLabel#bannerAccent {
+    background: transparent;
+    color: #1764F5;
+    font-size: 10pt;
+}
+QFrame#analyticsCard, QFrame#metricCard {
+    background: #FFFFFF;
+    border: 1px solid #E1EAF7;
+    border-radius: 10px;
+}
+QLabel#cardTitle {
+    background: transparent;
+    color: #102957;
+    font-size: 10pt;
+    font-weight: 750;
+}
+QLabel#sectionTitle {
+    background: transparent;
+    color: #102957;
+    font-size: 12pt;
+    font-weight: 750;
+}
+QLabel#actionHint {
+    background: transparent;
+    color: #6880A6;
+    font-size: 8pt;
+}
+QPushButton#quickTile {
+    background: #FFFFFF;
+    color: #102957;
+    border: 1px solid #DCE7F7;
+    border-radius: 10px;
+    text-align: left;
+}
+QPushButton#quickTile:hover {
+    background: #F7FAFF;
+    border: 1px solid #AFC7F6;
+}
+QLabel#quickIcon {
+    min-width: 30px;
+    max-width: 30px;
+    min-height: 30px;
+    max-height: 30px;
+    border-radius: 15px;
+    qproperty-alignment: AlignCenter;
+    font-size: 15pt;
+    font-weight: 700;
+}
+QLabel#quickTitle {
+    background: transparent;
+    color: #1D4FAD;
+    font-size: 9pt;
+    font-weight: 700;
+}
+QLabel#quickDescription {
+    background: transparent;
+    color: #7186A8;
+    font-size: 8pt;
+}
+QLabel#quickArrow {
+    background: transparent;
+    color: #1764F5;
+    font-size: 16pt;
+}
+QLabel#metricIcon {
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 28px;
+    max-height: 28px;
+    border-radius: 14px;
+    qproperty-alignment: AlignCenter;
+    font-size: 12pt;
+}
+QLabel#metricLabel {
+    background: transparent;
+    color: #42577B;
+    font-size: 9pt;
+}
+QLabel#metricValue {
+    background: transparent;
+    color: #102957;
+    font-size: 20pt;
+    font-weight: 800;
+}
+QLabel#metricGrowth {
+    background: transparent;
+    color: #0F9F70;
+    font-size: 8pt;
+    font-weight: 700;
+}
+QLabel#muted {
+    background: transparent;
+    color: #7084A5;
+    font-size: 8pt;
+}
+QComboBox#periodSelector {
+    background: #FFFFFF;
+    color: #38557F;
+    border: 1px solid #DCE6F5;
+    border-radius: 8px;
+    padding: 5px 8px;
+    min-width: 62px;
+}
+QLabel#legendDot {
+    background: transparent;
+    font-size: 10pt;
+}
+QLabel#legendLabel, QLabel#stockLabel {
+    background: transparent;
+    color: #40577D;
+    font-size: 8pt;
+}
+QLabel#legendValue, QLabel#stockValue {
+    background: transparent;
+    color: #304B75;
+    font-size: 8pt;
+    font-weight: 700;
+}
+QLabel#productThumb {
+    background: #F1F5FB;
+    color: #355E9B;
+    border-radius: 7px;
+    min-width: 34px;
+    max-width: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    qproperty-alignment: AlignCenter;
+    font-size: 14pt;
+}
+QLabel#productName, QLabel#activityTitle {
+    background: transparent;
+    color: #27436E;
+    font-size: 8pt;
+    font-weight: 600;
+}
+QLabel#productCode, QLabel#activityDetail, QLabel#activityTime {
+    background: transparent;
+    color: #7B8EAD;
+    font-size: 7pt;
+}
+QLabel#activityIcon {
+    min-width: 31px;
+    max-width: 31px;
+    min-height: 31px;
+    max-height: 31px;
+    border-radius: 16px;
+    qproperty-alignment: AlignCenter;
+    font-size: 12pt;
+}
+QPushButton#textAction {
+    background: transparent;
+    color: #1764F5;
+    border: none;
+    padding: 2px;
+    font-size: 8pt;
+}
+QPushButton#textAction:hover {
+    color: #0E43B8;
+    text-decoration: underline;
+}
+QLabel#agendaDate {
+    background: transparent;
+    color: #27436E;
+    font-size: 8pt;
+    font-weight: 700;
+}
+QLabel#agendaTime {
+    background: transparent;
+    color: #60799E;
+    font-size: 7pt;
+}
+QLabel#agendaDot {
+    background: transparent;
+    color: #1764F5;
+    font-size: 8pt;
+}
+QFrame#promoCard {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7294B8, stop:0.45 #1F477A, stop:1 #102957);
+    border: 1px solid #294D7B;
+    border-radius: 9px;
+}
+QLabel#promoTitle {
+    background: transparent;
+    color: #FFFFFF;
+    font-size: 11pt;
+    font-weight: 750;
+}
+QLabel#promoCaption {
+    background: transparent;
+    color: #D8E5F7;
+    font-size: 7pt;
+}
+QLabel#statusDot {
+    background: transparent;
+    color: #0F9F70;
+}
+QLabel#footerBrand {
+    background: transparent;
+    color: #7184A1;
+    font-size: 8pt;
+    font-weight: 750;
+}
+QPushButton#topbarIconButton {
+    background: transparent;
+    color: #102957;
+    border: none;
+    border-radius: 9px;
+    font-size: 16pt;
+}
+QPushButton#topbarIconButton:hover {
+    background: #EDF3FC;
+}
+QLabel#accountAvatar {
+    background: #E4ECFA;
+    color: #102957;
+    border: 1px solid #D6E2F5;
+    border-radius: 20px;
+    font-size: 17pt;
+}
+QLabel#profileRole {
+    background: transparent;
+    color: #60799E;
+    font-size: 8pt;
+}
+QScrollArea#mainScroll {
+    background: transparent;
+    border: none;
+}
+QStatusBar {
+    background: #FFFFFF;
+    color: #7A8CA8;
+    border-top: 1px solid #E6EDF7;
+}
 """
