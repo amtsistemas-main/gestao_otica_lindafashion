@@ -22,6 +22,7 @@ from core.auth_service import AuthService
 from core.session_manager import session_manager
 from ui.components.module_card import ModuleCard
 from ui.pages.dashboard_page import DashboardPage
+from modules.products.page import ProductsPage
 
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
 
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow):
         self.resize(1180, 780)
         self.setMinimumSize(900, 620)
         self._auth_service = AuthService()
+        self._products_window: ProductsPage | None = None
 
         central = QWidget()
         root = QVBoxLayout(central)
@@ -128,6 +130,19 @@ class MainWindow(QMainWindow):
         self.setStatusBar(status)
 
     def _open_module(self, module: str) -> None:
+        if module == "Produtos":
+            try:
+                if self._products_window is None:
+                    self._products_window = ProductsPage(preview_mode=self._preview_mode, parent=self)
+                self._products_window.exec()
+            except Exception as exc:
+                QMessageBox.critical(
+                    self,
+                    "Não foi possível abrir Produtos",
+                    str(exc),
+                )
+            return
+
         QMessageBox.information(
             self,
             module,
