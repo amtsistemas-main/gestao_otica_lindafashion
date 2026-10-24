@@ -1103,6 +1103,46 @@ QStatusBar {
     border-top: 1px solid #DDE3EC;
 }
 
+
+/* Sign-in: editorial typography and restrained geometry */
+QFrame#loginBrandPanel {
+    background: #102957;
+    border: 1px solid #203D68;
+    border-radius: 14px;
+}
+QLabel#loginBrandTitle, QLabel#loginFormTitle {
+    font-family: "Aptos Display", "Aptos", "Segoe UI";
+    font-weight: 700;
+    letter-spacing: 0px;
+}
+QLabel#loginBrandTitle {
+    font-size: 25pt;
+}
+QLabel#loginBrandDescription {
+    color: #D5E0F1;
+    font-size: 10pt;
+}
+QFrame#loginFeature {
+    background: #183968;
+    border: 1px solid #31517F;
+    border-radius: 8px;
+}
+QFrame#loginCard {
+    border: 1px solid #DCE3ED;
+    border-radius: 12px;
+}
+QLabel#loginFormTitle {
+    font-size: 22pt;
+}
+QLineEdit#loginInput {
+    border-radius: 6px;
+    padding: 11px 12px;
+}
+QPushButton#primaryButton {
+    border-radius: 6px;
+    font-weight: 700;
+}
+
 /* Product catalog: refined SaaS surface and clear actions */
 QDialog {
     background: #F5F8FD;
