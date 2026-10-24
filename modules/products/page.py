@@ -127,8 +127,9 @@ class ProductFormDialog(QDialog):
         return field
 
     def _update_final_price(self, *_args: object) -> None:
-        final = Decimal(str(self.sale_price.value())) * (
-            Decimal("1") - Decimal(str(self.discount.value())) / Decimal("100")
+        final = (
+            Decimal(str(self.sale_price.value()))
+            * (Decimal("1") - Decimal(str(self.discount.value())) / Decimal("100"))
         ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         self.final_price_label.setText(f"Preço final com desconto: {_currency(final)}")
 
