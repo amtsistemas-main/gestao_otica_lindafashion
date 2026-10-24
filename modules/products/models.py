@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
 
@@ -35,7 +35,7 @@ class Product:
 
     @property
     def final_price(self) -> Decimal:
-        return (self.sale_price * (Decimal("1") - self.discount_percent / Decimal("100"))).quantize(Decimal("0.01"))
+        return (self.sale_price * (Decimal("1") - self.discount_percent / Decimal("100"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     @property
     def gross_margin_percent(self) -> Decimal:
