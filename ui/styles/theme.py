@@ -983,4 +983,93 @@ QPushButton#moduleCard:hover {
     border-color: #B9CCF3;
 }
 
+/* Product catalog: refined SaaS surface and clear actions */
+QDialog {
+    background: #F5F8FD;
+    color: #172B4D;
+}
+QLabel#pageTitle {
+    color: #102957;
+    font-size: 23pt;
+    font-weight: 800;
+}
+QLabel#sectionTitle {
+    color: #102957;
+    font-size: 11pt;
+    font-weight: 750;
+}
+QLabel#muted {
+    color: #7184A1;
+    font-size: 9pt;
+}
+QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox {
+    background: #FFFFFF;
+    color: #172B4D;
+    border: 1px solid #D9E3F1;
+    border-radius: 8px;
+    padding: 8px 10px;
+    selection-background-color: #315FE8;
+    selection-color: #FFFFFF;
+}
+QLineEdit:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid #5B83F0;
+}
+QTableWidget {
+    background: #FFFFFF;
+    alternate-background-color: #F7F9FD;
+    border: 1px solid #E0E8F4;
+    border-radius: 12px;
+    gridline-color: #EDF1F7;
+    selection-background-color: #E8F0FF;
+    selection-color: #102957;
+    padding: 4px;
+}
+QTableWidget::item {
+    padding: 7px 6px;
+    border-bottom: 1px solid #EDF1F7;
+}
+QTableWidget::item:selected {
+    background: #E8F0FF;
+    color: #102957;
+}
+QHeaderView::section {
+    background: #EFF4FC;
+    color: #42577B;
+    border: none;
+    border-bottom: 1px solid #DCE5F2;
+    padding: 12px 8px;
+    font-size: 9pt;
+    font-weight: 750;
+}
+QLabel#productImagePreview {
+    background: #FFFFFF;
+    color: #7A8CA8;
+    border: 1px dashed #C9D7EA;
+    border-radius: 10px;
+    font-size: 8pt;
+}
+QPushButton#secondaryQuickAction {
+    background: #FFFFFF;
+    color: #244BAA;
+    border: 1px solid #DCE5F5;
+    border-radius: 9px;
+    padding: 10px 12px;
+    font-weight: 700;
+}
+QPushButton#secondaryQuickAction:hover {
+    background: #F0F5FF;
+    border-color: #B9C9F2;
+}
+QPushButton#primaryButton {
+    background: #245DE0;
+    color: #FFFFFF;
+    border: 1px solid #245DE0;
+    border-radius: 9px;
+    padding: 11px 15px;
+    font-weight: 750;
+}
+QPushButton#primaryButton:hover {
+    background: #194FC9;
+}
+
 """
