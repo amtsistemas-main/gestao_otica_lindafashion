@@ -416,9 +416,10 @@ QHeaderView::section {
 
 def apply_theme(app: QApplication) -> None:
     app.setFont(QFont("Segoe UI", 10))
-    app.setStyleSheet(THEME_QSS)
+    app.setStyleSheet(THEME_QSS + DASHBOARD_EXTRA_QSS)
 
 
+DASHBOARD_EXTRA_QSS = """
 /* Dashboard visual refresh: navy navigation, white surfaces and airy analytics. */
 QFrame#appSidebar {
     background: #102957;
@@ -564,3 +565,4 @@ QLineEdit#dashboardSearch:focus {
     background: #FFFFFF;
     border: 1px solid #AFC2F4;
 }
+"""
