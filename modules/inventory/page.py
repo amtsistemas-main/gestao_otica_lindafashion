@@ -26,7 +26,7 @@ class InventoryPage(QDialog):
         self.resize(1180, 760)
         self.setMinimumSize(900, 620)
         self.setStyleSheet("""
-            QDialog { background:#F5F8FD; color:#172B4D; font-family:"Segoe UI"; font-size:10pt; }
+            QDialog { background:#F5F8FD; color:#172B4D; font-family:"Arial"; font-size:10pt; }
             QLabel#pageTitle { color:#102957; font-size:23pt; font-weight:800; }
             QLabel#muted { color:#7184A1; }
             QLabel#metric { background:#FFFFFF; color:#17365D; border:1px solid #DFE7F3; border-radius:10px; padding:14px; font-size:12pt; font-weight:700; }
@@ -35,7 +35,7 @@ class InventoryPage(QDialog):
             QPushButton:hover { background:#F0F5FF; }
             QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
             QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; border-radius:10px; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
-            QHeaderView::section { background:#EFF4FC; color:#42577B; border:none; padding:10px; font-weight:750; }
+            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; border-right:1px solid #28456F; padding:11px 8px; min-height:22px; font-weight:700; }
             QTabWidget::pane { border:1px solid #DFE7F3; background:#FFFFFF; border-radius:10px; }
             QTabBar::tab { background:#EAF0F9; color:#526782; padding:10px 18px; margin-right:4px; border-top-left-radius:7px; border-top-right-radius:7px; }
             QTabBar::tab:selected { background:#FFFFFF; color:#2457D6; font-weight:750; }
