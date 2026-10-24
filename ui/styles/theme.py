@@ -1463,6 +1463,40 @@ QComboBox#periodSelector:disabled {
     color: #8793A6;
     border-color: #E1E7F0;
 }
+
+/* Keep selected/focused rows readable in every popup and multi-selection control.
+   Explicitly override native platform palettes that can render selected rows black. */
+QAbstractItemView, QListView, QListWidget, QTreeView, QTreeWidget,
+QTableView, QTableWidget {
+    background-color: #FFFFFF;
+    color: #172B4D;
+    alternate-background-color: #F7F9FD;
+    selection-background-color: #DCE8FF;
+    selection-color: #17365D;
+    outline: 0;
+}
+QAbstractItemView::item:selected,
+QListView::item:selected, QListWidget::item:selected,
+QTreeView::item:selected, QTreeWidget::item:selected,
+QTableView::item:selected, QTableWidget::item:selected {
+    background-color: #DCE8FF;
+    color: #17365D;
+}
+QAbstractItemView::item:selected:active,
+QAbstractItemView::item:selected:!active,
+QListView::item:selected:active, QListWidget::item:selected:active,
+QTreeView::item:selected:active, QTreeWidget::item:selected:active,
+QTableView::item:selected:active, QTableWidget::item:selected:active {
+    background-color: #DCE8FF;
+    color: #17365D;
+}
+QComboBox QAbstractItemView {
+    background-color: #FFFFFF;
+    color: #172B4D;
+    selection-background-color: #DCE8FF;
+    selection-color: #17365D;
+    border: 1px solid #D6E0EF;
+}
 """
 
 
