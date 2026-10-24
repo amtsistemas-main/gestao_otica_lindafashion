@@ -275,8 +275,6 @@ class DashboardPage(QWidget):
         trend_header.addWidget(period)
         trend_layout.insertLayout(0, trend_header)
         trend_layout.addWidget(TrendChart(preview_mode))
-        main_layout.addWidget(trend, 1)
-
         category, category_layout = make_card("Categorias de Produtos")
         category_row = QHBoxLayout()
         category_row.addWidget(DonutChart(preview_mode), 1)
@@ -291,7 +289,11 @@ class DashboardPage(QWidget):
             legend.addLayout(line)
         category_row.addLayout(legend, 1)
         category_layout.addLayout(category_row)
-        main_layout.addWidget(category)
+        charts_row = QHBoxLayout()
+        charts_row.setSpacing(12)
+        charts_row.addWidget(trend, 6)
+        charts_row.addWidget(category, 5)
+        main_layout.addLayout(charts_row, 1)
 
         bottom = QGridLayout()
         bottom.setHorizontalSpacing(12)
