@@ -129,13 +129,17 @@ class SupabaseProductRepository:
                 .update(record)
                 .eq("id", product.id)
                 .eq("organization_id", self._organization_id)
+                .select("*")
                 .execute()
             )
         else:
-            response = self._client.table("products").insert(record).execute()
+            response = self._client.table("products").insert(record).select("*").execute()
         rows = response.data or []
         if not rows:
-            raise RuntimeError("O Supabase não retornou o produto salvo.")
+            raise RuntimeError(
+                "O produto não foi retornado após salvar. Verifique as permissões RLS "
+                "e se o registro existe na organização atual."
+            )
         return Product.from_mapping(rows[0])
 
     def archive_product(self, product_id: str) -> None:
