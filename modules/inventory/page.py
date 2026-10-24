@@ -32,7 +32,11 @@ class InventoryPage(QDialog):
             QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
             QLabel#muted { color:#7184A1; }
             QLabel#metric { background:#FFFFFF; color:#17365D; border:1px solid #DFE7F3; border-radius:10px; padding:14px; font-size:12pt; font-weight:700; }
-            QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit { background:#FFFFFF; color:#172B4D; border:1px solid #D9E3F1; border-radius:8px; padding:8px; }
+            QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit, QSpinBox, QDoubleSpinBox {
+                background:#FFFFFF; color:#172B4D; border:1px solid #CFD9E8;
+                border-radius:8px; padding:8px 10px; min-height:20px;
+                selection-background-color:#315FE8; selection-color:#FFFFFF;
+            }
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
             QPushButton:hover { background:#F0F5FF; }
             QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
