@@ -202,7 +202,7 @@ class DashboardPage(QWidget):
 
         root.addWidget(WelcomeBanner(preview_mode))
 
-        actions, action_layout = make_card("⚡   Ações rápidas")
+        actions, action_layout = make_card("Ações rápidas")
         action_row = QHBoxLayout()
         action_row.setSpacing(12)
         action_row.addWidget(label("Acesse os principais módulos com um clique.", "actionHint"), 1)
@@ -376,8 +376,9 @@ class DashboardPage(QWidget):
             agenda_layout.addWidget(label("Hoje, 16 de Abril", "agendaDate"))
             for time, title, detail in [("09:00","Atendimento - João Santos","Consulta de armações"),("10:30","Consulta - Maria Oliveira","Revisão de grau"),("14:00","Venda - Carlos Lima","Lentes e armação"),("16:00","Atendimento - Ana Costa","Escolha de armação")]:
                 row=QHBoxLayout()
-                row.addWidget(label("□  "+time,"agendaTime"))
-                row.addWidget(label("●","agendaDot"))
+                row.addWidget(icon_label("fa5s.calendar-alt", "#60799E", 12, "agendaTime"))
+                row.addWidget(label(time,"agendaTime"))
+                row.addWidget(icon_label("fa5s.circle", "#1764F5", 7, "agendaDot"))
                 text_box=QVBoxLayout()
                 text_box.addWidget(label(title,"activityTitle"))
                 text_box.addWidget(label(detail,"activityDetail"))
