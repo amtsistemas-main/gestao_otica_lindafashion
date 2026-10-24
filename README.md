@@ -57,6 +57,12 @@ O fluxo de login requer as configurações públicas do Supabase no arquivo `.en
 
 O módulo separa modelos, regras de negócio, repositório e interface em `modules/products/`. Leitores de código de barras USB que funcionam como teclado são compatíveis; configure o leitor para enviar Enter ao final da leitura. Para habilitar dados online, aplique `database/migrations/202610240001_products.sql` no SQL Editor do Supabase e crie uma organização e um vínculo ativo em `organization_members` para o usuário autenticado. Sem esse vínculo, o catálogo online não será carregado.
 
+## Módulo Estoque e compras
+
+Aplique `supabase/migrations/202610240002_inventory_purchase_requests.sql` no SQL Editor do Supabase após a migration de Produtos. A migration cria fornecedores, histórico de movimentações, solicitações de compra e seus itens, com isolamento por organização via RLS.
+
+O saldo não deve ser alterado diretamente no cadastro do produto para registrar uma entrada ou saída operacional. Use o módulo Estoque: a função transacional `record_stock_movement` bloqueia o registro do produto, calcula o novo saldo, impede saídas abaixo de zero e grava o histórico na mesma transação. Produtos com saldo igual ou abaixo do mínimo podem ser selecionados para abrir uma solicitação vinculada a um fornecedor e quantidade sugerida. A solicitação fica registrada no sistema; o envio externo ao fornecedor por e-mail/WhatsApp e o recebimento de pedidos serão etapas futuras.
+
 ## Segurança e integridade
 
 - Nunca configure `service_role` ou qualquer segredo privilegiado do Supabase no cliente desktop.
