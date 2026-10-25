@@ -26,6 +26,22 @@ CUSTOMER_FIELDS = (
     "whatsapp_consent", "active",
 )
 
+def _eye_icon() -> QIcon:
+    """Create a crisp white eye icon for the customer row action."""
+    pixmap = QPixmap(24, 24)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(QPen(QColor("#FFFFFF"), 2.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+    eye = QPainterPath()
+    eye.moveTo(2.5, 12)
+    eye.cubicTo(7, 5, 17, 5, 21.5, 12)
+    eye.cubicTo(17, 19, 7, 19, 2.5, 12)
+    painter.drawPath(eye)
+    painter.drawEllipse(QRectF(9.2, 9.2, 5.6, 5.6))
+    painter.end()
+    return QIcon(pixmap)
+
 
 class CustomerFormDialog(QDialog):
     def __init__(self, customer: dict | None = None, parent: QWidget | None = None) -> None:
@@ -432,28 +448,36 @@ class CustomersPage(QDialog):
                 item = QTableWidgetItem(str(value))
                 item.setData(Qt.ItemDataRole.UserRole, record.get("id"))
                 self.table.setItem(row_index, col, item)
-            action = QPushButton("Editar")
-            action.setObjectName("editCustomerButton")
-            action.setStyleSheet("""
-                QPushButton#editCustomerButton {
-                    background-color: #2165F5;
-                    color: #FFFFFF;
-                    border: 1px solid #2165F5;
-                    border-radius: 6px;
-                    padding: 7px 12px;
-                    font-weight: 700;
-                }
-                QPushButton#editCustomerButton:hover {
-                    background-color: #1749C2;
-                    color: #FFFFFF;
-                }
-                QPushButton#editCustomerButton:pressed {
-                    background-color: #103A9F;
-                    color: #FFFFFF;
-                }
+            actions_widget = QWidget()
+            actions_layout = QHBoxLayout(actions_widget)
+            actions_layout.setContentsMargins(4, 2, 4, 2)
+            actions_layout.setSpacing(6)
+
+            view_button = QPushButton()
+            view_button.setObjectName("viewCustomerButton")
+            view_button.setToolTip("Visualizar cliente")
+            view_button.setAccessibleName(f"Visualizar cliente {record.get('full_name', '')}")
+            view_button.setIcon(_eye_icon())
+            view_button.setIconSize(QSize(18, 18))
+            view_button.setFixedSize(36, 34)
+            view_button.setStyleSheet("""
+                QPushButton#viewCustomerButton { background-color:#2165F5; color:#FFFFFF; border:1px solid #2165F5; border-radius:6px; padding:5px; }
+                QPushButton#viewCustomerButton:hover { background-color:#1749C2; }
+                QPushButton#viewCustomerButton:pressed { background-color:#103A9F; }
             """)
-            action.clicked.connect(lambda checked=False, item=record: self._edit_customer(item))
-            self.table.setCellWidget(row_index, 5, action)
+            view_button.clicked.connect(lambda checked=False, item=record: self._view_customer(item))
+            actions_layout.addWidget(view_button)
+
+            edit_button = QPushButton("Editar")
+            edit_button.setObjectName("editCustomerButton")
+            edit_button.setStyleSheet("""
+                QPushButton#editCustomerButton { background-color:#2165F5; color:#FFFFFF; border:1px solid #2165F5; border-radius:6px; padding:7px 12px; font-weight:700; }
+                QPushButton#editCustomerButton:hover { background-color:#1749C2; color:#FFFFFF; }
+                QPushButton#editCustomerButton:pressed { background-color:#103A9F; color:#FFFFFF; }
+            """)
+            edit_button.clicked.connect(lambda checked=False, item=record: self._edit_customer(item))
+            actions_layout.addWidget(edit_button)
+            self.table.setCellWidget(row_index, 5, actions_widget)
         total = len(self._rows)
         email_count = sum(bool(row.get("marketing_email_consent") and row.get("email")) for row in self._rows)
         whatsapp_count = sum(bool(row.get("whatsapp_consent") and row.get("whatsapp")) for row in self._rows)
@@ -482,6 +506,9 @@ class CustomersPage(QDialog):
         dialog = CustomerFormDialog(customer, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._save_customer(dialog.record(), customer.get("id"))
+    def _view_customer(self, customer: dict) -> None:
+        dialog = CustomerFormDialog(customer, self, read_only=True)
+        dialog.exec()
 
     def _save_customer(self, record: dict, customer_id: str | None = None) -> None:
         if self._preview_mode:
