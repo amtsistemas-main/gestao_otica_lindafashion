@@ -205,7 +205,7 @@ class SalesOrderDialog(QDialog):
                 field.setMaximumWidth(150)
                 field.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 grid.addWidget(field, row_index, col_index)
-                key = column.lower().replace(" ", "_").replace(".", "")
+                key = column.lower().replace(" ", "_").replace(".", "").replace("diâmetro", "diametro")
                 self._os_fields[prefix + "." + row_label.lower() + "." + key] = field
         parent_layout.addWidget(group)
 
@@ -277,7 +277,7 @@ class SalesOrderDialog(QDialog):
         payload = [{"product_id": r["product_id"], "quantity": r["quantity"], "unit_price": r["unit_price"], "discount": r["discount"], "line_total": r["line_total"]} for r in rows]
         notes_text = self.notes.toPlainText().strip()
         metadata = {"version": 1, "prescription": self._prescription_payload()}
-        stored_notes = "[[LF_OS_DATA]]" + json.dumps(metadata, ensure_ascii=False, separators=(",", ":")) + "\\n" + notes_text
+        stored_notes = "[[LF_OS_DATA]]" + json.dumps(metadata, ensure_ascii=False, separators=(",", ":")) + "\n" + notes_text
         params = {"p_organization_id": self._organization_id, "p_customer_id": self.customer.currentData(), "p_order_number": order_number, "p_subtotal": float(subtotal), "p_discount": float(discount), "p_total": float(total), "p_payment_method": self.payment_method.currentText(), "p_notes": stored_notes, "p_items": payload}
         self.save_button.setEnabled(False)
         try:
