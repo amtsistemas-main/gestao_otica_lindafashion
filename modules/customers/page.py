@@ -27,19 +27,33 @@ CUSTOMER_FIELDS = (
     "whatsapp_consent", "active",
 )
 
-def _eye_icon() -> QIcon:
-    """Create a crisp white eye icon for the customer row action."""
-    pixmap = QPixmap(24, 24)
+def _action_icon(action: str) -> QIcon:
+    """Render high-resolution white action glyphs without external icon dependencies."""
+    pixmap = QPixmap(48, 48)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+    painter.scale(2.0, 2.0)
     painter.setPen(QPen(QColor("#FFFFFF"), 2.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-    eye = QPainterPath()
-    eye.moveTo(2.5, 12)
-    eye.cubicTo(7, 5, 17, 5, 21.5, 12)
-    eye.cubicTo(17, 19, 7, 19, 2.5, 12)
-    painter.drawPath(eye)
-    painter.drawEllipse(QRectF(9.2, 9.2, 5.6, 5.6))
+    if action == "view":
+        eye = QPainterPath()
+        eye.moveTo(2.5, 12)
+        eye.cubicTo(7, 5, 17, 5, 21.5, 12)
+        eye.cubicTo(17, 19, 7, 19, 2.5, 12)
+        painter.drawPath(eye)
+        painter.drawEllipse(QRectF(9.2, 9.2, 5.6, 5.6))
+    elif action == "edit":
+        pencil = QPainterPath()
+        pencil.moveTo(5, 17.5)
+        pencil.lineTo(6.1, 13.1)
+        pencil.lineTo(15.7, 3.5)
+        pencil.lineTo(20.5, 8.3)
+        pencil.lineTo(10.9, 17.9)
+        pencil.closeSubpath()
+        painter.drawPath(pencil)
+        painter.drawLine(5, 17.5, 10.9, 17.9)
+        painter.drawLine(15.7, 3.5, 20.5, 8.3)
     painter.end()
     return QIcon(pixmap)
 
@@ -465,29 +479,41 @@ class CustomersPage(QDialog):
             actions_layout = QHBoxLayout(actions_widget)
             actions_layout.setContentsMargins(4, 2, 4, 2)
             actions_layout.setSpacing(6)
+            actions_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            action_button_style = """
+                QPushButton {
+                    background-color: #2165F5;
+                    color: #FFFFFF;
+                    border: 1px solid #2165F5;
+                    border-radius: 6px;
+                    padding: 0px;
+                    margin: 0px;
+                }
+                QPushButton:hover { background-color: #1749C2; border-color: #1749C2; }
+                QPushButton:pressed { background-color: #103A9F; border-color: #103A9F; }
+                QPushButton:focus { border: 2px solid #8DB5FF; }
+            """
 
             view_button = QPushButton()
             view_button.setObjectName("viewCustomerButton")
             view_button.setToolTip("Visualizar cliente")
             view_button.setAccessibleName(f"Visualizar cliente {record.get('full_name', '')}")
-            view_button.setIcon(_eye_icon())
-            view_button.setIconSize(QSize(18, 18))
-            view_button.setFixedSize(36, 34)
-            view_button.setStyleSheet("""
-                QPushButton#viewCustomerButton { background-color:#2165F5; color:#FFFFFF; border:1px solid #2165F5; border-radius:6px; padding:5px; }
-                QPushButton#viewCustomerButton:hover { background-color:#1749C2; }
-                QPushButton#viewCustomerButton:pressed { background-color:#103A9F; }
-            """)
+            view_button.setIcon(_action_icon("view"))
+            view_button.setIconSize(QSize(20, 20))
+            view_button.setFixedSize(36, 36)
+            view_button.setStyleSheet(action_button_style)
             view_button.clicked.connect(lambda checked=False, item=record: self._view_customer(item))
             actions_layout.addWidget(view_button)
 
-            edit_button = QPushButton("Editar")
+            edit_button = QPushButton()
             edit_button.setObjectName("editCustomerButton")
-            edit_button.setStyleSheet("""
-                QPushButton#editCustomerButton { background-color:#2165F5; color:#FFFFFF; border:1px solid #2165F5; border-radius:6px; padding:7px 12px; font-weight:700; }
-                QPushButton#editCustomerButton:hover { background-color:#1749C2; color:#FFFFFF; }
-                QPushButton#editCustomerButton:pressed { background-color:#103A9F; color:#FFFFFF; }
-            """)
+            edit_button.setToolTip("Editar cliente")
+            edit_button.setAccessibleName(f"Editar cliente {record.get('full_name', '')}")
+            edit_button.setIcon(_action_icon("edit"))
+            edit_button.setIconSize(QSize(20, 20))
+            edit_button.setFixedSize(36, 36)
+            edit_button.setStyleSheet(action_button_style)
             edit_button.clicked.connect(lambda checked=False, item=record: self._edit_customer(item))
             actions_layout.addWidget(edit_button)
             self.table.setCellWidget(row_index, 5, actions_widget)
