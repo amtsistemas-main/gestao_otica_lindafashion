@@ -31,7 +31,7 @@ from ui.windows.main_window import MainWindow
 
 logger = logging.getLogger(__name__)
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
-REMEMBERED_EMAIL_KEY = "login/remembered_email"
+REMEMBERED_LOGIN_KEY = "login/remembered_username"
 
 
 def caps_lock_on() -> bool:
@@ -145,25 +145,26 @@ class LoginWindow(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         layout.addSpacing(4)
-        subtitle = QLabel("Use seu e-mail e senha de acesso.")
+        subtitle = QLabel("Use seu usuário e senha de acesso.")
         subtitle.setObjectName("loginFormSubtitle")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)
         layout.addSpacing(24)
 
-        email_label = QLabel("E-mail")
-        email_label.setObjectName("loginFieldLabel")
-        self.email_input = QLineEdit()
-        self.email_input.setObjectName("loginInput")
-        self.email_input.setPlaceholderText("seu@email.com")
-        self.email_input.setClearButtonEnabled(True)
-        self.email_input.setMinimumHeight(48)
-        self.email_input.setAccessibleName("E-mail")
-        self.email_input.addAction(qta.icon("fa5s.envelope", color="#8A97AB"), QLineEdit.ActionPosition.LeadingPosition)
-        self.email_input.returnPressed.connect(lambda: self.password_input.setFocus())
-        layout.addWidget(email_label)
+        username_label = QLabel("Usuário")
+        username_label.setObjectName("loginFieldLabel")
+        self.username_input = QLineEdit()
+        self.username_input.setObjectName("loginInput")
+        self.username_input.setPlaceholderText("seu.usuario")
+        self.username_input.setClearButtonEnabled(True)
+        self.username_input.setMinimumHeight(48)
+        self.username_input.setMaxLength(160)
+        self.username_input.setAccessibleName("Usuário")
+        self.username_input.addAction(qta.icon("fa5s.user", color="#8A97AB"), QLineEdit.ActionPosition.LeadingPosition)
+        self.username_input.returnPressed.connect(lambda: self.password_input.setFocus())
+        layout.addWidget(username_label)
         layout.addSpacing(6)
-        layout.addWidget(self.email_input)
+        layout.addWidget(self.username_input)
         layout.addSpacing(14)
 
         password_label = QLabel("Senha")
@@ -192,7 +193,7 @@ class LoginWindow(QMainWindow):
         layout.addWidget(self.caps_label)
         layout.addSpacing(6)
 
-        self.remember = QCheckBox("Lembrar meu e-mail")
+        self.remember = QCheckBox("Lembrar meu usuário")
         self.remember.setObjectName("loginRemember")
         layout.addWidget(self.remember)
         layout.addSpacing(16)
@@ -220,13 +221,13 @@ class LoginWindow(QMainWindow):
         outer.addStretch(1)
         self.setCentralWidget(backdrop)
 
-        remembered = str(self._settings.value(REMEMBERED_EMAIL_KEY, "") or "")
+        remembered = str(self._settings.value(REMEMBERED_LOGIN_KEY, "") or "")
         if remembered:
-            self.email_input.setText(remembered)
+            self.username_input.setText(remembered)
             self.remember.setChecked(True)
             self.password_input.setFocus()
         else:
-            self.email_input.setFocus()
+            self.username_input.setFocus()
 
         if not get_settings().supabase_configured:
             self._show_status("Configure SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY no arquivo .env.")
@@ -246,28 +247,28 @@ class LoginWindow(QMainWindow):
         self.status_box.setVisible(bool(message))
 
     def _set_busy(self, busy: bool) -> None:
-        for widget in (self.email_input, self.password_input, self.remember):
+        for widget in (self.username_input, self.password_input, self.remember):
             widget.setEnabled(not busy)
         self.login_button.setEnabled(not busy)
         self.login_button.setText("Entrando…" if busy else "Entrar")
 
     def _submit(self) -> None:
-        email = self.email_input.text().strip()
+        login = self.username_input.text().strip()
         password = self.password_input.text()
-        if not email or not password:
-            self._show_status("Informe seu e-mail e sua senha.")
-            (self.email_input if not email else self.password_input).setFocus()
+        if not login or not password:
+            self._show_status("Informe seu usuário e sua senha.")
+            (self.username_input if not login else self.password_input).setFocus()
             return
 
         self._show_status("")
         self._set_busy(True)
         QApplication.processEvents()  # show "Entrando…" before the network call blocks
         try:
-            self._auth_service.sign_in(email, password)
+            self._auth_service.sign_in(login, password)
             if self.remember.isChecked():
-                self._settings.setValue(REMEMBERED_EMAIL_KEY, email)
+                self._settings.setValue(REMEMBERED_LOGIN_KEY, login)
             else:
-                self._settings.remove(REMEMBERED_EMAIL_KEY)
+                self._settings.remove(REMEMBERED_LOGIN_KEY)
             self._main_window = MainWindow()
             self._main_window.show()
             self.close()

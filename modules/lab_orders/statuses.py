@@ -15,20 +15,21 @@ class OrderStatus:
 
 
 FLOW: tuple[OrderStatus, ...] = (
-    OrderStatus("aguardando_envio", "Aguardando envio", "#64748B", "fa5s.inbox", False),
+    OrderStatus("aguardando_envio", "Aguardando envio", "#64748B", "fa5s.inbox", True,
+                "Olá, {{cliente}}! Recebemos o seu pedido {{pedido}} ({{descricao}}). Previsão de entrega: {{previsao}}. Avisaremos por aqui a cada etapa. — {{loja}}"),
     OrderStatus("enviado_laboratorio", "Enviado ao laboratório", "#1749C2", "fa5s.shipping-fast", True,
-                "Olá, {{cliente}}! Seu pedido {{pedido}} ({{descricao}}) foi enviado ao laboratório. Previsão: {{previsao}}. — Ótica Linda Fashion"),
+                "Olá, {{cliente}}! Seu pedido {{pedido}} ({{descricao}}) foi enviado ao laboratório. Previsão: {{previsao}}. — {{loja}}"),
     OrderStatus("em_producao", "Em produção", "#7C3AED", "fa5s.cogs", True,
-                "Olá, {{cliente}}! Seu pedido {{pedido}} ({{descricao}}) está em produção. Previsão: {{previsao}}. — Ótica Linda Fashion"),
+                "Olá, {{cliente}}! Seu pedido {{pedido}} ({{descricao}}) está em produção. Previsão: {{previsao}}. — {{loja}}"),
     OrderStatus("recebido", "Recebido", "#0E7490", "fa5s.box-open", False),
     OrderStatus("em_conferencia", "Em conferência", "#B7791F", "fa5s.search", False),
     OrderStatus("pronto_retirada", "Pronto para retirada", "#0E8A5B", "fa5s.glasses", True,
-                "Olá, {{cliente}}! Boas notícias: seu pedido {{pedido}} ({{descricao}}) está pronto para retirada. — Ótica Linda Fashion"),
+                "Olá, {{cliente}}! Boas notícias: seu pedido {{pedido}} ({{descricao}}) está pronto para retirada. — {{loja}}"),
     OrderStatus("entregue", "Entregue", "#102957", "fa5s.check-circle", True,
-                "Olá, {{cliente}}! Registramos a entrega do pedido {{pedido}}. Obrigado por escolher a Ótica Linda Fashion!"),
+                "Olá, {{cliente}}! Registramos a entrega do pedido {{pedido}}. Obrigado por escolher a {{loja}}!"),
 )
 CANCELLED = OrderStatus("cancelado", "Cancelado", "#C03030", "fa5s.ban", True,
-                        "Olá, {{cliente}}. O pedido {{pedido}} ({{descricao}}) foi cancelado. Fale conosco se precisar de ajuda. — Ótica Linda Fashion")
+                        "Olá, {{cliente}}. O pedido {{pedido}} ({{descricao}}) foi cancelado. Fale conosco se precisar de ajuda. — {{loja}}")
 ALL_STATUSES: tuple[OrderStatus, ...] = FLOW + (CANCELLED,)
 BY_CODE = {status.code: status for status in ALL_STATUSES}
 CLOSED = {"entregue", "cancelado"}

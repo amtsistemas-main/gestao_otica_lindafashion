@@ -753,7 +753,7 @@ class CustomersPage(QDialog):
         title_layout.addWidget(title)
         title_layout.addWidget(subtitle)
         root.addWidget(title_bar)
-        help_text = QLabel("Variáveis disponíveis: {{cliente}}, {{pedido}}, {{descricao}}, {{status}}, {{previsao}}. A mensagem entra na fila apenas se o cliente estiver ativo, tiver WhatsApp cadastrado e consentimento marcado.")
+        help_text = QLabel("Variáveis disponíveis: {{cliente}}, {{pedido}}, {{descricao}}, {{status}}, {{previsao}}, {{loja}}. A mensagem entra na fila apenas se o cliente estiver ativo, tiver WhatsApp cadastrado e consentimento marcado.")
         help_text.setWordWrap(True)
         help_text.setObjectName("infoNotice")
         root.addWidget(help_text)

@@ -1012,10 +1012,38 @@ QPushButton#topbarIconButton {
 QPushButton#topbarIconButton:hover, QPushButton#topbarIconButton:checked {
     background: @primary_soft@;
 }
-QLabel#accountAvatar {
+QPushButton#profileChip {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    padding: 0px;
+    text-align: left;
+}
+QPushButton#profileChip:hover {
+    background: @surface_alt@;
+    border-color: @border@;
+}
+QPushButton#profileChip:pressed {
     background: @primary_soft@;
-    border: 1px solid #D6E3FB;
-    border-radius: 20px;
+    border-color: #D6E3FB;
+}
+QLabel#accountAvatar {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 @primary@, stop:1 @navy@);
+    color: #FFFFFF;
+    border-radius: 18px;
+    font-size: 10.5pt;
+    font-weight: 700;
+}
+QMenu#profileMenu {
+    padding: 8px;
+}
+QMenu#profileMenu::item {
+    padding: 9px 18px 9px 12px;
+    border-radius: 8px;
+}
+QMenu#profileMenu::item:disabled {
+    color: @text_strong@;
+    font-weight: 700;
 }
 QLabel#profileName {
     color: @text_strong@;

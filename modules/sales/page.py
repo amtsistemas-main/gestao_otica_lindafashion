@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from core.organization import OrganizationContext, current_organization
 from core.phone import format_br_phone, normalize_br_whatsapp
+from modules.lab_orders import statuses as order_statuses
 from modules.prescriptions.repository import PrescriptionRepository
 from modules.sales.document_pdf import SalesDocument, StoreIdentity, build_sales_pdf
 from modules.sales.pos import SERVICE_ORDER_MARKER, PosDialog
@@ -95,14 +96,14 @@ class SalesPage(QDialog):
         root.addLayout(toolbar)
         if preview_mode:
             root.addWidget(notice("PRÉ-VISUALIZAÇÃO • o PDV abre com catálogo demonstrativo; o histórico de vendas exige conexão com o Supabase."))
-        self.table = QTableWidget(0, 7)
+        self.table = QTableWidget(0, 8)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setDefaultSectionSize(50)
-        self.table.setHorizontalHeaderLabels(["Pedido", "Data", "Cliente", "Situação", "Pagamento", "Total", "Ações"])
+        self.table.setHorizontalHeaderLabels(["Venda", "Data", "Cliente", "Situação", "Status do pedido", "Pagamento", "Total", "Ações"])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        for col in (0, 1, 3, 4, 5, 6):
+        for col in (0, 1, 3, 4, 5, 6, 7):
             self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         self.table.itemSelectionChanged.connect(self._sync_actions)
         root.addWidget(self.table, 1)
@@ -110,10 +111,14 @@ class SalesPage(QDialog):
         actions = QHBoxLayout()
         self.convert_button = make_button("Converter orçamento em venda", "fa5s.exchange-alt", "primaryButton")
         self.convert_button.clicked.connect(self._convert_quote)
+        self.order_status_button = make_button("Atualizar status do pedido", "fa5s.clipboard-check", "secondaryButton")
+        self.order_status_button.setToolTip("Muda a etapa do pedido vinculado à venda; o cliente é avisado pelo WhatsApp.")
+        self.order_status_button.clicked.connect(self._change_order_status)
         self.cancel_sale_button = make_button("Cancelar venda", "fa5s.undo", "dangerButton")
         self.cancel_sale_button.setToolTip("Devolve os itens ao estoque, cancela recebíveis e gera estorno do valor recebido (somente administradores).")
         self.cancel_sale_button.clicked.connect(self._cancel_sale)
         actions.addWidget(self.convert_button)
+        actions.addWidget(self.order_status_button)
         actions.addStretch(1)
         actions.addWidget(self.cancel_sale_button)
         root.addLayout(actions)
@@ -127,7 +132,7 @@ class SalesPage(QDialog):
             return
         try:
             orders = self._client.table("sales_orders").select(
-                "id,order_number,status,total,created_at,customer_id,payment_method,quoted_at,customers(full_name,whatsapp,whatsapp_consent)"
+                "id,order_number,status,total,created_at,customer_id,payment_method,quoted_at,customers(full_name,whatsapp,whatsapp_consent),customer_orders(id,status)"
             ).eq("organization_id", self._organization_id).order("created_at", desc=True).limit(500).execute().data or []
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao carregar vendas", f"{exc}\n\nConfirme se a migration 202610250004 foi aplicada.")
@@ -137,13 +142,18 @@ class SalesPage(QDialog):
             customer = order.get("customers") or {}
             row = self.table.rowCount(); self.table.insertRow(row)
             status_code = str(order.get("status") or "")
-            values = [order.get("order_number",""), str(order.get("created_at",""))[:16].replace("T"," "), (customer.get("full_name") or "Venda avulsa"), STATUS_LABELS.get(status_code, status_code or "—"), order.get("payment_method") or "—", _money(order.get("total"))]
+            linked = self._linked_order(order)
+            order_status = str(linked.get("status") or "") if linked else ""
+            values = [order.get("order_number",""), str(order.get("created_at",""))[:16].replace("T"," "), (customer.get("full_name") or "Venda avulsa"), STATUS_LABELS.get(status_code, status_code or "—"),
+                      order_statuses.label(order_status) if linked else "—", order.get("payment_method") or "—", _money(order.get("total"))]
             for col, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
                 item.setData(Qt.ItemDataRole.UserRole, order.get("id"))
                 if col == 3 and status_code in STATUS_COLORS:
                     item.setForeground(QColor(STATUS_COLORS[status_code]))
-                if col == 5:
+                if col == 4 and linked:
+                    item.setForeground(QColor(order_statuses.color(order_status)))
+                if col == 6:
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.table.setItem(row, col, item)
             actions = QWidget()
@@ -157,7 +167,7 @@ class SalesPage(QDialog):
             wa.setToolTip("Preparar contato com o cliente no WhatsApp")
             wa.clicked.connect(lambda checked=False, oid=order["id"]: self._prepare_whatsapp(oid))
             actions_layout.addWidget(pdf); actions_layout.addWidget(wa)
-            self.table.setCellWidget(row, 6, actions)
+            self.table.setCellWidget(row, 7, actions)
         self._filter_orders()
 
     def _filter_orders(self, *_args: object) -> None:
@@ -190,6 +200,48 @@ class SalesPage(QDialog):
         self.convert_button.setEnabled(status == "draft")
         is_manager = bool(self._ctx and self._ctx.is_manager)
         self.cancel_sale_button.setEnabled(status in ("completed", "draft") and is_manager)
+        self.order_status_button.setEnabled(bool(order and self._linked_order(order)) and status != "cancelled")
+
+    @staticmethod
+    def _linked_order(order: dict) -> dict | None:
+        """Order (pedido) created together with the sale, if any."""
+        linked = order.get("customer_orders")
+        if isinstance(linked, list):
+            return linked[0] if linked else None
+        return linked or None
+
+    def _change_order_status(self) -> None:
+        order = self._selected_order()
+        linked = self._linked_order(order) if order else None
+        if not linked:
+            QMessageBox.information(self, "Sem pedido vinculado", "Esta venda não tem pedido vinculado (venda sem cliente identificado).")
+            return
+        current = str(linked.get("status") or "")
+        options = [status for status in order_statuses.ALL_STATUSES if status.code != current]
+        labels = [status.label for status in options]
+        choice, accepted = QInputDialog.getItem(
+            self, "Atualizar status do pedido",
+            f"Venda {order.get('order_number')} • status atual: {order_statuses.label(current)}\n"
+            "O cliente é avisado pelo WhatsApp quando a etapa tiver mensagem ativa.",
+            labels, 0, False)
+        if not accepted:
+            return
+        target = options[labels.index(choice)]
+        if order_statuses.skips_quality_check(current, target.code):
+            answer = QMessageBox.question(
+                self, "Liberar sem conferência?",
+                "O pedido ainda não passou pela conferência. Deseja liberar mesmo assim?")
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+        try:
+            self._client.table("customer_orders").update({"status": target.code}).eq("id", linked["id"]).eq(
+                "organization_id", self._organization_id).execute()
+        except Exception as exc:
+            QMessageBox.critical(self, "Status não atualizado", str(exc))
+            return
+        QMessageBox.information(self, "Status atualizado",
+                                f"Pedido da venda {order.get('order_number')} agora está em “{target.label}”.")
+        self._load_orders()
 
     def _after_pos(self, dialog: PosDialog) -> None:
         self._load_orders()

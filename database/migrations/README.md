@@ -30,8 +30,10 @@ Pré-requisito: as migrations anteriores (`202610240001` a `202610241730`, nesta
 | 10 | `202610250010_multi_user_module_access.sql` | Multilogin: e-mail e módulos liberados por usuário (`allowed_modules`), função `has_module_access` e RLS do Financeiro por módulo (ler exige Financeiro ou Indicadores; gravar exige Financeiro). |
 | 11 | `202610250011_whatsapp_gateway.sql` | WhatsApp por gateway (Evolution): conexão por loja (`whatsapp_connections`), segredos só no servidor, número no formato internacional (`normalize_br_whatsapp`), fila sem duplicidade e com recuperação de mensagens travadas, inserção apenas por `enqueue_whatsapp_message` e bucket privado `whatsapp-documents`. |
 | 12 | `202610250012_whatsapp_worker_schedule.sql` | Envio validado pelo cadastro do cliente (limite por usuário) e worker agendado no `pg_cron` (chama a Edge Function só quando há mensagens; URL e segredo no Vault). |
+| 13 | `202610250013_service_role_grants.sql` | Privilégios do `service_role` (somente servidor) nas tabelas, inclusive futuras. Sem eles as Edge Functions não liam os vínculos e respondiam "sem vínculo". |
+| 14 | `202610250014_username_login.sql` | Login por nome de usuário: coluna `organization_members.username` (única), e-mail interno `<usuario>@usuarios.local` no Supabase Auth. |
 
-As doze migrations foram aplicadas no projeto conectado em 25/10/2026 e registradas em `supabase_migrations.schema_migrations`. O fluxo completo (venda com sinal e crediário, idempotência, pipeline do laboratório, pós-venda, orçamento, cancelamento com estorno, bloqueios por papel, RLS, acesso por módulo e fila do WhatsApp) foi validado como usuário autenticado, em transação revertida.
+As catorze migrations foram aplicadas no projeto conectado em 25/10/2026 e registradas em `supabase_migrations.schema_migrations`. O fluxo completo (venda com sinal e crediário, idempotência, pipeline do laboratório, pós-venda, orçamento, cancelamento com estorno, bloqueios por papel, RLS, acesso por módulo e fila do WhatsApp) foi validado como usuário autenticado, em transação revertida.
 
 ### Edge Function `admin-users` (multilogin)
 

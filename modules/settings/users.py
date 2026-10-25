@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QRegularExpression, Qt
+from PySide6.QtGui import QRegularExpressionValidator
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QHeaderView,
     QLabel, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
 from core.edge_functions import EdgeFunctionError, invoke_edge_function
 from core.organization import OrganizationContext
 from core.permissions import DEFAULT_MEMBER_MODULES, MODULES, ROLE_LABELS, modules_summary
+from core.usernames import USERNAME_RULES, is_valid_username, normalize_username, username_from_email
 from ui.components.ui_kit import make_button, notice
 
 FUNCTION_NAME = "admin-users"
@@ -38,8 +40,8 @@ class UserAdminService:
     def list(self) -> list[dict]:
         return list(self._call({"action": "list"}).get("members") or [])
 
-    def create(self, email: str, password: str, display_name: str, role: str, modules: list[str] | None) -> dict:
-        return self._call({"action": "create", "email": email, "password": password, "display_name": display_name,
+    def create(self, username: str, password: str, display_name: str, role: str, modules: list[str] | None) -> dict:
+        return self._call({"action": "create", "username": username, "password": password, "display_name": display_name,
                            "role": role, "allowed_modules": modules})
 
     def update(self, user_id: str, **changes: object) -> dict:
@@ -81,11 +83,14 @@ class UserFormDialog(QDialog):
         self.name.setMaxLength(80)
         self.name.setPlaceholderText("Nome exibido nas vendas e indicadores")
         form.addRow("Nome *", self.name)
-        self.email = QLineEdit(str((member or {}).get("email") or ""))
-        self.email.setMaxLength(160)
-        self.email.setPlaceholderText("email@exemplo.com")
-        self.email.setEnabled(not editing)
-        form.addRow("E-mail de acesso *", self.email)
+        self.username = QLineEdit(str((member or {}).get("username") or ""))
+        self.username.setMaxLength(32)
+        self.username.setPlaceholderText("ex.: carlos.souza")
+        self.username.setToolTip(USERNAME_RULES)
+        self.username.setValidator(QRegularExpressionValidator(QRegularExpression(r"[A-Za-z0-9._-]{0,32}"), self.username))
+        self.username.textEdited.connect(lambda text: self.username.setText(text.lower()))
+        self.username.setEnabled(not editing)
+        form.addRow("Nome de usuário *", self.username)
         self.password = QLineEdit()
         self.password.setEchoMode(QLineEdit.EchoMode.Password)
         self.password.setPlaceholderText("Mínimo de 8 caracteres")
@@ -154,7 +159,7 @@ class UserFormDialog(QDialog):
         role = str(self.role.currentData())
         return {
             "display_name": self.name.text().strip(),
-            "email": self.email.text().strip().lower(),
+            "username": normalize_username(self.username.text()),
             "password": self.password.text(),
             "role": role,
             "allowed_modules": None if role == "admin" else [key for key, check in self._checks.items() if check.isChecked()],
@@ -166,8 +171,8 @@ class UserFormDialog(QDialog):
         if not data["display_name"]:
             problems.append("Informe o nome do usuário.")
         if self._member is None:
-            if "@" not in data["email"] or "." not in data["email"].split("@")[-1]:
-                problems.append("Informe um e-mail válido.")
+            if not is_valid_username(data["username"]):
+                problems.append(f"Nome de usuário inválido: {USERNAME_RULES}")
             if len(data["password"]) < 8:
                 problems.append("A senha precisa ter pelo menos 8 caracteres.")
             elif data["password"] != self.confirm.text():
@@ -247,7 +252,7 @@ class UsersPanel(QWidget):
         if ctx is None:
             layout.addWidget(notice("PRÉ-VISUALIZAÇÃO • usuários demonstrativos; a criação de logins exige conexão com o Supabase."))
         self.table = QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels(["Nome", "E-mail", "Perfil", "Módulos liberados", "Último acesso", "Situação"])
+        self.table.setHorizontalHeaderLabels(["Nome", "Usuário", "Perfil", "Módulos liberados", "Último acesso", "Situação"])
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
@@ -279,9 +284,9 @@ class UsersPanel(QWidget):
     def reload(self) -> None:
         if self._ctx is None:
             self._members = [
-                {"user_id": "preview-owner", "display_name": "Ana Silva", "email": "ana@oticalindafashion.com.br",
+                {"user_id": "preview-owner", "display_name": "Ana Silva", "username": "ana.silva",
                  "role": "owner", "active": True, "allowed_modules": None, "last_sign_in_at": datetime.now().isoformat()},
-                {"user_id": "preview-seller", "display_name": "Carlos Souza", "email": "carlos@oticalindafashion.com.br",
+                {"user_id": "preview-seller", "display_name": "Carlos Souza", "username": "carlos.souza",
                  "role": "member", "active": True, "allowed_modules": list(DEFAULT_MEMBER_MODULES), "last_sign_in_at": None},
             ]
         else:
@@ -295,7 +300,7 @@ class UsersPanel(QWidget):
             is_self = self._ctx is not None and member.get("user_id") == self._ctx.user_id
             values = [
                 str(member.get("display_name") or "—") + (" (você)" if is_self else ""),
-                str(member.get("email") or "—"),
+                str(member.get("username") or username_from_email(member.get("email")) or "—"),
                 ROLE_LABELS.get(str(member.get("role")), str(member.get("role"))),
                 modules_summary(str(member.get("role")), member.get("allowed_modules")),
                 _fmt_datetime(member.get("last_sign_in_at")),
@@ -353,9 +358,9 @@ class UsersPanel(QWidget):
             return
         data = dialog.values()
         if self._run("Login não criado", lambda: self._service.create(
-                data["email"], data["password"], data["display_name"], data["role"], data["allowed_modules"])):
+                data["username"], data["password"], data["display_name"], data["role"], data["allowed_modules"])):
             QMessageBox.information(self, "Login criado",
-                                    f"{data['display_name']} já pode entrar com o e-mail {data['email']} e a senha definida.")
+                                    f"{data['display_name']} já pode entrar com o usuário {data['username']} e a senha definida.")
             self.reload()
 
     def _edit(self) -> None:
@@ -376,7 +381,7 @@ class UsersPanel(QWidget):
         member = self._selected()
         if not self._manageable(member):
             return
-        dialog = PasswordDialog(str(member.get("display_name") or member.get("email")), self)
+        dialog = PasswordDialog(str(member.get("display_name") or member.get("username")), self)
         if dialog.exec() == QDialog.DialogCode.Accepted and self._run(
                 "Senha não redefinida", lambda: self._service.reset_password(member["user_id"], dialog.password.text())):
             QMessageBox.information(self, "Senha redefinida", "A nova senha já está valendo.")
@@ -389,7 +394,7 @@ class UsersPanel(QWidget):
         verb = "reativar" if activate else "desativar"
         answer = QMessageBox.question(
             self, f"{verb.capitalize()} usuário",
-            f"Deseja {verb} {member.get('display_name') or member.get('email')}?"
+            f"Deseja {verb} {member.get('display_name') or member.get('username')}?"
             + ("" if activate else "\nO usuário perde o acesso imediatamente; o histórico de vendas é mantido."),
         )
         if answer == QMessageBox.StandardButton.Yes and self._run(

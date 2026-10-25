@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
 import qtawesome as qta
 
 from core.organization import OrganizationContext
+from core.phone import normalize_br_whatsapp
+from modules.lab_orders import statuses as order_statuses
 from modules.prescriptions.dialogs import PrescriptionHistoryDialog
 from modules.prescriptions.models import Prescription
 from modules.prescriptions.repository import PrescriptionRepository
@@ -145,6 +147,7 @@ class PosDialog(QDialog):
         if quote:
             self._load_quote(quote, quote_items or [])
         self._refresh()
+        self._update_order_hint()
 
     # Data -----------------------------------------------------------------
     def _load_catalog(self) -> tuple[list[dict], list[dict]]:
@@ -154,7 +157,7 @@ class PosDialog(QDialog):
         products = client.table("products").select(
             "id,name,sku,barcode,sale_price,discount_percent,stock_quantity,tracks_stock,product_type,brand,model,color"
         ).eq("organization_id", org).eq("active", True).order("name").execute().data or []
-        customers = client.table("customers").select("id,full_name,whatsapp").eq(
+        customers = client.table("customers").select("id,full_name,whatsapp,whatsapp_consent").eq(
             "organization_id", org).eq("active", True).order("full_name").execute().data or []
         return list(products), list(customers)
 
@@ -254,22 +257,32 @@ class PosDialog(QDialog):
             grid.addWidget(field, 1, column)
             self._frame_fields[key] = field
         layout.addLayout(grid)
+        # Every sale with an identified customer creates its linked order in the chosen status.
         lab_row = QHBoxLayout()
         lab_row.setSpacing(8)
-        self.create_lab_order = QCheckBox("Gerar pedido de laboratório ao finalizar")
-        self.create_lab_order.setToolTip("Cria o pedido no fluxo “Aguardando envio” vinculado à venda e à receita.")
+        lab_row.addWidget(_field_label("Status do pedido"))
+        self.order_status = QComboBox()
+        for status in order_statuses.FLOW:
+            self.order_status.addItem(status.label, status.code)
+        self.order_status.setToolTip("Etapa atual do pedido desta venda. Mudanças de status avisam o cliente pelo WhatsApp.")
+        self.order_status.activated.connect(lambda _index: setattr(self, "_status_chosen", True))
+        self.order_status.currentIndexChanged.connect(self._update_order_hint)
+        lab_row.addWidget(self.order_status, 1)
+        lab_row.addSpacing(8)
+        lab_row.addWidget(_field_label("Prazo para o cliente"))
         self.lab_expected = QDateEdit()
         self.lab_expected.setCalendarPopup(True)
         self.lab_expected.setDisplayFormat("dd/MM/yyyy")
         self.lab_expected.setDate(QDate.currentDate().addDays(7))
-        lab_row.addWidget(self.create_lab_order)
-        lab_row.addStretch(1)
-        lab_row.addWidget(_field_label("Prazo para o cliente"))
         lab_row.addWidget(self.lab_expected)
         layout.addLayout(lab_row)
         self.lens_description = QLineEdit()
-        self.lens_description.setPlaceholderText("Descrição do pedido para o laboratório (preenchida a partir das lentes)")
+        self.lens_description.setPlaceholderText("Descrição do pedido (preenchida a partir das lentes; aparece na mensagem ao cliente)")
         layout.addWidget(self.lens_description)
+        self.order_hint = QLabel("")
+        self.order_hint.setObjectName("muted")
+        self.order_hint.setWordWrap(True)
+        layout.addWidget(self.order_hint)
         parent.addWidget(card)
 
     def _build_totals_card(self, parent: QVBoxLayout) -> None:
@@ -406,6 +419,7 @@ class PosDialog(QDialog):
                 self._prescription = None
         self._render_prescription()
         self._refresh()
+        self._update_order_hint()
 
     def _choose_prescription(self) -> None:
         customer = self._customer()
@@ -499,11 +513,29 @@ class PosDialog(QDialog):
             self._refresh()
 
     def _auto_lab_order(self) -> None:
+        """Suggests the order status from the cart until the user picks one."""
         lens_lines = [line for line in self._lines if line.product_type in LENS_TYPES_FOR_LAB]
-        if lens_lines and self._customer():
-            self.create_lab_order.setChecked(True)
+        if not getattr(self, "_status_chosen", False):
+            suggested = "aguardando_envio" if lens_lines else "entregue"
+            self.order_status.setCurrentIndex(max(0, self.order_status.findData(suggested)))
         if lens_lines and not self.lens_description.text().strip():
             self.lens_description.setText(" + ".join(line.name for line in lens_lines))
+        self._update_order_hint()
+
+    def _update_order_hint(self, *_args: object) -> None:
+        customer = self._customer()
+        if not customer:
+            text = "Venda avulsa: o pedido é registrado quando a venda tiver cliente identificado."
+        else:
+            status = order_statuses.BY_CODE.get(str(self.order_status.currentData()))
+            label = status.label if status else "—"
+            if not customer.get("whatsapp_consent") or not normalize_br_whatsapp(customer.get("whatsapp")):
+                text = (f"O pedido será registrado como “{label}”. Este cliente não autorizou ou não tem WhatsApp "
+                        "cadastrado: as atualizações não serão enviadas.")
+            else:
+                text = (f"O pedido será registrado como “{label}” e o cliente recebe as atualizações de status "
+                        "pelo WhatsApp da loja (quando a etapa tiver mensagem ativa).")
+        self.order_hint.setText(text)
 
     # Payments -------------------------------------------------------------
     def _sync_payment_fields(self, *_args: object) -> None:
@@ -692,9 +724,6 @@ class PosDialog(QDialog):
             if problems:
                 QMessageBox.warning(self, "Confira a venda", "\n".join(f"• {item}" for item in problems))
                 return
-            if self.create_lab_order.isChecked() and not self._customer():
-                QMessageBox.warning(self, "Cliente obrigatório", "O pedido de laboratório exige um cliente identificado.")
-                return
         params = {
             "p_organization_id": self._ctx.organization_id if self._ctx else None,
             "p_customer_id": self.customer.currentData(),
@@ -707,7 +736,8 @@ class PosDialog(QDialog):
             "p_idempotency_key": self._idempotency_key,
             "p_as_quote": as_quote,
             "p_quote_id": (self._quote or {}).get("id"),
-            "p_create_lab_order": (not as_quote) and self.create_lab_order.isChecked(),
+            "p_create_lab_order": (not as_quote) and bool(self._customer()),
+            "p_order_status": str(self.order_status.currentData() or "aguardando_envio"),
             "p_lab_expected_at": self.lab_expected.date().toPython().isoformat(),
             "p_lens_description": self.lens_description.text().strip(),
         }
@@ -741,7 +771,8 @@ class PosDialog(QDialog):
         if as_quote:
             QMessageBox.information(self, "Orçamento salvo", f"Orçamento {result.get('order_number')} salvo — total {brl(totals.total)}.")
         else:
-            extra = "\nPedido de laboratório criado em “Aguardando envio”." if result.get("lab_order_id") else ""
+            status = order_statuses.label(str(result.get("order_status") or ""))
+            extra = f"\nPedido vinculado registrado como “{status}”." if result.get("lab_order_id") else ""
             duplicate = "\n(Esta venda já havia sido registrada; nenhuma duplicidade foi criada.)" if result.get("duplicate") else ""
             QMessageBox.information(
                 self, "Venda finalizada",

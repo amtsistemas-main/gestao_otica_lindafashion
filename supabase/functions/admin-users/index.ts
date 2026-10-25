@@ -15,7 +15,10 @@ const MODULES = [
   "financeiro", "indicadores", "analises", "configuracoes",
 ];
 const ROLES = ["admin", "member"];
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+// Login por nome de usuário: o Supabase Auth exige e-mail, então cada login usa o e-mail
+// interno <usuario>@usuarios.local (o mesmo domínio do app em core/usernames.py).
+const USERNAME_DOMAIN = "usuarios.local";
+const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,31}$/;
 const BANNED_FOREVER = "876000h";
 
 type Member = {
@@ -105,7 +108,7 @@ Deno.serve(async (req: Request) => {
 
     if (action === "list") {
       const { data, error } = await admin.from("organization_members")
-        .select("user_id, role, active, display_name, email, allowed_modules, created_at")
+        .select("user_id, role, active, display_name, username, email, allowed_modules, created_at")
         .eq("organization_id", org).order("created_at");
       if (error) throw new HttpError(500, "Não foi possível listar os usuários.");
       const members = await Promise.all((data ?? []).map(async (member) => {
@@ -113,6 +116,7 @@ Deno.serve(async (req: Request) => {
         return {
           ...member,
           email: member.email || user?.user?.email || "",
+          username: member.username || String(member.email || user?.user?.email || "").split("@")[0],
           last_sign_in_at: user?.user?.last_sign_in_at ?? null,
         };
       }));
@@ -120,8 +124,11 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "create") {
-      const email = cleanText(body.email, 160).toLowerCase();
-      if (!EMAIL_RE.test(email)) throw new HttpError(400, "Informe um e-mail válido.");
+      const username = cleanText(body.username, 32).toLowerCase();
+      if (!USERNAME_RE.test(username)) {
+        throw new HttpError(400, "Nome de usuário inválido: use 3 a 32 letras minúsculas, números, ponto, hífen ou sublinhado.");
+      }
+      const email = `${username}@${USERNAME_DOMAIN}`;
       const password = checkPassword(body.password);
       const displayName = cleanText(body.display_name, 80);
       if (!displayName) throw new HttpError(400, "Informe o nome do usuário.");
@@ -138,20 +145,20 @@ Deno.serve(async (req: Request) => {
       if (createError || !created?.user) {
         const message = String(createError?.message ?? "");
         if (/already|registered|exists/i.test(message)) {
-          throw new HttpError(409, "Já existe um login com este e-mail.");
+          throw new HttpError(409, "Este nome de usuário já está em uso.");
         }
-        throw new HttpError(400, "Não foi possível criar o login. Verifique o e-mail e a senha.");
+        throw new HttpError(400, "Não foi possível criar o login. Verifique o nome de usuário e a senha.");
       }
       const { error: memberError } = await admin.from("organization_members").insert({
         organization_id: org, user_id: created.user.id, role, active: true,
-        display_name: displayName, email, allowed_modules: modules,
+        display_name: displayName, username, email, allowed_modules: modules,
       });
       if (memberError) {
         // Sem vínculo, o login não serviria para nada: desfaz a criação.
         await admin.auth.admin.deleteUser(created.user.id);
         throw new HttpError(500, "Não foi possível vincular o usuário à loja. Nada foi criado.");
       }
-      return json({ user_id: created.user.id, email, role, allowed_modules: modules }, 201);
+      return json({ user_id: created.user.id, username, role, allowed_modules: modules }, 201);
     }
 
     const userId = String(body.user_id ?? "");

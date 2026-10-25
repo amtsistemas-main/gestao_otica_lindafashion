@@ -6,15 +6,17 @@ import logging
 from core.exceptions import AuthenticationError, ConfigurationError
 from core.session_manager import session_manager
 from core.supabase_client import get_supabase_client
+from core.usernames import login_to_email
 
 logger = logging.getLogger(__name__)
 
 
 class AuthService:
-    def sign_in(self, email: str, password: str) -> None:
-        normalized_email = email.strip()
-        if not normalized_email or not password:
-            raise AuthenticationError("Informe o e-mail e a senha.")
+    def sign_in(self, login: str, password: str) -> None:
+        """``login`` is the username (or, for older logins, the e-mail)."""
+        if not login.strip() or not password:
+            raise AuthenticationError("Informe o usuário e a senha.")
+        normalized_email = login_to_email(login)
 
         try:
             response = get_supabase_client().auth.sign_in_with_password(
@@ -30,7 +32,7 @@ class AuthService:
             # Provider errors can include internal details; keep the UI message generic.
             logger.info("Falha de autenticação Supabase.")
             raise AuthenticationError(
-                "Não foi possível entrar. Confira os dados e tente novamente."
+                "Não foi possível entrar. Confira o usuário e a senha e tente novamente."
             ) from exc
 
     def sign_out(self) -> None:

@@ -99,3 +99,15 @@ def test_walk_in_sale_needs_number_and_disconnected_store_is_detected() -> None:
     assert sender.needs_number()
     assert not sender.is_connected()
     assert not WhatsAppDocumentSender(WhatsAppService(None), "c").is_connected()
+
+
+def test_username_login_maps_to_internal_email() -> None:
+    from core.usernames import is_valid_username, login_to_email, normalize_username, username_from_email
+
+    assert login_to_email("Carlos.Souza ") == "carlos.souza@usuarios.local"
+    assert login_to_email("antigo@empresa.com") == "antigo@empresa.com"  # logins antigos por e-mail
+    assert username_from_email("carlos.souza@usuarios.local") == "carlos.souza"
+    assert username_from_email("antigo@empresa.com") == "antigo@empresa.com"
+    assert normalize_username("  ANA ") == "ana"
+    assert is_valid_username("ana.silva") and is_valid_username("loja_01")
+    assert not is_valid_username("ab") and not is_valid_username(".ana") and not is_valid_username("ana silva")

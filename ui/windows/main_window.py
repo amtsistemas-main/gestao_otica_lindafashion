@@ -27,6 +27,7 @@ from core.auth_service import AuthService
 from core.organization import OrganizationContext, current_organization
 from core.permissions import ROLE_LABELS
 from core.session_manager import session_manager
+from core.usernames import username_from_email
 from modules.products.page import ProductsPage
 from modules.inventory.page import InventoryPage
 from modules.suppliers.page import SuppliersPage
@@ -39,6 +40,7 @@ from modules.settings.page import SettingsDialog
 from ui.pages.dashboard_page import DashboardPage
 from ui.components.ai_results_panel import BusinessAnalysisPanel
 from ui.components.module_host import embed_dialog, scroll_container
+from ui.components.profile_menu import ProfileChip
 from core.ai_analysis_service import AIAnalysisWorker
 
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
@@ -226,38 +228,16 @@ class MainWindow(QMainWindow):
         notifications.setToolTip("Notificações")
         topbar_layout.addWidget(notifications)
 
-        avatar = QLabel()
-        avatar.setObjectName("accountAvatar")
-        avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        avatar.setPixmap(qta.icon("fa5s.user", color="#102957").pixmap(19, 19))
-        avatar.setFixedSize(40, 40)
-        topbar_layout.addWidget(avatar)
-
-        profile_box = QVBoxLayout()
-        profile_box.setSpacing(1)
         if preview_mode:
             profile_name, profile_role = "Ana Silva", "Administrador"
         else:
-            profile_name = session_manager.current.email if session_manager.current else "Usuário"
+            profile_name = username_from_email(session_manager.current.email) if session_manager.current else "Usuário"
             profile_role = ROLE_LABELS.get(self._access.role, "Conta conectada") if self._access else "Conta conectada"
-        profile_name_label = QLabel(profile_name)
-        profile_name_label.setObjectName("profileName")
-        profile_box.addWidget(profile_name_label)
-        role_label = QLabel(profile_role)
-        role_label.setObjectName("profileRole")
-        profile_box.addWidget(role_label)
-        topbar_layout.addLayout(profile_box)
-
-        profile_menu = QPushButton()
-        profile_menu.setIcon(qta.icon("fa5s.chevron-down", color="#102957"))
-        profile_menu.setIconSize(QSize(11, 11))
-        profile_menu.setObjectName("topbarIconButton")
-        profile_menu.setFixedSize(30, 36)
-        profile_menu.setCursor(Qt.CursorShape.PointingHandCursor)
-        profile_menu.setToolTip("Sair da conta" if not preview_mode else "Perfil de demonstração")
-        if not preview_mode:
-            profile_menu.clicked.connect(self._logout)
-        topbar_layout.addWidget(profile_menu)
+        # Signed-in user: clicking opens Configurações / Sair.
+        self._profile_chip = ProfileChip(profile_name, profile_role, can_open_settings=self._can_open("Configurações"))
+        self._profile_chip.settings_requested.connect(lambda: self._open_module("Configurações"))
+        self._profile_chip.logout_requested.connect(self._confirm_logout)
+        topbar_layout.addWidget(self._profile_chip)
 
         workspace_layout.addWidget(topbar)
 
@@ -443,6 +423,14 @@ class MainWindow(QMainWindow):
             "A solicitação selecionada foi: "
             f"{request.get('analysis_label', 'Análise')} — {request.get('period_label', 'período')}.",
         )
+
+    def _confirm_logout(self) -> None:
+        if self._preview_mode:
+            if QMessageBox.question(self, "Sair", "Encerrar a pré-visualização?") == QMessageBox.StandardButton.Yes:
+                self.close()
+            return
+        if QMessageBox.question(self, "Sair", "Deseja sair da sua conta?") == QMessageBox.StandardButton.Yes:
+            self._logout()
 
     def _logout(self) -> None:
         self._auth_service.sign_out()
