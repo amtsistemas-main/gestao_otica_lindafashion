@@ -439,7 +439,7 @@ class SalesPage(QDialog):
             optical_html += prescription_table("Medidas das armações", ["Ponte", "Horiz.", "Vert.", "Diag. Maior", "Diâmetro"], [("Medida", armacao)])
 
             root = Path(__file__).resolve().parents[2]
-            logo_candidates = [root / "assets" / "images" / "logo_linda_fashion.png", root / "assets" / "images" / "logo.png", root / "assets" / "logo.png"]
+            logo_candidates = [root / "assets" / "images" / "logootica.png", root / "assets" / "images" / "logo_linda_fashion.png", root / "assets" / "images" / "logo.png", root / "assets" / "logo.png"]
             logo_path = next((candidate for candidate in logo_candidates if candidate.is_file()), None)
             logo_html = '<img src="' + QUrl.fromLocalFile(str(logo_path)).toString() + '" width="100" height="48">' if logo_path else '<b style="color:white">LINDA FASHION</b>'
             order_number = esc(order.get("order_number") or "")
