@@ -462,6 +462,7 @@ def apply_theme(app: QApplication) -> None:
         THEME_QSS
         + DASHBOARD_EXTRA_QSS
         + SHARED_INPUT_QSS
+        + SHARED_WINDOW_STYLES
         + DASHBOARD_REFERENCE_QSS
     )
     stylesheet = stylesheet.replace("@SPIN_UP@", str(assets / "spin-up-white.svg"))
@@ -1670,5 +1671,29 @@ QMenu::item:disabled {
 QCalendarWidget QMenu {
     background-color: #FFFFFF;
     color: #172B4D;
+}
+
+/* Global action-button standard: blue surface, high-contrast white icons and text. */
+QPushButton#actionButton {
+    background-color: #2165F5;
+    color: #FFFFFF;
+    border: 1px solid #2165F5;
+    border-radius: 8px;
+    padding: 7px 11px;
+    min-height: 20px;
+    font-weight: 700;
+}
+QPushButton#actionButton:hover {
+    background-color: #1749C2;
+    border-color: #1749C2;
+}
+QPushButton#actionButton:pressed {
+    background-color: #103A9F;
+    border-color: #103A9F;
+}
+QPushButton#actionButton:disabled {
+    background-color: #A8BDEB;
+    color: #F7F9FF;
+    border-color: #A8BDEB;
 }
 """;
