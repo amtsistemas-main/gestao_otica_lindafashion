@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import csv
-import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
@@ -11,15 +10,17 @@ from uuid import uuid4
 from PySide6.QtCore import QDate, Qt, QUrl
 from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
-    QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QHeaderView,
+    QApplication, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QHeaderView,
     QInputDialog, QLabel, QLineEdit, QMessageBox, QTabWidget, QTableWidget, QTableWidgetItem, QTextEdit,
     QVBoxLayout, QWidget,
 )
 
 from core.organization import OrganizationContext, current_organization
+from core.phone import format_br_phone, normalize_br_whatsapp
 from modules.crm.segments import SEGMENTS, TASK_TYPES, CustomerInsight, segment_customers, whatsapp_message
 from modules.lab_orders.page import StageChip
-from modules.settings.service import load_store_settings
+from modules.settings.service import load_store_settings, store_display_name
+from modules.whatsapp.service import WhatsAppService, describe_result
 from ui.components.ui_kit import MetricTile, make_button, notice
 
 
@@ -351,10 +352,30 @@ class CrmPage(QDialog):
             QMessageBox.information(self, "Contato não autorizado",
                                     "Este cliente não tem WhatsApp cadastrado ou não autorizou contato. Respeite o consentimento (LGPD).")
             return
-        phone = re.sub(r"\D", "", str(customer.get("whatsapp") or ""))
-        if len(phone) in (10, 11):
-            phone = "55" + phone
-        message = whatsapp_message(task_type, str(customer.get("full_name") or ""))
+        phone = normalize_br_whatsapp(str(customer.get("whatsapp") or ""))
+        message = whatsapp_message(task_type, str(customer.get("full_name") or ""), store_display_name(self._ctx, self._settings))
+        service = WhatsAppService(self._ctx)
+        if customer.get("id") and service.available and service.cached_status().is_connected:
+            text, accepted = QInputDialog.getMultiLineText(
+                self, "Mensagem pelo WhatsApp da loja",
+                f"Para {customer.get('full_name') or 'o cliente'} • {format_br_phone(phone)}", message)
+            if not accepted or not text.strip():
+                return
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            try:
+                sent, info = describe_result(service.send_text(str(customer["id"]), text.strip(), "crm_message"))
+            except Exception as exc:
+                sent, info = False, str(exc)
+            finally:
+                QApplication.restoreOverrideCursor()
+            if sent:
+                QMessageBox.information(self, "WhatsApp", info)
+                return
+            answer = QMessageBox.question(
+                self, "Envio não concluído", f"{info}\n\nAbrir o WhatsApp no computador para enviar manualmente?")
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+            message = text.strip()
         QDesktopServices.openUrl(QUrl(f"https://wa.me/{phone}?text={quote(message)}"))
 
     def _task_whatsapp(self) -> None:

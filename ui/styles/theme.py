@@ -896,9 +896,9 @@ QProgressBar::chunk {
    Application shell: navy sidebar, white topbar, light canvas
    ===================================================================== */
 QFrame#appSidebar {
-    background: #F1F4F9;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @navy@, stop:1 #0C2149);
     border: none;
-    border-right: 1px solid @border@;
+    border-right: 1px solid @navy_line@;
 }
 /* The menu scrolls on short screens; its layers stay transparent over the sidebar background. */
 QScrollArea#sidebarScroll, QScrollArea#sidebarScroll > QWidget#qt_scrollarea_viewport,
@@ -912,7 +912,7 @@ QScrollArea#sidebarScroll QScrollBar:vertical {
     margin: 0;
 }
 QScrollArea#sidebarScroll QScrollBar::handle:vertical {
-    background: rgba(16, 41, 87, 0.22);
+    background: rgba(255, 255, 255, 0.22);
     border-radius: 3px;
     min-height: 32px;
 }
@@ -927,7 +927,6 @@ QScrollArea#moduleScroll, QScrollArea#moduleScroll > QWidget#qt_scrollarea_viewp
 }
 QLabel#sidebarLogo {
     background: @surface@;
-    border: 1px solid @border@;
     border-radius: 14px;
     padding: 6px;
 }
@@ -938,29 +937,23 @@ QLabel#logoFallback {
     font-size: 14pt;
     font-weight: 800;
 }
-QLabel#sidebarEyebrow {
-    color: #4A5A75;
-    font-size: 7.5pt;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-}
 QLabel#sidebarSection {
-    color: #5B6B85;
+    color: #AFC3E4;
     font-size: 7.5pt;
     font-weight: 700;
     letter-spacing: 1.2px;
     padding: 4px 10px;
 }
 QLabel#sidebarFooter {
-    color: #5B6B85;
+    color: #DCE6F7;
     font-size: 7.5pt;
     font-weight: 600;
     padding: 10px 2px 2px 2px;
-    border-top: 1px solid @border@;
+    border-top: 1px solid #23406F;
 }
 QPushButton#navButton {
     background: transparent;
-    color: @primary@;
+    color: #FFFFFF;
     border: none;
     border-radius: 9px;
     padding: 8px 12px;
@@ -1284,104 +1277,75 @@ QLabel#aiMetricValue {
 }
 
 /* =====================================================================
-   Sign-in
+   Sign-in (white label: logo + access card over a decorative backdrop)
    ===================================================================== */
-QWidget#loginBackground {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #F6F8FC, stop:1 #E9F0FC);
-}
-QFrame#loginBrandPanel {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @navy_2@, stop:1 @navy@);
-    border: 1px solid @navy_line@;
-    border-radius: 18px;
-}
-QLabel#loginLogo {
-    background: @surface@;
-    border-radius: 16px;
-    padding: 10px;
-}
-QLabel#loginLogoFallback {
-    color: #FFFFFF;
-    font-size: 20pt;
-    font-weight: 800;
-}
-QLabel#loginEyebrow {
-    color: #B9D0FF;
-    font-size: 8pt;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-}
-QLabel#loginBrandTitle {
-    color: #FFFFFF;
-    font-size: 25pt;
-    font-weight: 700;
-}
-QLabel#loginBrandDescription {
-    color: #D5E0F1;
-    font-size: 10pt;
-}
-QFrame#loginFeature {
-    background: rgba(255, 255, 255, 18);
-    border: 1px solid rgba(255, 255, 255, 40);
-    border-radius: 12px;
-}
-QLabel#loginFeatureTitle {
-    color: #FFFFFF;
-    font-size: 10.5pt;
-    font-weight: 700;
-}
-QLabel#loginFeatureText {
-    color: #D5E0F1;
-    font-size: 9pt;
-}
-QLabel#loginBrandFooter {
-    color: #9FB4D6;
-    font-size: 7.5pt;
-    font-weight: 700;
-    letter-spacing: 1px;
-}
-QFrame#loginFormHost {
-    background: transparent;
-    border: none;
-}
 QFrame#loginCard {
     background: @surface@;
-    border: 1px solid @border@;
-    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 22px;
 }
-QLabel#loginFormEyebrow {
-    color: @primary@;
-    font-size: 8pt;
-    font-weight: 700;
-    letter-spacing: 1.5px;
+QLabel#loginLogo {
+    background: transparent;
+    padding: 0px;
+}
+QLabel#loginLogoFallback {
+    color: @navy@;
+    font-size: 18pt;
+    font-weight: 800;
 }
 QLabel#loginFormTitle {
     color: @text_strong@;
-    font-size: 22pt;
+    font-size: 20pt;
+    font-weight: 700;
+}
+QLabel#loginFormSubtitle {
+    color: @text_muted@;
+    font-size: 9.5pt;
+}
+QLabel#loginFieldLabel {
+    color: @text_strong@;
+    font-size: 9pt;
     font-weight: 700;
 }
 QLineEdit#loginInput {
     background: @surface_alt@;
     border: 1px solid @border_strong@;
-    border-radius: 10px;
+    border-radius: 11px;
     padding: 11px 13px;
     font-size: 10pt;
 }
+QLineEdit#loginInput:hover {
+    border-color: @border_hover@;
+}
 QLineEdit#loginInput:focus {
     background: @surface@;
-    border-color: @primary@;
+    border: 1px solid @primary@;
 }
-QLabel#loginStatus {
-    color: #C2414B;
+QLineEdit#loginInput:disabled {
+    color: @text_muted@;
+}
+QLabel#loginCapsLock {
+    color: #B7791F;
+    font-size: 8.5pt;
+    font-weight: 600;
+}
+QCheckBox#loginRemember {
+    color: @text_muted@;
     font-size: 9pt;
 }
-QLabel#loginSecurityNote {
-    color: @text_soft@;
-    font-size: 8pt;
-}
-QWidget#loginBackground QPushButton#primaryButton {
+QLabel#loginStatus {
+    color: #B42318;
+    background: #FEF3F2;
+    border: 1px solid #FECDCA;
     border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 9pt;
+}
+QFrame#loginCard QPushButton#primaryButton {
+    border-radius: 11px;
     padding: 12px 18px;
-    font-size: 10pt;
+    font-size: 10.5pt;
+    font-weight: 700;
 }
 """
 

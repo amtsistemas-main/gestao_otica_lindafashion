@@ -71,7 +71,7 @@ No cadastro de Produtos, o campo **Fornecedor principal** vincula o produto a um
 
 ## Gestão óptica de alto padrão
 
-Seis frentes integradas. As migrations e a ordem de aplicação estão em `database/migrations/README.md` (arquivos `202610250001` a `202610250010`, já aplicados no projeto Supabase conectado).
+Seis frentes integradas. As migrations e a ordem de aplicação estão em `database/migrations/README.md` (arquivos `202610250001` a `202610250012`, já aplicados no projeto Supabase conectado).
 
 1. **Produtos ópticos** (`modules/products/`): tipo de produto com campos próprios (armação, lente oftálmica, lente de contato, solar, acessório, serviço), modelo, cor, tamanho, material, índice e tratamentos de lente, ponto e quantidade de reposição, serviços sem controle de estoque e filtro por tipo.
 2. **Receitas** (`modules/prescriptions/`): OD/OE estruturado (esférico, cilíndrico, eixo, adição, DNP longe/perto, altura, prisma), passos de 0,25 D, eixo obrigatório com cilindro, alertas de digitação (anisometropia, DNP de perto maior que a de longe, receita vencida), histórico por cliente e vínculo com a venda e o pedido.
@@ -88,6 +88,7 @@ A lógica de negócio dessas frentes tem testes em `tests/test_optical_business_
 - **Vendas / PDV** (`modules/sales/hub.py`): vendas, orçamentos, PDV e o quadro de pedidos do laboratório no mesmo módulo, em abas.
 - **Documento de venda em PDF** (`modules/sales/document_pdf.py`): ordem de serviço, orçamento ou comprovante com identidade da loja (Configurações), itens, pagamentos e parcelas, receita OD/OE, medidas da armação, laboratório, condições, assinaturas e canhoto com código de barras. O documento cabe em uma única página A4: a densidade é reduzida automaticamente quando necessário.
 - **Multilogin** (Configurações → Usuários e acessos): o dono ou administrador cria os logins e escolhe os módulos de cada usuário; o menu e os atalhos mostram apenas os módulos liberados. A criação de logins usa a Edge Function `admin-users` (chave privilegiada somente no servidor), e o Financeiro também é protegido por módulo no banco.
+- **WhatsApp da loja** (Configurações → WhatsApp da loja): o cliente conecta o WhatsApp da loja por QR Code (gateway Evolution API hospedado pela AMT, uma instância por loja). Mensagens de status de pedido, PDFs de venda e contatos do CRM passam a ser enviados automaticamente pela fila do banco; sem conexão, o envio manual continua. Detalhes e implantação do servidor: `docs/whatsapp-evolution.md`.
 
 ## Segurança e integridade
 

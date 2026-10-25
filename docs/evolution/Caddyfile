@@ -1,0 +1,7 @@
+{$EVOLUTION_DOMAIN} {
+	encode gzip
+	# O painel /manager não deve ficar público.
+	@manager path /manager*
+	respond @manager 404
+	reverse_proxy evolution:8080
+}

@@ -28,8 +28,10 @@ Pré-requisito: as migrations anteriores (`202610240001` a `202610241730`, nesta
 | 8 | `202610250008_trigger_functions_not_rpc.sql` | Remove a exposição das funções de gatilho como RPC (os gatilhos continuam funcionando). |
 | 9 | `202610250009_store_document_identity.sql` | Dados da loja impressos nos documentos de venda (nome, CNPJ, contatos, endereço, validade do orçamento e condições). |
 | 10 | `202610250010_multi_user_module_access.sql` | Multilogin: e-mail e módulos liberados por usuário (`allowed_modules`), função `has_module_access` e RLS do Financeiro por módulo (ler exige Financeiro ou Indicadores; gravar exige Financeiro). |
+| 11 | `202610250011_whatsapp_gateway.sql` | WhatsApp por gateway (Evolution): conexão por loja (`whatsapp_connections`), segredos só no servidor, número no formato internacional (`normalize_br_whatsapp`), fila sem duplicidade e com recuperação de mensagens travadas, inserção apenas por `enqueue_whatsapp_message` e bucket privado `whatsapp-documents`. |
+| 12 | `202610250012_whatsapp_worker_schedule.sql` | Envio validado pelo cadastro do cliente (limite por usuário) e worker agendado no `pg_cron` (chama a Edge Function só quando há mensagens; URL e segredo no Vault). |
 
-As dez migrations foram aplicadas no projeto conectado em 25/10/2026 e registradas em `supabase_migrations.schema_migrations`. O fluxo completo (venda com sinal e crediário, idempotência, pipeline do laboratório, pós-venda, orçamento, cancelamento com estorno, bloqueios por papel, RLS e acesso por módulo) foi validado como usuário autenticado, em transação revertida.
+As doze migrations foram aplicadas no projeto conectado em 25/10/2026 e registradas em `supabase_migrations.schema_migrations`. O fluxo completo (venda com sinal e crediário, idempotência, pipeline do laboratório, pós-venda, orçamento, cancelamento com estorno, bloqueios por papel, RLS, acesso por módulo e fila do WhatsApp) foi validado como usuário autenticado, em transação revertida.
 
 ### Edge Function `admin-users` (multilogin)
 
@@ -72,3 +74,7 @@ values (
 Perform this administrative provisioning in the Supabase Dashboard, never from the desktop app with a privileged key. The user needs an active organization membership to load and edit the product catalog.
 
 The `python app.py --preview` mode uses temporary in-memory storage and never writes to Supabase. Preview data is discarded when the app closes.
+
+### WhatsApp da loja (Evolution API)
+
+Conexão por QR Code, fila, Edge Functions (`whatsapp-connect`, `whatsapp-send`, `process-customer-whatsapp-outbox`, `whatsapp-webhook`), servidor do gateway e segredos: veja `docs/whatsapp-evolution.md`.

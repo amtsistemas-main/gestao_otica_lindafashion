@@ -66,3 +66,18 @@ def save_store_settings(ctx: OrganizationContext, settings: StoreSettings) -> No
             {key: value for key, value in record.items() if key in legacy or key in ("organization_id", "updated_by")},
             on_conflict="organization_id",
         ).execute()
+
+
+def store_display_name(ctx: OrganizationContext | None, settings: StoreSettings | None = None) -> str:
+    """Store name for documents and messages: configured name, organization name, or default."""
+    settings = settings or load_store_settings(ctx)
+    if settings.store_name:
+        return settings.store_name
+    if ctx is not None:
+        try:
+            rows = ctx.client.table("organizations").select("name").eq("id", ctx.organization_id).limit(1).execute().data or []
+            if rows and rows[0].get("name"):
+                return str(rows[0]["name"])
+        except Exception:
+            pass
+    return "Ótica Linda Fashion"

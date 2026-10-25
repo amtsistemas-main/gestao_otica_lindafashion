@@ -11,6 +11,8 @@ from core.organization import OrganizationContext, current_organization
 from core.permissions import ROLE_LABELS
 from modules.settings.service import StoreSettings, load_store_settings, save_store_settings
 from modules.settings.users import UsersPanel
+from modules.whatsapp.dialogs import WhatsAppSettingsCard
+from modules.whatsapp.service import WhatsAppService
 from ui.components.ui_kit import notice
 
 
@@ -34,7 +36,7 @@ class SettingsDialog(QDialog):
         bar_layout.setContentsMargins(18, 13, 18, 13)
         title = QLabel("Configurações da loja")
         title.setObjectName("windowTitle")
-        subtitle = QLabel("Regras comerciais, identificação nos documentos, usuários e acessos.")
+        subtitle = QLabel("Regras comerciais, identificação nos documentos, WhatsApp da loja, usuários e acessos.")
         subtitle.setObjectName("windowSubtitle")
         subtitle.setWordWrap(True)
         bar_layout.addWidget(title)
@@ -134,6 +136,11 @@ class SettingsDialog(QDialog):
         ]
         for widget in self._editable:
             widget.setEnabled(can_edit)
+
+        whatsapp_title = QLabel("WhatsApp da loja")
+        whatsapp_title.setObjectName("sectionTitle")
+        body.addWidget(whatsapp_title)
+        body.addWidget(WhatsAppSettingsCard(WhatsAppService(self._ctx), can_manage=can_edit))
 
         self.team: QTableWidget | None = None
         if can_edit or preview_mode:

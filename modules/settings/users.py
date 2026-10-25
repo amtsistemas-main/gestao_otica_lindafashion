@@ -5,7 +5,6 @@ app only sends the signed-in user's token, so no privileged secret ships with it
 """
 from __future__ import annotations
 
-import json
 from datetime import datetime
 
 from PySide6.QtCore import Qt
@@ -14,6 +13,7 @@ from PySide6.QtWidgets import (
     QLabel, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
+from core.edge_functions import EdgeFunctionError, invoke_edge_function
 from core.organization import OrganizationContext
 from core.permissions import DEFAULT_MEMBER_MODULES, MODULES, ROLE_LABELS, modules_summary
 from ui.components.ui_kit import make_button, notice
@@ -30,38 +30,10 @@ class UserAdminService:
         self._ctx = ctx
 
     def _call(self, payload: dict) -> dict:
-        if self._ctx is None:
-            raise UserAdminError("Disponível somente com login no Supabase.")
-        client = self._ctx.client
-        headers = {}
         try:
-            session = client.auth.get_session()
-            if session and session.access_token:
-                headers["Authorization"] = f"Bearer {session.access_token}"
-        except Exception:
-            pass
-        try:
-            result = client.functions.invoke(FUNCTION_NAME, invoke_options={
-                "body": {**payload, "organization_id": self._ctx.organization_id},
-                "headers": headers, "responseType": "json",
-            })
-        except Exception as exc:
-            message = getattr(exc, "message", None) or str(exc)
-            try:
-                message = json.loads(message).get("error", message)
-            except (ValueError, AttributeError, TypeError):
-                pass
-            if "404" in str(getattr(exc, "status", "")) or "not found" in str(message).lower():
-                message = "A função de usuários (admin-users) não está publicada no Supabase."
-            raise UserAdminError(str(message)) from exc
-        if isinstance(result, (bytes, str)):
-            try:
-                result = json.loads(result)
-            except ValueError:
-                result = {}
-        if isinstance(result, dict) and result.get("error"):
-            raise UserAdminError(str(result["error"]))
-        return result if isinstance(result, dict) else {}
+            return invoke_edge_function(self._ctx, FUNCTION_NAME, payload)
+        except EdgeFunctionError as exc:
+            raise UserAdminError(str(exc)) from exc
 
     def list(self) -> list[dict]:
         return list(self._call({"action": "list"}).get("members") or [])

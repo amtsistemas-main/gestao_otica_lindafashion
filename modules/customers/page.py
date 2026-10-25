@@ -814,7 +814,7 @@ class CustomersPage(QDialog):
             self._client.table("customer_whatsapp_templates").upsert(
                 payload, on_conflict="organization_id,event_type"
             ).execute()
-            QMessageBox.information(self, "Modelos salvos", "Os modelos foram salvos. As mudanças de status passarão a gerar mensagens na fila quando houver consentimento e WhatsApp cadastrado. O envio externo depende da configuração do provedor WhatsApp.")
+            QMessageBox.information(self, "Modelos salvos", "Os modelos foram salvos. As mudanças de status passarão a gerar mensagens na fila quando houver consentimento e WhatsApp cadastrado. O envio é feito pelo WhatsApp da loja conectado em Configurações.")
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao salvar modelos", f"Não foi possível salvar os modelos.\\n\\n{exc}")
 

@@ -5,21 +5,25 @@ from decimal import Decimal, ROUND_HALF_UP
 import json
 from pathlib import Path
 from urllib.parse import quote
-import re
+from uuid import uuid4
+import tempfile
 
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QColor, QDesktopServices
 import qtawesome as qta
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QFileDialog, QFrame, QHBoxLayout, QHeaderView, QInputDialog, QLabel, QLineEdit,
+    QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, QHeaderView, QInputDialog, QLabel, QLineEdit,
     QMessageBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from core.organization import OrganizationContext, current_organization
+from core.phone import format_br_phone, normalize_br_whatsapp
 from modules.prescriptions.repository import PrescriptionRepository
 from modules.sales.document_pdf import SalesDocument, StoreIdentity, build_sales_pdf
 from modules.sales.pos import SERVICE_ORDER_MARKER, PosDialog
-from modules.settings.service import load_store_settings
+from modules.settings.service import load_store_settings, store_display_name
+from modules.whatsapp.service import WhatsAppDocumentSender, WhatsAppService, describe_result
+from ui.components.pdf_viewer import PdfViewerDialog
 from ui.components.ui_kit import make_button, notice
 
 
@@ -147,7 +151,7 @@ class SalesPage(QDialog):
             actions_layout.setContentsMargins(6, 4, 6, 4)
             actions_layout.setSpacing(6)
             pdf = make_button("PDF", "fa5s.file-pdf", "actionButton")
-            pdf.setToolTip("Gerar ou visualizar a ordem de serviço / orçamento em PDF")
+            pdf.setToolTip("Visualizar o documento em PDF para imprimir, salvar ou enviar por WhatsApp")
             pdf.clicked.connect(lambda checked=False, oid=order["id"]: self._export_pdf(oid))
             wa = make_button("WhatsApp", "fa5b.whatsapp", "actionButton")
             wa.setToolTip("Preparar contato com o cliente no WhatsApp")
@@ -309,10 +313,7 @@ class SalesPage(QDialog):
         frame = order.get("frame_measurements") or legacy.get("armacao") or {}
 
         settings = load_store_settings(self._ctx)
-        store_name = settings.store_name
-        if not store_name:
-            org_rows = self._optional_rows(client.table("organizations").select("name").eq("id", org).limit(1))
-            store_name = (org_rows[0].get("name") if org_rows else "") or "Ótica Linda Fashion"
+        store_name = store_display_name(self._ctx, settings)
         store = StoreIdentity(
             name=store_name, document=settings.store_document, phone=settings.store_phone,
             whatsapp=settings.store_whatsapp, email=settings.store_email, address=settings.store_address,
@@ -334,35 +335,79 @@ class SalesPage(QDialog):
             QMessageBox.critical(self, "Erro ao gerar PDF", f"Não foi possível carregar os dados do pedido.\n\n{exc}")
             return
         prefix = {"ORÇAMENTO": "Orçamento", "ORDEM DE SERVIÇO": "OS"}.get(document.kind, "Venda")
-        default_name = f"{prefix} {document.order.get('order_number') or 'documento'}.pdf"
-        path, _ = QFileDialog.getSaveFileName(self, f"Salvar {document.kind.lower()}", default_name, "Documento PDF (*.pdf)")
-        if not path:
-            return
-        if not path.lower().endswith(".pdf"):
-            path += ".pdf"
+        number = str(document.order.get("order_number") or "documento")
+        file_name = f"{prefix} {number}.pdf"
+        # Generated in the temp folder and shown in the in-app viewer (print, save, WhatsApp).
+        temp_dir = Path(tempfile.gettempdir()) / "OticaLindaFashion"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        path = temp_dir / f"{prefix} {number} {uuid4().hex[:6]}.pdf"
         try:
             build_sales_pdf(path, document)
-        except PermissionError:
-            QMessageBox.critical(self, "Arquivo em uso", "Não foi possível salvar: o arquivo está aberto em outro programa. "
-                                 "Feche-o ou escolha outro nome.")
-            return
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao gerar PDF", f"Não foi possível gerar o documento.\n\n{exc}")
             return
-        QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(path).resolve())))
+        customer = document.customer or {}
+        first_name = str(customer.get("full_name") or "").split(" ")[0]
+        subject = {"ORÇAMENTO": "o seu orçamento", "ORDEM DE SERVIÇO": "a sua ordem de serviço"}.get(
+            document.kind, "o comprovante da sua compra")
+        message = (f"Olá{', ' + first_name if first_name else ''}! Segue {subject} {number} da "
+                   f"{document.store.name}, no valor de {_money(document.order.get('total'))}. "
+                   "Qualquer dúvida, estamos à disposição.")
+        viewer = PdfViewerDialog(
+            path, f"{document.kind.capitalize()} {number}", file_name,
+            subtitle=f"{customer.get('full_name') or 'Venda avulsa'} • total {_money(document.order.get('total'))}",
+            whatsapp_phone=str(customer.get("whatsapp") or customer.get("phone") or ""),
+            whatsapp_message=message, sender=self._document_sender(document), parent=self,
+        )
+        viewer.exec()
+
+    def _document_sender(self, document: SalesDocument) -> WhatsAppDocumentSender | None:
+        """Automatic sending through the store WhatsApp (None in preview mode)."""
+        if self._ctx is None:
+            return None
+        customer = document.customer or {}
+        customer_id = document.order.get("customer_id")
+        return WhatsAppDocumentSender(
+            WhatsAppService(self._ctx), str(customer_id) if customer_id else None,
+            str(customer.get("full_name") or ""), str(customer.get("whatsapp") or customer.get("phone") or ""),
+        )
 
     def _prepare_whatsapp(self, order_id: str) -> None:
         try:
             order, _items = self._order_data(order_id)
-            customer = order.get("customers") or {}
-            phone = re.sub(r"\D", "", str(customer.get("whatsapp") or customer.get("phone") or ""))
-            if not phone:
-                QMessageBox.warning(self, "WhatsApp ausente", "Cadastre o telefone/WhatsApp do cliente antes de iniciar o contato.")
-                return
-            if len(phone) in (10, 11):
-                phone = "55" + phone
-            message = f"Olá, {customer.get('full_name') or 'tudo bem'}! Segue a atualização do pedido {order['order_number']} da Ótica Linda Fashion. Valor: {_money(order['total'])}. Para receber a ordem de serviço em PDF, anexe o documento salvo no sistema nesta conversa."
-            QDesktopServices.openUrl(QUrl("https://wa.me/" + phone + "?text=" + quote(message)))
-            QMessageBox.information(self, "WhatsApp aberto", "A conversa foi aberta com a mensagem preparada. Anexe o PDF manualmente antes de enviar. O sistema não enviou a mensagem nem o arquivo automaticamente.")
         except Exception as exc:
-            QMessageBox.critical(self, "WhatsApp", f"Não foi possível preparar a conversa.\n\n{exc}")
+            QMessageBox.critical(self, "WhatsApp", f"Não foi possível carregar o pedido.\n\n{exc}")
+            return
+        customer = order.get("customers") or {}
+        phone = normalize_br_whatsapp(str(customer.get("whatsapp") or customer.get("phone") or ""))
+        if not phone:
+            QMessageBox.warning(self, "WhatsApp ausente", "Cadastre o telefone/WhatsApp do cliente antes de iniciar o contato.")
+            return
+        first_name = str(customer.get("full_name") or "").split(" ")[0]
+        message = (f"Olá{', ' + first_name if first_name else ''}! Aqui é da {store_display_name(self._ctx)}. "
+                   f"Sobre o seu pedido {order['order_number']}, no valor de {_money(order['total'])}: ")
+        service = WhatsAppService(self._ctx)
+        if order.get("customer_id") and service.available and service.cached_status().is_connected:
+            text, accepted = QInputDialog.getMultiLineText(
+                self, "Mensagem pelo WhatsApp da loja",
+                f"Para {customer.get('full_name') or 'o cliente'} • {format_br_phone(phone)}", message)
+            if not accepted or not text.strip():
+                return
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            try:
+                sent, info = describe_result(service.send_text(str(order["customer_id"]), text.strip(), "sales_message"))
+            except Exception as exc:
+                sent, info = False, str(exc)
+            finally:
+                QApplication.restoreOverrideCursor()
+            if sent:
+                QMessageBox.information(self, "WhatsApp", info)
+                return
+            answer = QMessageBox.question(
+                self, "Envio não concluído", f"{info}\n\nAbrir o WhatsApp no computador para enviar manualmente?")
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+            message = text.strip()
+        QDesktopServices.openUrl(QUrl("https://wa.me/" + phone + "?text=" + quote(message)))
+        QMessageBox.information(self, "WhatsApp aberto", "A conversa foi aberta com a mensagem preparada. "
+                                "Revise e envie pelo WhatsApp. Para enviar o PDF, use o botão PDF.")

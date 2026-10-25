@@ -150,11 +150,6 @@ class MainWindow(QMainWindow):
             logo.setObjectName("logoFallback")
         self._sidebar_logo = logo
         side_layout.addWidget(logo)
-        brand_subtitle = QLabel("VISÃO  •  ESTILO  •  VOCÊ")
-        brand_subtitle.setObjectName("sidebarEyebrow")
-        brand_subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._brand_subtitle = brand_subtitle
-        side_layout.addWidget(brand_subtitle)
 
         side_layout.addSpacing(12)
         nav_label = QLabel("MENU PRINCIPAL")
@@ -164,8 +159,8 @@ class MainWindow(QMainWindow):
 
         for label, icon_name, module in NAV_ITEMS:
             button = QPushButton(label)
-            # Black like the text; white on the blue hover and on the selected item.
-            normal_icon = qta.icon(icon_name, color="#000000", color_on="#FFFFFF", color_active="#000000", color_on_active="#FFFFFF")
+            # White like the text, also on the blue hover and on the selected item.
+            normal_icon = qta.icon(icon_name, color="#FFFFFF", color_on="#FFFFFF", color_active="#FFFFFF", color_on_active="#FFFFFF")
             button.setProperty("_normal_icon", normal_icon)
             button.setProperty("_hover_icon", qta.icon(icon_name, color="#FFFFFF"))
             button.setIcon(normal_icon)
@@ -290,7 +285,7 @@ class MainWindow(QMainWindow):
 
         side_footer = QLabel(
             "Desenvolvido por<br>AMT Sistemas &amp; Soluções<br>"
-            "<a href='https://www.amtsistemas.com.br' style='color:#2165F5; text-decoration:none;'>"
+            "<a href='https://www.amtsistemas.com.br' style='color:#8FB4FF; text-decoration:none;'>"
             "https://www.amtsistemas.com.br</a>"
         )
         side_footer.setObjectName("sidebarFooter")
@@ -331,7 +326,6 @@ class MainWindow(QMainWindow):
 
         for widget in (
             self._sidebar_logo,
-            self._brand_subtitle,
             self._nav_label,
             self._sidebar_footer,
         ):
