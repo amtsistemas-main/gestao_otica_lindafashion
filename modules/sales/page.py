@@ -394,17 +394,93 @@ class SalesPage(QDialog):
     def _export_pdf(self, order_id: str) -> None:
         try:
             order, items = self._order_data(order_id)
-            path, _ = QFileDialog.getSaveFileName(self, "Salvar ordem de serviço", f'{order["order_number"]}.pdf', "Documento PDF (*.pdf)")
+            default_name = str(order.get("order_number") or "ordem_servico") + ".pdf"
+            path, _ = QFileDialog.getSaveFileName(self, "Salvar ordem de serviço", default_name, "Documento PDF (*.pdf)")
             if not path:
                 return
+            if not path.lower().endswith(".pdf"):
+                path += ".pdf"
             customer = order.get("customers") or {}
-            lines = "".join(f"<tr><td>{r['product_name']}</td><td>{r.get('sku','')}</td><td>{r['quantity']}</td><td>{_money(r['unit_price'])}</td><td>{_money(r['discount'])}</td><td>{_money(r['line_total'])}</td></tr>" for r in items)
-            html = f"""<html><meta charset="utf-8"><style>body{{font-family:Arial;color:#102957}}h1{{background:#102957;color:white;padding:16px}}table{{width:100%;border-collapse:collapse}}th{{background:#eaf0fb}}td,th{{border:1px solid #ccd6e6;padding:8px;text-align:left}}.total{{font-size:18px;font-weight:bold;text-align:right;padding:16px}}</style><h1>ÓTICA LINDA FASHION<br><small>ORDEM DE SERVIÇO / PEDIDO</small></h1><p><b>Número:</b> {order['order_number']} &nbsp; <b>Data:</b> {str(order['created_at'])[:10]}</p><h3>Cliente</h3><p>{customer.get('full_name') or 'Venda avulsa'}<br>{customer.get('document') or ''}<br>{customer.get('phone') or ''}<br>{customer.get('street') or ''} {customer.get('address_number') or ''} — {customer.get('city') or ''}/{customer.get('state') or ''}</p><table><thead><tr><th>Produto</th><th>SKU</th><th>Qtd.</th><th>Unitário</th><th>Desc.</th><th>Total</th></tr></thead><tbody>{lines}</tbody></table><p class="total">Subtotal: {_money(order['subtotal'])}<br>Descontos: {_money(order['discount'])}<br>Total: {_money(order['total'])}</p><p><b>Observações:</b><br>{order.get('notes') or '—'}</p><hr><p>Documento gerado pelo sistema Ótica Linda Fashion.</p></html>"""
-            document = QTextDocument(); document.setHtml(html)
+            def esc(value) -> str:
+                return (str(value) if value is not None else "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#39;")
+            lines = "".join(
+                "<tr><td>" + esc(r.get("product_name")) + "</td><td>" + esc(r.get("sku")) + "</td><td>" + esc(r.get("quantity")) + "</td><td>" + _money(r.get("unit_price")) + "</td><td>" + _money(r.get("discount")) + "</td><td>" + _money(r.get("line_total")) + "</td></tr>"
+                for r in items
+            )
+            notes_raw = str(order.get("notes") or "")
+            notes_text = notes_raw
+            metadata = {}
+            marker = "[[LF_OS_DATA]]"
+            if notes_raw.startswith(marker):
+                metadata_text, separator, notes_text = notes_raw[len(marker):].partition("\n")
+                try:
+                    metadata = json.loads(metadata_text)
+                except (json.JSONDecodeError, TypeError):
+                    metadata = {}
+                    notes_text = notes_raw
+            prescription = metadata.get("prescription") or {}
+
+            def prescription_table(title: str, columns: list[str], rows: list[tuple[str, dict]]) -> str:
+                header = "".join("<th>" + esc(column) + "</th>" for column in columns)
+                body = ""
+                for row_name, values in rows:
+                    body += "<tr><th>" + esc(row_name) + "</th>"
+                    for column in columns:
+                        key = column.lower().replace(" ", "_").replace(".", "")
+                        body += "<td>" + esc(values.get(key) or "—") + "</td>"
+                    body += "</tr>"
+                return "<h3>" + esc(title) + "</h3><table class='data'><thead><tr><th></th>" + header + "</tr></thead><tbody>" + body + "</tbody></table>"
+
+            longe = prescription.get("longe") or {}
+            perto = prescription.get("perto") or {}
+            armacao = prescription.get("armacao") or {}
+            optical_html = prescription_table("Tabela 1 — Longe", ["ESF", "CIL", "EIXO", "DNP"], [("OD", longe.get("od") or {}), ("OE", longe.get("oe") or {})])
+            optical_html += prescription_table("Tabela 2 — Perto", ["ESF", "CIL", "EIXO", "DNP", "ALT.", "AD"], [("OD", perto.get("od") or {}), ("OE", perto.get("oe") or {})])
+            optical_html += prescription_table("Medidas das armações", ["Ponte", "Horiz.", "Vert.", "Diag. Maior", "Diâmetro"], [("Medida", armacao)])
+
+            root = Path(__file__).resolve().parents[2]
+            logo_candidates = [root / "assets" / "images" / "logo_linda_fashion.png", root / "assets" / "images" / "logo.png", root / "assets" / "logo.png"]
+            logo_path = next((candidate for candidate in logo_candidates if candidate.is_file()), None)
+            logo_html = '<img src="' + QUrl.fromLocalFile(str(logo_path)).toString() + '" width="100" height="48">' if logo_path else '<b style="color:white">LINDA FASHION</b>'
+            order_number = esc(order.get("order_number") or "")
+            order_date = esc(str(order.get("created_at") or "")[:10])
+            customer_name = esc(customer.get("full_name") or "Venda avulsa")
+            customer_document = esc(customer.get("document") or "")
+            customer_phone = esc(customer.get("phone") or customer.get("whatsapp") or "")
+            customer_address = esc(str(customer.get("street") or "") + " " + str(customer.get("address_number") or "") + " — " + str(customer.get("city") or "") + "/" + str(customer.get("state") or ""))
+            notes_html = esc(notes_text).replace("\n", "<br>") or "—"
+            html = """<html><meta charset="utf-8"><style>
+            body{font-family:Arial,sans-serif;color:#102957;font-size:9pt}
+            .brand{width:100%;background:#102957;color:white;border-collapse:collapse}
+            .brand td{border:0;padding:12px;vertical-align:middle}
+            .brand-title{color:white;font-size:16pt;font-weight:bold}
+            h3{color:#102957;font-size:10pt;margin:10px 0 5px}
+            table.data{width:100%;border-collapse:collapse;margin-bottom:8px}
+            th{background:#EAF0FB;color:#102957}td,th{border:1px solid #CCD6E6;padding:5px;text-align:left}
+            .total{font-size:12pt;font-weight:bold;text-align:right;padding:10px}
+            .tear{border-top:1px dashed #526079;margin-top:18px;padding-top:10px}
+            .stub{font-size:8pt;color:#33496C}
+            </style>
+            <table class="brand"><tr><td width="120">""" + logo_html + """</td><td><div class="brand-title">ÓTICA LINDA FASHION</div><div>ORDEM DE SERVIÇO / PEDIDO</div></td></tr></table>
+            <p><b>Número:</b> """ + order_number + """ &nbsp; <b>Data:</b> """ + order_date + """</p>
+            <h3>Dados do cliente</h3><p>""" + customer_name + "<br>" + customer_document + "<br>" + customer_phone + "<br>" + customer_address + """</p>
+            <h3>Itens da venda</h3><table class="data"><thead><tr><th>Produto</th><th>SKU</th><th>Qtd.</th><th>Unitário</th><th>Desc.</th><th>Total</th></tr></thead><tbody>""" + lines + """</tbody></table>
+            """ + optical_html + """
+            <p class="total">Subtotal: """ + _money(order.get("subtotal")) + """<br>Descontos: """ + _money(order.get("discount")) + """<br>Total: """ + _money(order.get("total")) + """</p>
+            <p><b>Observações:</b><br>""" + notes_html + """</p>
+            <div class="tear"><b>CANHOTO — COMPROVANTE DO CLIENTE</b><div class="stub">
+            Ordem: """ + order_number + """ &nbsp; | &nbsp; Cliente: """ + customer_name + """ &nbsp; | &nbsp; Data: """ + order_date + """<br>
+            Valor: """ + _money(order.get("total")) + """ &nbsp; | &nbsp; Telefone: """ + customer_phone + """<br>
+            Assinatura/retirada: ____________________________________ &nbsp; Data: ____/____/________
+            </div></div></html>"""
+            document = QTextDocument()
+            document.setHtml(html)
             printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-            printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat); printer.setOutputFileName(path)
+            printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+            printer.setOutputFileName(path)
             document.print_(printer)
-            QMessageBox.information(self, "PDF gerado", f"Ordem de serviço salva em:\n{path}")
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(path).resolve())))
+            QMessageBox.information(self, "PDF gerado", "Ordem de serviço salva e aberta para visualização/impressão:\n" + path)
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao gerar PDF", f"Não foi possível gerar o documento.\n\n{exc}")
 
