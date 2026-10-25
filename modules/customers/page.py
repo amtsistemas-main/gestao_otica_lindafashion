@@ -351,8 +351,14 @@ class CustomersPage(QDialog):
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        for col in range(1, 6):
+        for col in range(1, 5):
             self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        # Reserve enough horizontal and vertical space for both icon buttons.
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(5, 104)
+        self.table.horizontalHeader().setMinimumSectionSize(70)
+        self.table.verticalHeader().setDefaultSectionSize(48)
+        self.table.verticalHeader().setMinimumSectionSize(48)
         self.table.doubleClicked.connect(self._edit_selected)
         root.addWidget(self.table, 1)
 
@@ -386,6 +392,26 @@ class CustomersPage(QDialog):
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
             QPushButton:hover { background:#F3F7FF; }
             QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
+            QPushButton#viewCustomerButton, QPushButton#editCustomerButton {
+                background-color:#2165F5;
+                color:#FFFFFF;
+                border:1px solid #2165F5;
+                border-radius:6px;
+                padding:0px;
+                margin:0px;
+                min-width:36px;
+                max-width:36px;
+                min-height:36px;
+                max-height:36px;
+            }
+            QPushButton#viewCustomerButton:hover, QPushButton#editCustomerButton:hover {
+                background-color:#1749C2;
+                border-color:#1749C2;
+            }
+            QPushButton#viewCustomerButton:pressed, QPushButton#editCustomerButton:pressed {
+                background-color:#103A9F;
+                border-color:#103A9F;
+            }
         
             /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
             QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
@@ -477,7 +503,7 @@ class CustomersPage(QDialog):
                 self.table.setItem(row_index, col, item)
             actions_widget = QWidget()
             actions_layout = QHBoxLayout(actions_widget)
-            actions_layout.setContentsMargins(4, 2, 4, 2)
+            actions_layout.setContentsMargins(2, 2, 2, 2)
             actions_layout.setSpacing(6)
             actions_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -516,7 +542,10 @@ class CustomersPage(QDialog):
             edit_button.setStyleSheet(action_button_style)
             edit_button.clicked.connect(lambda checked=False, item=record: self._edit_customer(item))
             actions_layout.addWidget(edit_button)
+            actions_widget.setMinimumWidth(100)
+            actions_widget.setMinimumHeight(44)
             self.table.setCellWidget(row_index, 5, actions_widget)
+            self.table.setRowHeight(row_index, 48)
         total = len(self._rows)
         email_count = sum(bool(row.get("marketing_email_consent") and row.get("email")) for row in self._rows)
         whatsapp_count = sum(bool(row.get("whatsapp_consent") and row.get("whatsapp")) for row in self._rows)
