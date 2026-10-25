@@ -30,6 +30,10 @@ from modules.suppliers.page import SuppliersPage
 from modules.finance.page import FinancePage
 from modules.customers.page import CustomersPage
 from modules.sales.page import SalesPage
+from modules.lab_orders.page import LabOrdersPage
+from modules.crm.page import CrmPage
+from modules.analytics.page import AnalyticsPage
+from modules.settings.page import SettingsDialog
 from ui.pages.dashboard_page import DashboardPage
 from ui.components.ai_results_panel import BusinessAnalysisPanel
 from core.ai_analysis_service import AIAnalysisWorker
@@ -38,16 +42,31 @@ LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logooti
 
 NAV_ITEMS = [
     ("Visão geral", "fa5s.home", None),
-    ("Produtos", "fa5s.glasses", "Produtos"),
+    ("Vendas / PDV", "fa5s.cash-register", "Vendas"),
+    ("Pedidos", "fa5s.clipboard-list", "Pedidos"),
     ("Clientes", "fa5s.users", "Clientes"),
-    ("Vendas", "fa5s.cash-register", "Vendas"),
+    ("Relacionamento", "fa5s.heart", "Relacionamento"),
+    ("Produtos", "fa5s.glasses", "Produtos"),
     ("Estoque", "fa5s.warehouse", "Estoque"),
     ("Fornecedores", "fa5s.truck", "Fornecedores"),
     ("Financeiro", "fa5s.wallet", "Financeiro"),
-    ("Relatórios", "fa5s.chart-bar", "Relatórios"),
+    ("Indicadores", "fa5s.chart-bar", "Indicadores"),
     ("Análises", "fa5s.chart-line", "Análises"),
     ("Configurações", "fa5s.cog", "Configurações"),
 ]
+
+# Module windows opened from the navigation; each receives preview_mode and parent.
+MODULE_WINDOWS = {
+    "Vendas": SalesPage,
+    "Pedidos": LabOrdersPage,
+    "Clientes": CustomersPage,
+    "Relacionamento": CrmPage,
+    "Estoque": InventoryPage,
+    "Fornecedores": SuppliersPage,
+    "Financeiro": FinancePage,
+    "Indicadores": AnalyticsPage,
+    "Configurações": SettingsDialog,
+}
 
 
 class MainWindow(QMainWindow):
@@ -75,20 +94,19 @@ class MainWindow(QMainWindow):
         side_layout = QVBoxLayout(sidebar)
         self._sidebar_layout = side_layout
         side_layout.setContentsMargins(18, 22, 18, 18)
-        side_layout.setSpacing(8)
+        side_layout.setSpacing(4)
 
         # The transparent brand artwork is the visual anchor of the sidebar.
         logo = QLabel()
         logo.setObjectName("sidebarLogo")
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo.setMinimumHeight(112)
-        logo.setMaximumHeight(124)
+        logo.setFixedHeight(78)
         if LOGO_PATH.is_file():
             pixmap = QPixmap(str(LOGO_PATH))
             if not pixmap.isNull():
                 logo.setPixmap(
                     pixmap.scaled(
-                        188, 118,
+                        176, 62,
                         Qt.AspectRatioMode.KeepAspectRatio,
                         Qt.TransformationMode.SmoothTransformation,
                     )
@@ -104,7 +122,7 @@ class MainWindow(QMainWindow):
         self._brand_subtitle = brand_subtitle
         side_layout.addWidget(brand_subtitle)
 
-        side_layout.addSpacing(26)
+        side_layout.addSpacing(18)
         nav_label = QLabel("MENU PRINCIPAL")
         nav_label.setObjectName("sidebarSection")
         self._nav_label = nav_label
@@ -112,13 +130,13 @@ class MainWindow(QMainWindow):
 
         for label, icon_name, module in NAV_ITEMS:
             button = QPushButton(label)
-            button.setIcon(qta.icon(icon_name, color="#FFFFFF" if module is None else "#D5E1F5"))
-            button.setIconSize(QSize(18, 18))
+            button.setIcon(qta.icon(icon_name, color="#C9D7EE", color_on="#FFFFFF", color_active="#FFFFFF", color_on_active="#FFFFFF"))
+            button.setIconSize(QSize(17, 17))
             button.setObjectName("navButton")
             button.setToolTip(label)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setCheckable(True)
-            button.setMinimumHeight(43)
+            button.setMinimumHeight(38)
             button.setChecked(module is None)
             button.clicked.connect(
                 lambda checked=False, selected=module: self._navigate(selected)
@@ -136,7 +154,7 @@ class MainWindow(QMainWindow):
 
         topbar = QFrame()
         topbar.setObjectName("topbar")
-        topbar.setFixedHeight(56)
+        topbar.setFixedHeight(64)
         topbar_layout = QHBoxLayout(topbar)
         topbar_layout.setContentsMargins(20, 8, 24, 8)
         topbar_layout.setSpacing(12)
@@ -145,7 +163,7 @@ class MainWindow(QMainWindow):
         menu_button.setIcon(qta.icon("fa5s.bars", color="#102957"))
         menu_button.setIconSize(QSize(17, 17))
         menu_button.setObjectName("topbarIconButton")
-        menu_button.setFixedSize(36, 36)
+        menu_button.setFixedSize(38, 38)
         menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         menu_button.setCheckable(True)
         menu_button.setToolTip("Recolher ou expandir menu lateral")
@@ -169,6 +187,7 @@ class MainWindow(QMainWindow):
         notifications.setIconSize(QSize(18, 18))
         notifications.setObjectName("topbarIconButton")
         notifications.setFixedSize(38, 38)
+        notifications.setCursor(Qt.CursorShape.PointingHandCursor)
         notifications.setToolTip("Notificações")
         topbar_layout.addWidget(notifications)
 
@@ -198,7 +217,8 @@ class MainWindow(QMainWindow):
         profile_menu.setIcon(qta.icon("fa5s.chevron-down", color="#102957"))
         profile_menu.setIconSize(QSize(11, 11))
         profile_menu.setObjectName("topbarIconButton")
-        profile_menu.setFixedSize(28, 36)
+        profile_menu.setFixedSize(30, 36)
+        profile_menu.setCursor(Qt.CursorShape.PointingHandCursor)
         profile_menu.setToolTip("Sair da conta" if not preview_mode else "Perfil de demonstração")
         if not preview_mode:
             profile_menu.clicked.connect(self._logout)
@@ -216,8 +236,9 @@ class MainWindow(QMainWindow):
         self._dashboard.module_requested.connect(self._open_module)
         self._scroll.setWidget(self._dashboard)
         scroll_host = QWidget()
+        scroll_host.setObjectName("scrollHost")
         scroll_layout = QVBoxLayout(scroll_host)
-        scroll_layout.setContentsMargins(20, 20, 20, 16)
+        scroll_layout.setContentsMargins(24, 22, 24, 16)
         scroll_layout.addWidget(self._scroll)
         workspace_layout.addWidget(scroll_host, 1)
 
@@ -251,7 +272,7 @@ class MainWindow(QMainWindow):
             8 if collapsed else 18,
             14 if collapsed else 18,
         )
-        self._sidebar_layout.setSpacing(8)
+        self._sidebar_layout.setSpacing(4)
 
         for widget in (
             self._sidebar_logo,
@@ -291,39 +312,15 @@ class MainWindow(QMainWindow):
             self._nav_buttons["Visão geral"].setChecked(True)
             return
 
-        if module in ("Produtos", "Estoque", "Fornecedores", "Financeiro", "Clientes", "Vendas"):
+        if module == "Produtos" or module in MODULE_WINDOWS:
             try:
-                if module == "Financeiro":
-                    finance_window = FinancePage(preview_mode=self._preview_mode, parent=self)
-                    finance_window.exec()
-                elif module == "Produtos":
+                if module == "Produtos":
+                    # The catalog keeps its in-memory preview data while the app is open.
                     if self._products_window is None:
-                        self._products_window = ProductsPage(
-                            preview_mode=self._preview_mode,
-                            parent=self,
-                        )
+                        self._products_window = ProductsPage(preview_mode=self._preview_mode, parent=self)
                     self._products_window.exec()
-                elif module == "Clientes":
-                    customers_window = CustomersPage(
-                        preview_mode=self._preview_mode,
-                        parent=self,
-                    )
-                    customers_window.exec()
-                elif module == "Vendas":
-                    sales_window = SalesPage(preview_mode=self._preview_mode, parent=self)
-                    sales_window.exec()
-                elif module == "Estoque":
-                    inventory_window = InventoryPage(
-                        preview_mode=self._preview_mode,
-                        parent=self,
-                    )
-                    inventory_window.exec()
                 else:
-                    suppliers_window = SuppliersPage(
-                        preview_mode=self._preview_mode,
-                        parent=self,
-                    )
-                    suppliers_window.exec()
+                    MODULE_WINDOWS[module](preview_mode=self._preview_mode, parent=self).exec()
             except Exception as exc:
                 QMessageBox.critical(self, f"Não foi possível abrir {module}", str(exc))
             finally:

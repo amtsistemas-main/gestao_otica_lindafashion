@@ -14,6 +14,16 @@ from config.settings import get_settings
 from core.exceptions import ConfigurationError
 from core.session_manager import session_manager
 from core.supabase_client import get_supabase_client
+from ui.components.ui_kit import MetricTile, make_button, notice
+import qtawesome as qta
+
+
+def _suggested_quantity(product: dict) -> int:
+    """Registered reorder quantity, or enough to reach twice the reorder point."""
+    registered = int(product.get("reorder_quantity") or 0)
+    if registered > 0:
+        return registered
+    return max(1, int(product.get("minimum_stock") or 0) * 2 - int(product.get("stock_quantity") or 0))
 
 
 class InventoryPage(QDialog):
@@ -25,84 +35,6 @@ class InventoryPage(QDialog):
         self.setWindowTitle("Estoque — Ótica Linda Fashion")
         self.resize(1180, 760)
         self.setMinimumSize(900, 620)
-        self.setStyleSheet("""
-            QDialog { background:#F3F5F8; color:#24334B; font-family:"Arial"; font-size:10pt; }
-            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
-            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
-            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
-            QLabel#muted { color:#7184A1; }
-            QLabel#metric { background:#FFFFFF; color:#17365D; border:1px solid #DFE7F3; border-radius:10px; padding:14px; font-size:12pt; font-weight:700; }
-            QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit, QSpinBox, QDoubleSpinBox {
-                background:#FFFFFF; color:#172B4D; border:1px solid #CFD9E8;
-                border-radius:8px; padding:8px 10px; min-height:20px;
-                selection-background-color:#315FE8; selection-color:#FFFFFF;
-            }
-
-            QAbstractSpinBox { padding-right: 7px; }
-            QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
-                subcontrol-origin: border; subcontrol-position: right; width: 25px;
-                border: none; border-left: 1px solid #1D4FC4; background: #245DE0;
-            }
-            QAbstractSpinBox::up-button { subcontrol-position: top right; border-top-right-radius: 7px; border-bottom: 1px solid #4A79E8; }
-            QAbstractSpinBox::down-button { subcontrol-position: bottom right; border-bottom-right-radius: 7px; }
-            QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover { background: #1749C2; }
-            QAbstractSpinBox::up-button:pressed, QAbstractSpinBox::down-button:pressed { background: #103A9F; }
-            QAbstractSpinBox::up-arrow, QAbstractSpinBox::down-arrow {
-                width: 8px; height: 8px; color: #FFFFFF;
-            }
-            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
-            QPushButton:hover { background:#F0F5FF; }
-            QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
-            QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; border-radius:10px; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
-            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; border-right:1px solid #28456F; padding:11px 8px; min-height:22px; font-weight:700; }
-            QTabWidget { background:#F3F5F8; }\n            QTabWidget::pane { border:1px solid #DFE7F3; background:#F3F5F8; border-radius:10px; }
-            QTabWidget QWidget { background:#F3F5F8; color:#24334B; }
-            QTabWidget QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; }
-            QTabBar::tab { background:#EAF0F9; color:#526782; padding:10px 18px; margin-right:4px; border-top-left-radius:7px; border-top-right-radius:7px; }
-            QTabBar::tab:selected { background:#FFFFFF; color:#2457D6; font-weight:750; }
-        
-            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
-            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                selection-background-color: #DCE8FF;
-                selection-color: #17365D;
-                outline: 0;
-            }
-            QComboBox QAbstractItemView::item, QComboBox QListView::item {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                min-height: 24px;
-                padding: 5px 8px;
-            }
-            QComboBox QAbstractItemView::item:selected,
-            QComboBox QAbstractItemView::item:selected:active,
-            QComboBox QAbstractItemView::item:selected:!active,
-            QComboBox QListView::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                padding: 4px;
-            }
-            QMenu::item {
-                background-color: transparent;
-                color: #172B4D;
-                padding: 7px 28px 7px 10px;
-                border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu::item:disabled {
-                color: #8793A6;
-            }
-""")
         self._client = None
         self._organization_id = None
         self._products: list[dict] = []
@@ -136,60 +68,61 @@ class InventoryPage(QDialog):
         title_layout.addWidget(title)
         title_layout.addWidget(subtitle)
         header.addWidget(title_bar, 1)
-        self.refresh_button = QPushButton("Atualizar")
-        self.refresh_button.clicked.connect(self._load)
-        header.addWidget(self.refresh_button)
-        self.movement_button = QPushButton("Registrar movimentação")
-        self.movement_button.setObjectName("primaryButton")
-        self.movement_button.clicked.connect(self._movement_dialog)
-        header.addWidget(self.movement_button)
-        self.request_button = QPushButton("Criar solicitação de compra")
-        self.request_button.clicked.connect(self._purchase_request_dialog)
-        header.addWidget(self.request_button)
         root.addLayout(header)
 
         metrics = QHBoxLayout()
-        self.total_metric = QLabel("Produtos monitorados\n—")
-        self.total_metric.setObjectName("metric")
-        self.low_metric = QLabel("Estoque baixo\n—")
-        self.low_metric.setObjectName("metric")
-        self.out_metric = QLabel("Sem estoque\n—")
-        self.out_metric.setObjectName("metric")
-        for label in (self.total_metric, self.low_metric, self.out_metric):
-            label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-            metrics.addWidget(label, 1)
+        metrics.setSpacing(14)
+        self.total_metric = MetricTile("Produtos monitorados", "—", "fa5s.boxes", "primary")
+        self.low_metric = MetricTile("Estoque baixo", "—", "fa5s.exclamation-triangle", "warning", "No mínimo ou abaixo dele")
+        self.out_metric = MetricTile("Sem estoque", "—", "fa5s.times-circle", "danger", "Saldo zerado")
+        for tile in (self.total_metric, self.low_metric, self.out_metric):
+            metrics.addWidget(tile, 1)
         root.addLayout(metrics)
 
-        search_row = QHBoxLayout()
+        toolbar = QHBoxLayout()
+        toolbar.setSpacing(10)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Filtrar por produto, código, SKU, marca ou categoria…")
         self.search.setClearButtonEnabled(True)
+        self.search.addAction(qta.icon("fa5s.search", color="#8A97AB"), QLineEdit.ActionPosition.LeadingPosition)
         self.search.textChanged.connect(self._render_inventory)
-        search_row.addWidget(self.search, 1)
-        root.addLayout(search_row)
+        toolbar.addWidget(self.search, 1)
+        self.refresh_button = make_button("Atualizar", "fa5s.sync-alt", "secondaryButton")
+        self.refresh_button.clicked.connect(self._load)
+        toolbar.addWidget(self.refresh_button)
+        self.request_button = make_button("Solicitar compra", "fa5s.clipboard-list", "secondaryButton")
+        self.request_button.setToolTip("Criar solicitação de compra para o produto selecionado ou para itens abaixo do mínimo")
+        self.request_button.clicked.connect(self._purchase_request_dialog)
+        toolbar.addWidget(self.request_button)
+        self.movement_button = make_button("Registrar movimentação", "fa5s.exchange-alt", "primaryButton")
+        self.movement_button.clicked.connect(self._movement_dialog)
+        toolbar.addWidget(self.movement_button)
+        root.addLayout(toolbar)
 
         self.tabs = QTabWidget()
         inventory_tab = QWidget()
         inventory_layout = QVBoxLayout(inventory_tab)
-        self.inventory_table = self._table(["Código / SKU", "Produto", "Categoria", "Saldo", "Mínimo", "Situação", "Custo estimado"])
+        inventory_layout.setContentsMargins(0, 4, 0, 0)
+        self.inventory_table = self._table(["Código / SKU", "Produto", "Categoria", "Saldo", "Reposição", "Situação", "Custo estimado"])
         self.inventory_table.doubleClicked.connect(lambda *_: self._purchase_request_dialog())
         inventory_layout.addWidget(self.inventory_table)
         self.tabs.addTab(inventory_tab, "Visão do estoque")
 
         movements_tab = QWidget()
         movements_layout = QVBoxLayout(movements_tab)
+        movements_layout.setContentsMargins(0, 4, 0, 0)
         self.movements_table = self._table(["Data", "Produto", "Tipo", "Quantidade", "Saldo anterior", "Saldo final", "Motivo"])
         movements_layout.addWidget(self.movements_table)
         self.tabs.addTab(movements_tab, "Histórico de movimentações")
 
         requests_tab = QWidget()
         requests_layout = QVBoxLayout(requests_tab)
+        requests_layout.setContentsMargins(0, 4, 0, 0)
         request_actions = QHBoxLayout()
         request_hint = QLabel("Selecione uma solicitação para registrar o recebimento das mercadorias.")
         request_hint.setObjectName("muted")
         request_actions.addWidget(request_hint, 1)
-        self.receive_button = QPushButton("Receber mercadoria")
-        self.receive_button.setObjectName("primaryButton")
+        self.receive_button = make_button("Receber mercadoria", "fa5s.truck-loading", "primaryButton")
         self.receive_button.clicked.connect(self._receive_purchase_request_item)
         request_actions.addWidget(self.receive_button)
         requests_layout.addLayout(request_actions)
@@ -200,10 +133,7 @@ class InventoryPage(QDialog):
         root.addWidget(self.tabs, 1)
 
         if preview_mode:
-            note = QLabel("PRÉ-VISUALIZAÇÃO • para proteger a integridade do catálogo, estoque e compras só podem ser alterados após conectar o Supabase e aplicar a migration do módulo.")
-            note.setWordWrap(True)
-            note.setStyleSheet("background:#FFF7DF;color:#79550B;padding:10px;border-radius:8px;")
-            root.addWidget(note)
+            root.addWidget(notice("PRÉ-VISUALIZAÇÃO • para proteger a integridade do catálogo, estoque e compras só podem ser alterados após conectar o Supabase e aplicar a migration do módulo."))
             self.movement_button.setEnabled(False)
             self.request_button.setEnabled(False)
             self._load_preview()
@@ -225,9 +155,9 @@ class InventoryPage(QDialog):
     def _load_preview(self) -> None:
         self._products = []
         self._render_inventory()
-        self.total_metric.setText("Produtos monitorados\nPrévia")
-        self.low_metric.setText("Estoque baixo\n—")
-        self.out_metric.setText("Sem estoque\n—")
+        self.total_metric.set_value("Prévia")
+        self.low_metric.set_value("—")
+        self.out_metric.set_value("—")
         for table in (self.movements_table, self.requests_table):
             table.setRowCount(0)
 
@@ -235,7 +165,7 @@ class InventoryPage(QDialog):
         if self._client is None:
             return
         try:
-            self._products = list((self._client.table("products").select("id,barcode,sku,name,category,brand,cost_price,stock_quantity,minimum_stock,active").eq("organization_id", self._organization_id).eq("active", True).order("name").execute().data or []))
+            self._products = list((self._client.table("products").select("id,barcode,sku,name,category,brand,product_type,model,color,cost_price,stock_quantity,minimum_stock,reorder_quantity,tracks_stock,active").eq("organization_id", self._organization_id).eq("active", True).eq("tracks_stock", True).order("name").execute().data or []))
             self._suppliers = list((self._client.table("suppliers").select("*").eq("organization_id", self._organization_id).eq("active", True).order("name").execute().data or []))
             self._render_inventory()
             self._load_movements()
@@ -248,9 +178,9 @@ class InventoryPage(QDialog):
         products = [p for p in self._products if not term or any(term in str(p.get(k) or "").casefold() for k in ("name","barcode","sku","category","brand"))]
         low = [p for p in self._products if int(p.get("stock_quantity") or 0) <= int(p.get("minimum_stock") or 0)]
         out = [p for p in self._products if int(p.get("stock_quantity") or 0) == 0]
-        self.total_metric.setText(f"Produtos monitorados\n{len(self._products)}")
-        self.low_metric.setText(f"Estoque baixo\n{len(low)}")
-        self.out_metric.setText(f"Sem estoque\n{len(out)}")
+        self.total_metric.set_value(str(len(self._products)))
+        self.low_metric.set_value(str(len(low)))
+        self.out_metric.set_value(str(len(out)))
         self.inventory_table.setRowCount(len(products))
         for row, product in enumerate(products):
             stock = int(product.get("stock_quantity") or 0)
@@ -370,13 +300,13 @@ class InventoryPage(QDialog):
         form.addRow("Fornecedor", supplier_row)
         product_list = QComboBox()
         for item in candidates:
-            product_list.addItem(f"{item.get('name')} • saldo {item.get('stock_quantity')} / mínimo {item.get('minimum_stock')}", item.get("id"))
+            product_list.addItem(f"{item.get('name')} • saldo {item.get('stock_quantity')} / reposição em {item.get('minimum_stock')}", item.get("id"))
         form.addRow("Produto para reposição", product_list)
         quantity = QSpinBox()
         quantity.setRange(1, 2_000_000_000)
-        initial = max(1, int(candidates[0].get("minimum_stock") or 0) * 2 - int(candidates[0].get("stock_quantity") or 0))
+        initial = _suggested_quantity(candidates[0])
         quantity.setValue(initial)
-        product_list.currentIndexChanged.connect(lambda index: quantity.setValue(max(1, int(candidates[index].get("minimum_stock") or 0) * 2 - int(candidates[index].get("stock_quantity") or 0))))
+        product_list.currentIndexChanged.connect(lambda index: quantity.setValue(_suggested_quantity(candidates[index])))
         form.addRow("Quantidade sugerida", quantity)
         unit_cost = QDoubleSpinBox()
         unit_cost.setRange(0, 99_999_999.99)

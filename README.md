@@ -69,6 +69,19 @@ O módulo `modules/suppliers/` permite cadastrar nome de exibição, razão soci
 
 No cadastro de Produtos, o campo **Fornecedor principal** vincula o produto a um fornecedor da mesma organização. O fornecedor também aparece na tabela do catálogo. O relacionamento usa `products.supplier_id` com chave estrangeira composta por fornecedor e organização, evitando vínculo cruzado entre organizações. A migration `202610240005_complete_supplier_catalog_and_product_link.sql` foi aplicada no Supabase.
 
+## Gestão óptica de alto padrão
+
+Seis frentes integradas. As migrations e a ordem de aplicação estão em `database/migrations/README.md` (arquivos `202610250001` a `202610250006`).
+
+1. **Produtos ópticos** (`modules/products/`): tipo de produto com campos próprios (armação, lente oftálmica, lente de contato, solar, acessório, serviço), modelo, cor, tamanho, material, índice e tratamentos de lente, ponto e quantidade de reposição, serviços sem controle de estoque e filtro por tipo.
+2. **Receitas** (`modules/prescriptions/`): OD/OE estruturado (esférico, cilíndrico, eixo, adição, DNP longe/perto, altura, prisma), passos de 0,25 D, eixo obrigatório com cilindro, alertas de digitação (anisometropia, DNP de perto maior que a de longe, receita vencida), histórico por cliente e vínculo com a venda e o pedido.
+3. **Pedidos e laboratório** (`modules/lab_orders/`): quadro por etapa (aguardando envio, enviado, em produção, recebido, em conferência, pronto para retirada, entregue), laboratório, custo, prazos, alertas de atraso, ocorrências com custo e aviso ao liberar sem conferência.
+4. **PDV** (`modules/sales/pos.py`): leitor de código de barras, receita sugerida, medidas da armação, pagamentos múltiplos com troco, sinal e crediário/boleto parcelado, limite único de desconto da loja (administradores podem exceder informando o motivo), orçamentos convertíveis em venda e cancelamento com estorno. A finalização é uma única transação no banco com proteção contra duplicidade.
+5. **Indicadores** (`modules/analytics/`): faturamento × lucro efetivo, margem de contribuição, ticket médio, conversão de orçamentos, vendas por vendedor, produtos mais rentáveis, estoque parado e envelhecimento de contas a receber.
+6. **Relacionamento** (`modules/crm/`): preferências do cliente, agenda de follow-ups (pós-venda e revisão de receita criados automaticamente pelo banco), segmentos de recompra (receita vencendo, em risco, fiéis, novos, inativos, aniversariantes), WhatsApp com mensagem sugerida somente para quem consentiu e exportação CSV.
+
+A lógica de negócio dessas frentes tem testes em `tests/test_optical_business_rules.py`.
+
 ## Segurança e integridade
 
 - Nunca configure `service_role` ou qualquer segredo privilegiado do Supabase no cliente desktop.

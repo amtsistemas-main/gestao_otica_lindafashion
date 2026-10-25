@@ -202,39 +202,6 @@ class BusinessAnalysisPanel(QWidget):
         root.addWidget(self.results_card)
         root.addStretch(1)
 
-        self.setStyleSheet("""
-            #businessAnalysisPanel { color: #24334B; font-family: "Aptos", "Segoe UI"; }
-            #aiEyebrow { color: #167E6A; font-size: 8pt; font-weight: 750; letter-spacing: 1px; }
-            #aiPageTitle { color: #102957; font-family: "Aptos Display", "Aptos", "Segoe UI"; font-size: 22pt; font-weight: 750; }
-            #aiDescription { color: #60718A; font-size: 9pt; }
-            #aiFormCard, #aiLoadingCard, #aiResultsCard {
-                background: #FFFFFF; border: 1px solid #DCE3ED; border-radius: 8px;
-            }
-            #aiFieldLabel { color: #263B5E; font-size: 10pt; font-weight: 700; }
-            #aiSelect, #aiContextInput {
-                min-height: 38px; padding: 0 10px; color: #172C52;
-                background: #F9FBFE; border: 1px solid #DCE4F0; border-radius: 8px;
-            }
-            #primaryButton {
-                color: #FFFFFF; background: #2165F5; border: 0; border-radius: 8px;
-                padding: 10px 16px; font-weight: 700; min-height: 18px;
-            }
-            #primaryButton:hover { background: #174EC7; }
-            #secondaryButton {
-                color: #294265; background: #FFFFFF; border: 1px solid #DCE4F0;
-                border-radius: 8px; padding: 8px 11px; font-weight: 600;
-            }
-            #secondaryButton:hover { background: #F3F7FD; }
-            #aiCardTitle { color: #172C52; font-family: "Aptos Display", "Aptos", "Segoe UI"; font-size: 13pt; font-weight: 750; }
-            #aiSummary { color: #4E6281; font-size: 9pt; }
-            #aiStatusBadge { color: #167553; background: #E4F7EF; border-radius: 10px; padding: 6px 10px; font-weight: 700; }
-            #aiSkeleton, #aiSkeletonLine { background: #EDF2F8; border: 0; border-radius: 8px; }
-            #aiMetricCard { background: #F8FAFE; border: 1px solid #E6ECF5; border-radius: 10px; }
-            #aiMetricLabel { color: #71819A; font-size: 9pt; }
-            #aiMetricValue { color: #102957; font-size: 17pt; font-weight: 800; }
-            #aiEditableText { color: #172C52; background: #FFFFFF; border: 1px solid #DCE4F0; border-radius: 8px; padding: 8px; }
-            #aiResultTable { color: #263B5E; gridline-color: #E8EDF5; border: 1px solid #E4EAF3; }
-        """)
 
     @staticmethod
     def _label(text: str, object_name: str) -> QLabel:

@@ -11,17 +11,45 @@ from pathlib import Path
 from PySide6.QtCore import QUrl
 from typing import Any, Iterable
 
-from modules.products.models import Product
+from modules.products.models import PRODUCT_TYPES, Product
 
 HEADERS = [
-    "Código de barras", "SKU", "Nome", "Categoria", "Marca", "Preço de custo",
-    "Preço de venda", "Desconto (%)", "Estoque", "Estoque mínimo", "Descrição",
-    "URL da imagem", "Ativo",
+    "Código de barras", "SKU", "Nome", "Tipo", "Categoria", "Marca", "Modelo", "Cor", "Tamanho",
+    "Material", "Preço de custo", "Preço de venda", "Desconto (%)", "Estoque", "Ponto de reposição",
+    "Qtde. de reposição", "Descrição", "URL da imagem", "Ativo",
 ]
-FIELDS = [
-    "barcode", "sku", "name", "category", "brand", "cost_price", "sale_price",
-    "discount_percent", "stock_quantity", "minimum_stock", "description", "image_url", "active",
-]
+# Accepted header aliases per field (compared case-insensitively).
+COLUMN_ALIASES = {
+    "barcode": ["código de barras", "codigo de barras", "barcode"],
+    "sku": ["sku", "código interno", "codigo interno"],
+    "name": ["nome", "produto", "name"],
+    "product_type": ["tipo", "tipo de produto", "product_type"],
+    "category": ["categoria", "category"],
+    "brand": ["marca", "brand"],
+    "model": ["modelo", "model"],
+    "color": ["cor", "color"],
+    "size": ["tamanho", "size"],
+    "material": ["material"],
+    "cost_price": ["preço de custo", "preco de custo", "cost_price"],
+    "sale_price": ["preço de venda", "preco de venda", "sale_price"],
+    "discount_percent": ["desconto (%)", "desconto", "discount_percent"],
+    "stock_quantity": ["estoque", "quantidade em estoque", "stock_quantity"],
+    "minimum_stock": ["ponto de reposição", "ponto de reposicao", "estoque mínimo", "estoque minimo", "minimum_stock"],
+    "reorder_quantity": ["qtde. de reposição", "quantidade de reposição", "quantidade de reposicao", "reorder_quantity"],
+    "description": ["descrição", "descricao", "description"],
+    "image_url": ["url da imagem", "imagem", "image_url"],
+    "active": ["ativo", "active"],
+}
+_TYPE_BY_TEXT = {**{code: code for code in PRODUCT_TYPES}, **{label.casefold(): code for code, label in PRODUCT_TYPES.items()}}
+
+
+def _as_product_type(value: Any) -> str:
+    text = _as_text(value).casefold()
+    if not text:
+        return "outro"
+    if text not in _TYPE_BY_TEXT:
+        raise ValueError(f"tipo de produto desconhecido: {value!r}. Use: {', '.join(PRODUCT_TYPES.values())}")
+    return _TYPE_BY_TEXT[text]
 
 
 def _decimal(value: Any, field: str) -> Decimal:
@@ -64,8 +92,9 @@ def create_template(path: str) -> None:
     sheet = workbook.active
     sheet.title = "Produtos"
     sheet.append(HEADERS)
-    sheet.append(["7890000000012", "ARM-001", "Armação demonstrativa", "Armações", "Marca exemplo",
-                  80.00, 159.90, 0, 10, 2, "Remova esta linha de exemplo antes de importar", "", "Sim"])
+    sheet.append(["7890000000012", "ARM-001", "Armação demonstrativa", "Armação", "Armações de grau", "Marca exemplo",
+                  "MX-100", "Preto", "52□18 140", "Acetato", 80.00, 159.90, 0, 10, 2, 0,
+                  "Remova esta linha de exemplo antes de importar", "", "Sim"])
     sheet.freeze_panes = "A2"
     sheet.auto_filter.ref = f"A1:{get_column_letter(len(HEADERS))}1"
     for cell in sheet[1]:
@@ -73,7 +102,7 @@ def create_template(path: str) -> None:
         cell.fill = PatternFill("solid", fgColor="102957")
         cell.alignment = Alignment(vertical="center", wrap_text=True)
     sheet.row_dimensions[1].height = 30
-    widths = [20, 16, 30, 20, 20, 16, 16, 14, 12, 16, 38, 36, 12]
+    widths = [20, 16, 30, 18, 20, 18, 14, 14, 14, 16, 16, 16, 14, 12, 18, 18, 38, 36, 12]
     for index, width in enumerate(widths, start=1):
         sheet.column_dimensions[get_column_letter(index)].width = width
     notes = workbook.create_sheet("Instruções")
@@ -81,7 +110,8 @@ def create_template(path: str) -> None:
     notes.append(["Preencha a aba Produtos; a primeira linha contém os cabeçalhos obrigatórios."])
     notes.append(["Remova a linha de exemplo antes de importar. Nome é obrigatório."])
     notes.append(["Preços aceitam número decimal; use a coluna Desconto (%) entre 0 e 100."])
-    notes.append(["Estoque e Estoque mínimo devem ser inteiros não negativos."])
+    notes.append(["Estoque, Ponto de reposição e Qtde. de reposição devem ser inteiros não negativos."])
+    notes.append(["Tipo: " + ", ".join(PRODUCT_TYPES.values()) + ". Serviços não controlam estoque."])
     notes.append(["Ativo: Sim ou Não. URL da imagem é opcional."])
     notes.append(["O sistema aceita .xlsx e arquivos .xls antigos quando a dependência xlrd estiver instalada."])
     notes.column_dimensions["A"].width = 110
@@ -100,21 +130,7 @@ def read_products(path: str) -> list[Product]:
         except StopIteration:
             return []
         index_by_header = {header: index for index, header in enumerate(headers)}
-        mapping = {
-            "barcode": ["código de barras", "codigo de barras", "barcode"],
-            "sku": ["sku", "código interno", "codigo interno"],
-            "name": ["nome", "produto", "name"],
-            "category": ["categoria", "category"],
-            "brand": ["marca", "brand"],
-            "cost_price": ["preço de custo", "preco de custo", "cost_price"],
-            "sale_price": ["preço de venda", "preco de venda", "sale_price"],
-            "discount_percent": ["desconto (%)", "desconto", "discount_percent"],
-            "stock_quantity": ["estoque", "quantidade em estoque", "stock_quantity"],
-            "minimum_stock": ["estoque mínimo", "estoque minimo", "minimum_stock"],
-            "description": ["descrição", "descricao", "description"],
-            "image_url": ["url da imagem", "imagem", "image_url"],
-            "active": ["ativo", "active"],
-        }
+        mapping = COLUMN_ALIASES
         def get_value(row: tuple[Any, ...], key: str) -> Any:
             for name in mapping[key]:
                 if name in index_by_header:
@@ -129,19 +145,7 @@ def read_products(path: str) -> list[Product]:
         sheet = workbook.sheet_by_name("Produtos") if "Produtos" in workbook.sheet_names() else workbook.sheet_by_index(0)
         headers = [_as_text(sheet.cell_value(0, col)).casefold() for col in range(sheet.ncols)] if sheet.nrows else []
         index_by_header = {header: index for index, header in enumerate(headers)}
-        mapping = {
-            "barcode": ["código de barras", "codigo de barras", "barcode"],
-            "sku": ["sku", "código interno", "codigo interno"],
-            "name": ["nome", "produto", "name"],
-            "category": ["categoria", "category"], "brand": ["marca", "brand"],
-            "cost_price": ["preço de custo", "preco de custo", "cost_price"],
-            "sale_price": ["preço de venda", "preco de venda", "sale_price"],
-            "discount_percent": ["desconto (%)", "desconto", "discount_percent"],
-            "stock_quantity": ["estoque", "quantidade em estoque", "stock_quantity"],
-            "minimum_stock": ["estoque mínimo", "estoque minimo", "minimum_stock"],
-            "description": ["descrição", "descricao", "description"],
-            "image_url": ["url da imagem", "imagem", "image_url"], "active": ["ativo", "active"],
-        }
+        mapping = COLUMN_ALIASES
         data_rows = [tuple(sheet.cell_value(row, col) for col in range(sheet.ncols)) for row in range(1, sheet.nrows)]
         def get_value(row: tuple[Any, ...], key: str) -> Any:
             for name in mapping[key]:
@@ -163,13 +167,19 @@ def read_products(path: str) -> list[Product]:
                 barcode=_as_text(get_value(row, "barcode")),
                 sku=_as_text(get_value(row, "sku")),
                 name=_as_text(get_value(row, "name")),
+                product_type=_as_product_type(get_value(row, "product_type")),
                 category=_as_text(get_value(row, "category")),
                 brand=_as_text(get_value(row, "brand")),
+                model=_as_text(get_value(row, "model")),
+                color=_as_text(get_value(row, "color")),
+                size=_as_text(get_value(row, "size")),
+                material=_as_text(get_value(row, "material")),
                 cost_price=_decimal(get_value(row, "cost_price"), "Preço de custo"),
                 sale_price=_decimal(get_value(row, "sale_price"), "Preço de venda"),
                 discount_percent=_decimal(get_value(row, "discount_percent"), "Desconto"),
                 stock_quantity=_as_int(get_value(row, "stock_quantity"), "Estoque"),
-                minimum_stock=_as_int(get_value(row, "minimum_stock"), "Estoque mínimo"),
+                minimum_stock=_as_int(get_value(row, "minimum_stock"), "Ponto de reposição"),
+                reorder_quantity=_as_int(get_value(row, "reorder_quantity"), "Qtde. de reposição"),
                 description=_as_text(get_value(row, "description")),
                 image_url=_as_text(get_value(row, "image_url")),
                 active=_as_bool(get_value(row, "active")),
@@ -231,7 +241,11 @@ def export_pdf(path: str, products: Iterable[Product]) -> None:
         rows.append([
             image_cell,
             Paragraph(escape(product.barcode or product.sku or "—"), cell_style),
-            Paragraph(escape(product.name), cell_style),
+            Paragraph(
+                escape(product.name)
+                + (f"<br/><font size='6.5' color='#60799E'>{escape(product.type_label + ' · ' + product.characteristics if product.characteristics else product.type_label)}</font>"),
+                cell_style,
+            ),
             Paragraph(escape(product.category or "—"), cell_style),
             Paragraph(escape(product.brand or "—"), cell_style),
             _currency_text(product.cost_price), _currency_text(product.sale_price),

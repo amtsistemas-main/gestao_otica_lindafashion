@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Any
 
 from PySide6.QtCore import Qt, QDate
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox, QDateEdit, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
     QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QTabWidget,
@@ -16,6 +17,8 @@ from config.settings import get_settings
 from core.exceptions import ConfigurationError
 from core.session_manager import session_manager
 from core.supabase_client import get_supabase_client
+from ui.components.ui_kit import MetricTile, make_button, notice
+import qtawesome as qta
 
 
 TYPES = {"Entrada": "entrada", "Saída": "saida"}
@@ -40,6 +43,8 @@ class FinancialEntryDialog(QDialog):
         self.setMinimumSize(560, 560)
         self.resize(620, 640)
         root = QVBoxLayout(self)
+        root.setContentsMargins(22, 20, 22, 20)
+        root.setSpacing(12)
         title_bar = QFrame()
         title_bar.setObjectName("windowTitleBar")
         title_layout = QVBoxLayout(title_bar)
@@ -130,7 +135,12 @@ class FinancialEntryDialog(QDialog):
             "amount": round(self.amount.value(), 2),
             "due_date": self.due_date.date().toString("yyyy-MM-dd"),
             "status": status,
-            "paid_at": date.today().isoformat() if status == "pago" else None,
+            # Keep the original settlement date when editing an entry that was already paid.
+            "paid_at": (
+                (_date(self._entry.get("paid_at")) or date.today().isoformat())
+                if status == "pago" and self._entry.get("status") == "pago"
+                else (date.today().isoformat() if status == "pago" else None)
+            ),
             "payment_method": "" if self.method.currentText() == "Não definido" else self.method.currentText(),
             "counterparty": self.counterparty.text().strip(),
             "reference": self.reference.text().strip(),
@@ -147,89 +157,6 @@ class FinancePage(QDialog):
         self.setWindowTitle("Financeiro — Ótica Linda Fashion")
         self.resize(1280, 820)
         self.setMinimumSize(1000, 680)
-        self.setStyleSheet("""
-            QDialog { background:#F3F5F8; color:#24334B; font-family:"Arial"; font-size:10pt; }
-            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
-            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
-            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
-            QLabel#muted { color:#7184A1; }
-            QLabel#metric { background:#FFFFFF; color:#17365D; border:1px solid #DFE7F3; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
-            QLabel#incomeMetric { background:#F0FBF5; color:#167447; border:1px solid #BFE8D1; border-left:5px solid #21A366; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
-            QLabel#expenseMetric { background:#FFF3F2; color:#B42318; border:1px solid #F5CBC7; border-left:5px solid #E5484D; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
-            QLabel#balanceMetric { background:#F0F5FF; color:#244BAA; border:1px solid #D5E2FF; border-left:5px solid #3973E6; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
-            QLabel#pendingMetric { background:#FFF9E9; color:#8A5A00; border:1px solid #F2E2B5; border-left:5px solid #E8AB28; border-radius:12px; padding:14px; font-size:10pt; font-weight:700; }
-            QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit, QSpinBox, QDoubleSpinBox {
-                background:#FFFFFF; color:#172B4D; border:1px solid #CFD9E8;
-                border-radius:8px; padding:8px 10px; min-height:20px;
-                selection-background-color:#315FE8; selection-color:#FFFFFF;
-            }
-
-            QAbstractSpinBox { padding-right: 7px; }
-            QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
-                subcontrol-origin: border; subcontrol-position: right; width: 25px;
-                border: none; border-left: 1px solid #1D4FC4; background: #245DE0;
-            }
-            QAbstractSpinBox::up-button { subcontrol-position: top right; border-top-right-radius: 7px; border-bottom: 1px solid #4A79E8; }
-            QAbstractSpinBox::down-button { subcontrol-position: bottom right; border-bottom-right-radius: 7px; }
-            QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover { background: #1749C2; }
-            QAbstractSpinBox::up-button:pressed, QAbstractSpinBox::down-button:pressed { background: #103A9F; }
-            QAbstractSpinBox::up-arrow, QAbstractSpinBox::down-arrow {
-                width: 8px; height: 8px; color: #FFFFFF;
-            }
-            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
-            QPushButton:hover { background:#F0F5FF; }
-            QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
-            QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
-            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; border-right:1px solid #28456F; padding:11px 8px; min-height:22px; font-weight:700; }
-            QTabWidget::pane { border:1px solid #DFE7F3; background:#FFFFFF; border-radius:10px; }
-            QTabBar { background:transparent; }
-            QTabBar::tab { background:#EAF0F9; color:#526782; padding:10px 18px; margin-right:4px; border:1px solid #DCE5F5; border-top-left-radius:7px; border-top-right-radius:7px; }
-            QTabBar::tab:hover { background:#DCE7F8; color:#244BAA; }
-            QTabBar::tab:selected { background:#245DE0; color:#FFFFFF; border-color:#245DE0; font-weight:750; }
-            QTabBar::tab:!selected { margin-top:2px; }
-        
-            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
-            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                selection-background-color: #DCE8FF;
-                selection-color: #17365D;
-                outline: 0;
-            }
-            QComboBox QAbstractItemView::item, QComboBox QListView::item {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                min-height: 24px;
-                padding: 5px 8px;
-            }
-            QComboBox QAbstractItemView::item:selected,
-            QComboBox QAbstractItemView::item:selected:active,
-            QComboBox QAbstractItemView::item:selected:!active,
-            QComboBox QListView::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                padding: 4px;
-            }
-            QMenu::item {
-                background-color: transparent;
-                color: #172B4D;
-                padding: 7px 28px 7px 10px;
-                border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu::item:disabled {
-                color: #8793A6;
-            }
-""")
         self._client = None
         self._organization_id: str | None = None
         self._entries: list[dict[str, Any]] = []
@@ -260,96 +187,41 @@ class FinancePage(QDialog):
         title_layout.addWidget(title)
         title_layout.addWidget(subtitle)
         header.addWidget(title_bar, 1)
-        self.new_button = QPushButton("+ Novo lançamento")
-        self.new_button.setObjectName("primaryButton")
-        self.new_button.clicked.connect(self._new_entry)
-        header.addWidget(self.new_button)
         root.addLayout(header)
 
         filters = QHBoxLayout()
         filters.setSpacing(10)
         period_label = QLabel("Período")
         period_label.setObjectName("filterLabel")
-        period_label.setStyleSheet("background:transparent;color:#24334B;font-weight:650;")
         self.period = QComboBox()
-        self.period.setObjectName("periodSelector")
         self.period.addItems(["Este mês", "Últimos 7 dias", "Últimos 30 dias", "Este ano", "Todo o período"])
-        self.period.setMinimumWidth(165)
-        self.period.setFixedHeight(40)
+        self.period.setMinimumWidth(190)
         self.period.setToolTip("Filtra indicadores e tabelas pelo período selecionado.")
         self.period.currentIndexChanged.connect(self._render)
-        # A dedicated blue trigger keeps the arrow consistent across OS themes.
-        self.period.setStyleSheet("""
-            QComboBox#periodSelector {
-                background:#FFFFFF; color:#172B4D; border:1px solid #CFD9E8;
-                border-radius:8px; padding:8px 10px; padding-right:4px;
-            }
-            QComboBox#periodSelector::drop-down {
-                width:0px; border:none; background:transparent;
-            }
-            QComboBox#periodSelector::down-arrow { image:none; width:0px; height:0px; }
-            QComboBox QAbstractItemView, QComboBox QListView {
-                background-color:#FFFFFF; color:#172B4D; border:1px solid #D6E0EF;
-                selection-background-color:#DCE8FF; selection-color:#17365D; outline:0;
-            }
-            QComboBox QAbstractItemView::item, QComboBox QListView::item {
-                background-color:#FFFFFF; color:#172B4D; padding:6px 9px; min-height:24px;
-            }
-            QComboBox QAbstractItemView::item:selected, QComboBox QListView::item:selected {
-                background-color:#DCE8FF; color:#17365D;
-            }
-        """)
-        period_control = QWidget()
-        period_control.setStyleSheet("background:transparent;")
-        period_layout = QHBoxLayout(period_control)
-        period_layout.setContentsMargins(0, 0, 0, 0)
-        period_layout.setSpacing(0)
-        period_layout.addWidget(self.period)
-        self.period_button = QPushButton("▾")
-        self.period_button.setObjectName("periodDropdownButton")
-        self.period_button.setFixedSize(38, 40)
-        self.period_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.period_button.setToolTip("Selecionar período")
-        self.period_button.setStyleSheet("""
-            QPushButton#periodDropdownButton {
-                background:#2165F5; color:#FFFFFF; border:1px solid #2165F5;
-                border-radius:8px; font-size:15pt; font-weight:800; padding:0;
-                margin-left:-1px;
-            }
-            QPushButton#periodDropdownButton:hover { background:#1749C2; border-color:#1749C2; }
-            QPushButton#periodDropdownButton:pressed { background:#103A9F; border-color:#103A9F; }
-        """)
-        self.period_button.clicked.connect(self.period.showPopup)
-        period_layout.addWidget(self.period_button)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Buscar descrição, categoria, cliente ou referência…")
         self.search.setClearButtonEnabled(True)
+        self.search.addAction(qta.icon("fa5s.search", color="#8A97AB"), QLineEdit.ActionPosition.LeadingPosition)
         self.search.textChanged.connect(self._render)
         filters.addWidget(period_label)
-        filters.addWidget(period_control)
+        filters.addWidget(self.period)
         filters.addWidget(self.search, 1)
-        self.refresh_button = QPushButton("Atualizar")
+        self.refresh_button = make_button("Atualizar", "fa5s.sync-alt", "secondaryButton")
         self.refresh_button.clicked.connect(self._load)
         filters.addWidget(self.refresh_button)
+        self.new_button = make_button("Novo lançamento", "fa5s.plus", "primaryButton")
+        self.new_button.clicked.connect(self._new_entry)
+        filters.addWidget(self.new_button)
         root.addLayout(filters)
 
-        dashboard_label = QLabel("Visão geral")
-        dashboard_label.setObjectName("sectionLabel")
-        dashboard_label.setStyleSheet("background:transparent;color:#17365D;font-size:12pt;font-weight:750;padding:2px 0;")
-        root.addWidget(dashboard_label)
         metrics = QHBoxLayout()
-        self.income_metric = QLabel("Entradas no período\nR$ 0,00")
-        self.income_metric.setObjectName("incomeMetric")
-        self.expense_metric = QLabel("Saídas no período\nR$ 0,00")
-        self.expense_metric.setObjectName("expenseMetric")
-        self.balance_metric = QLabel("Saldo do período\nR$ 0,00")
-        self.balance_metric.setObjectName("balanceMetric")
-        self.pending_metric = QLabel("Em aberto\nR$ 0,00")
-        self.pending_metric.setObjectName("pendingMetric")
-        for label in (self.income_metric, self.expense_metric, self.balance_metric, self.pending_metric):
-            label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-            label.setMinimumHeight(68)
-            metrics.addWidget(label, 1)
+        metrics.setSpacing(14)
+        self.income_metric = MetricTile("Entradas recebidas", "R$ 0,00", "fa5s.arrow-down", "success")
+        self.expense_metric = MetricTile("Saídas pagas", "R$ 0,00", "fa5s.arrow-up", "danger")
+        self.balance_metric = MetricTile("Saldo realizado", "R$ 0,00", "fa5s.balance-scale", "primary")
+        self.pending_metric = MetricTile("Em aberto", "R$ 0,00", "fa5s.hourglass-half", "warning")
+        for tile in (self.income_metric, self.expense_metric, self.balance_metric, self.pending_metric):
+            metrics.addWidget(tile, 1)
         root.addLayout(metrics)
 
         self.tabs = QTabWidget()
@@ -371,22 +243,19 @@ class FinancePage(QDialog):
         root.addWidget(self.tabs, 1)
 
         actions = QHBoxLayout()
-        self.edit_button = QPushButton("Editar lançamento")
+        self.edit_button = make_button("Editar lançamento", "fa5s.pen", "secondaryButton")
         self.edit_button.clicked.connect(self._edit_selected)
-        self.settle_button = QPushButton("Marcar como pago/recebido")
+        self.settle_button = make_button("Marcar como pago/recebido", "fa5s.check-circle", "secondaryButton")
         self.settle_button.clicked.connect(self._settle_selected)
-        self.cancel_button = QPushButton("Cancelar lançamento")
+        self.cancel_button = make_button("Cancelar lançamento", "fa5s.ban", "dangerButton")
         self.cancel_button.clicked.connect(self._cancel_selected)
         actions.addWidget(self.edit_button)
         actions.addWidget(self.settle_button)
-        actions.addWidget(self.cancel_button)
         actions.addStretch()
+        actions.addWidget(self.cancel_button)
         root.addLayout(actions)
         if preview_mode:
-            note = QLabel("PRÉ-VISUALIZAÇÃO • lançamentos financeiros reais exigem Supabase configurado e usuário autenticado.")
-            note.setWordWrap(True)
-            note.setStyleSheet("background:#FFF7DF;color:#79550B;padding:10px;border-radius:8px;")
-            root.addWidget(note)
+            root.addWidget(notice("PRÉ-VISUALIZAÇÃO • lançamentos financeiros reais exigem Supabase configurado e usuário autenticado."))
             for button in (self.new_button, self.edit_button, self.settle_button, self.cancel_button):
                 button.setEnabled(False)
             self._entries = self._preview_entries()
@@ -464,14 +333,14 @@ class FinancePage(QDialog):
         paid_income = sum(float(e.get("amount") or 0) for e in entries if e.get("direction") == "entrada" and e.get("status") == "pago")
         paid_expense = sum(float(e.get("amount") or 0) for e in entries if e.get("direction") == "saida" and e.get("status") == "pago")
         open_total = sum(float(e.get("amount") or 0) for e in entries if e.get("status") == "pendente")
-        self.income_metric.setText(f"Entradas recebidas\n{_money(paid_income)}")
-        self.expense_metric.setText(f"Saídas pagas\n{_money(paid_expense)}")
-        self.balance_metric.setText(f"Saldo realizado\n{_money(paid_income - paid_expense)}")
-        self.pending_metric.setText(f"Em aberto\n{_money(open_total)}")
+        self.income_metric.set_value(_money(paid_income))
+        self.expense_metric.set_value(_money(paid_expense))
+        self.balance_metric.set_value(_money(paid_income - paid_expense))
+        self.pending_metric.set_value(_money(open_total))
         self._populate(self.cash_table, entries, ["due_date", "direction", "description", "category", "counterparty", "amount", "status", "payment_method", "reference"])
         self._populate(self.payables_table, [e for e in entries if e.get("direction") == "saida"], ["due_date", "description", "counterparty", "category", "amount", "status"])
         self._populate(self.receivables_table, [e for e in entries if e.get("direction") == "entrada" and e.get("status") != "pago"], ["due_date", "description", "counterparty", "category", "amount", "status"])
-        self._populate(self.sales_table, [e for e in entries if e.get("direction") == "entrada" and str(e.get("category") or "").casefold() == "venda"], ["due_date", "description", "counterparty", "payment_method", "amount", "status", "reference"])
+        self._populate(self.sales_table, [e for e in entries if e.get("direction") == "entrada" and str(e.get("category") or "").casefold() in ("venda", "vendas")], ["due_date", "description", "counterparty", "payment_method", "amount", "status", "reference"])
 
     @staticmethod
     def _bold_font():
@@ -509,18 +378,21 @@ class FinancePage(QDialog):
                 is_income = entry.get("direction") == "entrada"
                 if field == "amount":
                     if is_receivable or (not is_payable and is_income):
-                        item.setForeground(Qt.GlobalColor.darkGreen)
+                        item.setForeground(QColor("#0E8A5B"))
                         item.setFont(self._bold_font())
                     elif is_payable or (table is self.cash_table and not is_income):
-                        item.setForeground(Qt.GlobalColor.red)
+                        item.setForeground(QColor("#C03030"))
                         item.setFont(self._bold_font())
                 if field == "status":
                     if entry.get("status") == "pago":
-                        item.setForeground(Qt.GlobalColor.darkGreen)
+                        item.setForeground(QColor("#0E8A5B"))
                     elif value == "Atrasado":
-                        item.setForeground(Qt.GlobalColor.red)
+                        item.setForeground(QColor("#C03030"))
+                        item.setFont(self._bold_font())
                     elif entry.get("status") == "pendente":
-                        item.setForeground(Qt.GlobalColor.darkYellow)
+                        item.setForeground(QColor("#9A6200"))
+                    elif entry.get("status") == "cancelado":
+                        item.setForeground(QColor("#8A97AB"))
                 table.setItem(row_index, column, item)
         # Calculate widths on the first render, then preserve the Reference column exactly.
         if table is self.cash_table and self._reference_column_width is not None:

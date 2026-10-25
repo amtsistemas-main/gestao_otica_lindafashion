@@ -42,6 +42,14 @@ def make_card(title: str, parent: QWidget | None = None) -> tuple[QFrame, QVBoxL
     return card, layout
 
 
+def _discard_first_widget(layout: QVBoxLayout) -> None:
+    """Remove the default card title immediately so it never paints behind a custom header."""
+    widget = layout.takeAt(0).widget()
+    if widget is not None:
+        widget.hide()
+        widget.deleteLater()
+
+
 class GlassesArtwork(QWidget):
     """Ilustração vetorial de óculos para o banner de boas-vindas."""
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -209,11 +217,12 @@ class DashboardPage(QWidget):
         actions, action_layout = make_card("Ações rápidas")
         action_row = QHBoxLayout()
         action_row.setSpacing(12)
-        action_row.addWidget(label("Acesse os principais módulos com um clique.", "actionHint"), 1)
+        action_row.addWidget(label("Acesse os fluxos do dia a dia com um clique.", "actionHint"), 1)
         for title, desc, icon, module, tint in [
-            ("Produtos", "Cadastrar / consultar\nprodutos", "◇", "Produtos", "#3478F6"),
-            ("Estoque", "Em evolução", "▤", "Estoque", "#16A889"),
-            ("Financeiro", "Em evolução", "R$", "Financeiro", "#8955E8"),
+            ("Nova venda", "PDV com receita\ne pagamentos", "fa5s.cash-register", "Vendas", "#3478F6"),
+            ("Pedidos", "Laboratório e\nentregas", "fa5s.clipboard-list", "Pedidos", "#16A889"),
+            ("Relacionamento", "Follow-ups e\nrecompra", "fa5s.heart", "Relacionamento", "#8955E8"),
+            ("Indicadores", "Faturamento e\nlucro efetivo", "fa5s.chart-bar", "Indicadores", "#3478F6"),
         ]:
             tile = QPushButton()
             tile.setObjectName("quickTile")
@@ -221,7 +230,7 @@ class DashboardPage(QWidget):
             tile.setCursor(Qt.CursorShape.PointingHandCursor)
             tile_layout = QHBoxLayout(tile)
             tile_layout.setContentsMargins(12, 8, 10, 8)
-            badge = icon_label({"Produtos":"fa5s.box-open","Estoque":"fa5s.warehouse","Financeiro":"fa5s.coins"}[title], tint, 19, "quickIcon")
+            badge = icon_label(icon, tint, 19, "quickIcon")
             tile_layout.addWidget(badge)
             texts = QVBoxLayout()
             texts.addWidget(label(title, "quickTitle"))
@@ -266,7 +275,7 @@ class DashboardPage(QWidget):
         period = QComboBox()
         period.addItems(["7 dias", "30 dias", "90 dias"])
         period.setObjectName("periodSelector")
-        trend_layout.takeAt(0).widget().deleteLater()
+        _discard_first_widget(trend_layout)
         trend_header = QHBoxLayout()
         trend_header.addWidget(label("Vendas dos Últimos 7 Dias", "cardTitle"))
         trend_header.addStretch()
@@ -332,7 +341,7 @@ class DashboardPage(QWidget):
         activity, activity_layout = make_card("Atividades Recentes")
         view_all = QPushButton("Ver todas")
         view_all.setObjectName("textAction")
-        activity_layout.takeAt(0).widget().deleteLater()
+        _discard_first_widget(activity_layout)
         header = QHBoxLayout()
         header.addWidget(label("Atividades Recentes","cardTitle"))
         header.addStretch()
@@ -367,7 +376,7 @@ class DashboardPage(QWidget):
         agenda_action = QPushButton("Ver agenda")
         agenda_action.setObjectName("textAction")
         agenda_header.addWidget(agenda_action)
-        agenda_layout.takeAt(0).widget().deleteLater()
+        _discard_first_widget(agenda_layout)
         agenda_layout.insertLayout(0,agenda_header)
         if preview_mode:
             agenda_layout.addWidget(label("Hoje, 16 de Abril", "agendaDate"))

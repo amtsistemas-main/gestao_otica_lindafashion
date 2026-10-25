@@ -8,8 +8,8 @@ from PySide6.QtCore import Qt, QSize, QUrl
 from PySide6.QtGui import QBrush, QColor, QPixmap, QIcon
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout, QGridLayout, QHeaderView, QScrollArea,
-    QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
+    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QGridLayout, QHeaderView, QScrollArea,
+    QHBoxLayout, QLabel, QLineEdit, QMessageBox, QSpinBox,
     QFrame, QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
 
@@ -18,9 +18,13 @@ from core.exceptions import ConfigurationError
 from core.session_manager import session_manager
 from core.supabase_client import get_supabase_client
 from modules.products.catalog_io import create_template, export_pdf, read_products
-from modules.products.models import Product
+from modules.products.models import (
+    CONTACT_REPLACEMENTS, FRAME_TYPES, GENDERS, LENS_INDEXES, LENS_TYPES, PRODUCT_TYPES, Product,
+)
 from modules.products.repository import MemoryProductRepository, SupabaseProductRepository
 from modules.products.service import ProductService
+from ui.components.ui_kit import make_button, notice
+import qtawesome as qta
 
 
 def _currency(value: Decimal | float | int) -> str:
@@ -34,161 +38,6 @@ class ProductFormDialog(QDialog):
         self.setMinimumSize(900, 620)
         self.setModal(True)
         self.setWindowState(self.windowState() | Qt.WindowState.WindowMaximized)
-        self.setStyleSheet("""
-            QDialog {
-                background: #ffffff;
-                color: #172b4d;
-                font-family: "Segoe UI";
-                font-size: 10pt;
-            }
-            QWidget#productFormContent { background: #F5F7FB; }
-            QLabel#muted { color: #718099; font-size: 9pt; background: transparent; }
-            QFrame#productFormCard, QFrame#productImageCard, QFrame#priceSummaryCard {
-                background: #FFFFFF;
-                border: 1px solid #E1E8F2;
-                border-radius: 14px;
-            }
-            QLabel#sectionTitle {
-                color: #102957;
-                background: transparent;
-                font-size: 12pt;
-                font-weight: 800;
-                padding: 0 0 5px 0;
-            }
-            QLabel#sectionDescription {
-                color: #718099;
-                background: transparent;
-                font-size: 9pt;
-            }
-            QLabel#priceSummaryLabel {
-                background: transparent;
-                color: #718099;
-                font-size: 9pt;
-                font-weight: 700;
-            }
-            QLabel#priceSummaryValue {
-                background: transparent;
-                color: #2457D6;
-                font-size: 17pt;
-                font-weight: 800;
-            }
-            QLabel#productFieldLabel {
-                color: #334766;
-                font-size: 9pt;
-                font-weight: 650;
-                padding-left: 2px;
-            }
-            QLineEdit, QComboBox, QDoubleSpinBox, QSpinBox, QTextEdit {
-                background: #ffffff;
-                color: #172b4d;
-                border: 1px solid #d7e0ec;
-                border-radius: 8px;
-                padding: 9px 11px;
-                selection-background-color: #2457d6;
-                min-height: 20px;
-            }
-
-            QAbstractSpinBox { padding-right: 7px; }
-            QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
-                subcontrol-origin: border; subcontrol-position: right; width: 25px;
-                border: none; border-left: 1px solid #1D4FC4; background: #245DE0;
-            }
-            QAbstractSpinBox::up-button { subcontrol-position: top right; border-top-right-radius: 7px; border-bottom: 1px solid #4A79E8; }
-            QAbstractSpinBox::down-button { subcontrol-position: bottom right; border-bottom-right-radius: 7px; }
-            QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover { background: #1749C2; }
-            QAbstractSpinBox::up-button:pressed, QAbstractSpinBox::down-button:pressed { background: #103A9F; }
-            QAbstractSpinBox::up-arrow, QAbstractSpinBox::down-arrow {
-                width: 8px; height: 8px; color: #FFFFFF;
-            }
-            QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus, QSpinBox:focus, QTextEdit:focus {
-                border: 1px solid #3975e8;
-                background: #ffffff;
-            }
-            QLineEdit::placeholder, QTextEdit::placeholder { color: #94a3b8; }
-            QLabel#productImagePreview {
-                background: #ffffff;
-                color: #94a3b8;
-                border: 1px dashed #b9c8dc;
-                border-radius: 12px;
-                font-size: 9pt;
-                padding: 4px;
-            }
-            QPushButton {
-                background: #ffffff;
-                color: #334766;
-                border: 1px solid #d4deeb;
-                border-radius: 8px;
-                padding: 9px 15px;
-                min-height: 20px;
-                font-weight: 600;
-            }
-            QPushButton:hover { background: #eef4ff; border-color: #9bb8ed; }
-            QPushButton:pressed { background: #e0eaff; }
-            QPushButton#primaryButton {
-                background: #2457d6;
-                color: #ffffff;
-                border: 1px solid #2457d6;
-                padding: 11px 22px;
-                font-weight: 700;
-            }
-            QPushButton#primaryButton:hover { background: #1948bd; border-color: #1948bd; }
-            QCheckBox { color: #243b5a; font-weight: 600; spacing: 9px; padding: 8px 2px; }
-            QCheckBox::indicator {
-                width: 18px; height: 18px;
-                border: 1px solid #b8c6d8;
-                border-radius: 5px;
-                background: #ffffff;
-            }
-            QCheckBox::indicator:checked { background: #2457d6; border-color: #2457d6; }
-            QScrollArea { background: transparent; border: none; }
-            QScrollBar:vertical { background: #ffffff; width: 10px; margin: 2px; border-radius: 5px; }
-            QScrollBar::handle:vertical { background: #d6e0ef; min-height: 28px; border-radius: 5px; }
-            QScrollBar::handle:vertical:hover { background: #a9bbd5; }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
-            QDialogButtonBox { background: #ffffff; border-top: 1px solid #e0e7f0; padding-top: 10px; }
-        
-            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
-            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                selection-background-color: #DCE8FF;
-                selection-color: #17365D;
-                outline: 0;
-            }
-            QComboBox QAbstractItemView::item, QComboBox QListView::item {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                min-height: 24px;
-                padding: 5px 8px;
-            }
-            QComboBox QAbstractItemView::item:selected,
-            QComboBox QAbstractItemView::item:selected:active,
-            QComboBox QAbstractItemView::item:selected:!active,
-            QComboBox QListView::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                padding: 4px;
-            }
-            QMenu::item {
-                background-color: transparent;
-                color: #172B4D;
-                padding: 7px 28px 7px 10px;
-                border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu::item:disabled {
-                color: #8793A6;
-            }
-""")
         self._product = product
         self.image_path = ""
 
@@ -208,23 +57,21 @@ class ProductFormDialog(QDialog):
         scroll.setWidget(content)
         outer.addWidget(scroll, 1)
 
-        form = QGridLayout()
-        form.setHorizontalSpacing(22)
-        form.setVerticalSpacing(12)
-        form.setColumnStretch(1, 1)
-        form.setColumnStretch(3, 1)
-
+        # Identification
+        self.product_type = QComboBox()
+        for code, label in PRODUCT_TYPES.items():
+            self.product_type.addItem(label, code)
         self.barcode = QLineEdit()
         self.barcode.setPlaceholderText("Bipe o produto ou digite o código")
         self.barcode.setClearButtonEnabled(True)
         self.sku = QLineEdit()
         self.sku.setPlaceholderText("Código interno (opcional)")
         self.name = QLineEdit()
-        self.name.setPlaceholderText("Ex.: Óculos de sol feminino")
+        self.name.setPlaceholderText("Ex.: Armação Ray-Ban Wayfarer RB2140")
         self.category = QLineEdit()
-        self.category.setPlaceholderText("Ex.: Óculos de sol")
+        self.category.setPlaceholderText("Ex.: Armações de grau, Solar, Lentes multifocais")
         self.brand = QLineEdit()
-        self.brand.setPlaceholderText("Marca")
+        self.brand.setPlaceholderText("Marca / fabricante")
         self.supplier = QComboBox()
         self.supplier.addItem("Sem fornecedor vinculado", None)
         for supplier_row in suppliers or []:
@@ -232,6 +79,33 @@ class ProductFormDialog(QDialog):
             if not supplier_row.get("active", True):
                 supplier_label += " (inativo)"
             self.supplier.addItem(supplier_label, supplier_row.get("id"))
+
+        # Optical characteristics
+        self.model = QLineEdit()
+        self.model.setPlaceholderText("Ex.: RB2140")
+        self.color = QLineEdit()
+        self.color.setPlaceholderText("Ex.: Preto fosco / 901")
+        self.size = QLineEdit()
+        self.size.setPlaceholderText("Aro□ponte haste — ex.: 52□18 145")
+        self.material = QLineEdit()
+        self.material.setPlaceholderText("Ex.: Acetato, Metal, TR90, Policarbonato")
+        self.gender = QComboBox()
+        for code, label in GENDERS.items():
+            self.gender.addItem(label, code)
+        self.lens_type = QComboBox()
+        for code, label in LENS_TYPES.items():
+            self.lens_type.addItem(label, code)
+        self.lens_index = QComboBox()
+        self.lens_index.setEditable(True)
+        for value in LENS_INDEXES:
+            self.lens_index.addItem(value or "Não informado", value)
+        self.lens_treatment = QLineEdit()
+        self.lens_treatment.setPlaceholderText("Ex.: Antirreflexo, filtro de luz azul, fotossensível")
+        self.contact_replacement = QComboBox()
+        for value in CONTACT_REPLACEMENTS:
+            self.contact_replacement.addItem(value or "Não informado", value)
+
+        # Price and stock
         self.cost_price = self._money_input()
         self.sale_price = self._money_input()
         self.discount = QDoubleSpinBox()
@@ -242,9 +116,74 @@ class ProductFormDialog(QDialog):
         self.stock.setRange(0, 2_000_000_000)
         self.minimum_stock = QSpinBox()
         self.minimum_stock.setRange(0, 2_000_000_000)
+        self.minimum_stock.setToolTip("Ao atingir este saldo, o produto entra no alerta de reposição.")
+        self.reorder_quantity = QSpinBox()
+        self.reorder_quantity.setRange(0, 2_000_000_000)
+        self.reorder_quantity.setSpecialValueText("Automática")
+        self.reorder_quantity.setToolTip("Quantidade sugerida na solicitação de compra. 'Automática' = 2 × ponto de reposição − saldo.")
+        self.tracks_stock = QCheckBox("Controlar estoque deste item")
+        self.tracks_stock.setChecked(True)
+        self.tracks_stock.setToolTip("Desmarque para serviços (montagem, ajuste) que não movimentam estoque.")
+        self.tracks_stock.toggled.connect(self._sync_stock_fields)
         self.description = QTextEdit()
-        self.description.setPlaceholderText("Detalhes adicionais, cor, tamanho, material...")
+        self.description.setPlaceholderText("Detalhes adicionais, garantia, observações comerciais...")
         self.description.setMaximumHeight(78)
+        self.active = QCheckBox("Produto ativo para venda")
+        self.active.setChecked(True)
+
+        root.addWidget(self._form_card(
+            "Identificação",
+            "Tipo, códigos de rastreamento (código de barras e SKU), marca e fornecedor.",
+            [
+                ("Tipo de produto *", self.product_type), ("Nome *", self.name),
+                ("Código de barras", self.barcode), ("Código interno / SKU", self.sku),
+                ("Marca", self.brand), ("Categoria", self.category),
+                ("Fornecedor principal", self.supplier),
+            ],
+        ))
+
+        self._frame_card = self._form_card(
+            "Características",
+            "Modelo, cor, tamanho e material — usados na busca e na identificação da peça.",
+            [
+                ("Modelo", self.model), ("Cor", self.color),
+                ("Tamanho", self.size), ("Material", self.material),
+                ("Público", self.gender),
+            ],
+        )
+        root.addWidget(self._frame_card)
+
+        self._lens_card = self._form_card(
+            "Especificação da lente",
+            "Tipo, índice de refração e tratamentos da lente oftálmica.",
+            [("Tipo de lente", self.lens_type), ("Índice de refração", self.lens_index), ("Tratamentos", self.lens_treatment)],
+        )
+        root.addWidget(self._lens_card)
+
+        self._contact_card = self._form_card(
+            "Lente de contato",
+            "Período de descarte recomendado pelo fabricante.",
+            [("Descarte", self.contact_replacement)],
+        )
+        root.addWidget(self._contact_card)
+
+        stock_card = self._form_card(
+            "Preço e estoque",
+            "Valores comerciais, saldo atual e ponto de reposição.",
+            [
+                ("Preço de custo", self.cost_price), ("Preço de venda", self.sale_price),
+                ("Desconto padrão", self.discount), ("Quantidade em estoque", self.stock),
+                ("Ponto de reposição", self.minimum_stock), ("Qtde. de reposição", self.reorder_quantity),
+            ],
+        )
+        stock_layout = stock_card.layout()
+        stock_layout.addWidget(self.tracks_stock)
+        description_label = QLabel("Descrição")
+        description_label.setObjectName("productFieldLabel")
+        stock_layout.addWidget(description_label)
+        stock_layout.addWidget(self.description)
+        stock_layout.addWidget(self.active)
+        root.addWidget(stock_card)
 
         image_card = QFrame()
         image_card.setObjectName("productImageCard")
@@ -253,7 +192,7 @@ class ProductFormDialog(QDialog):
         image_card_layout.setSpacing(10)
         image_section = QVBoxLayout()
         image_section.setSpacing(8)
-        image_heading = QLabel("▣  Imagem do produto")
+        image_heading = QLabel("Imagem do produto")
         image_heading.setObjectName("sectionTitle")
         image_section.addWidget(image_heading)
         image_description = QLabel("Adicione uma imagem para facilitar a identificação no catálogo.")
@@ -271,57 +210,23 @@ class ProductFormDialog(QDialog):
         self.image_url.setPlaceholderText("https://... URL pública da imagem")
         self.image_url.setClearButtonEnabled(True)
         self.image_url.textChanged.connect(self._show_image_url_hint)
-        self.upload_image_button = QPushButton("Enviar imagem do computador")
-        self.upload_image_button.setObjectName("primaryButton")
+        self.upload_image_button = make_button("Enviar do computador", "fa5s.upload", "primaryButton")
         self.upload_image_button.clicked.connect(self._choose_image)
-        self.clear_image_button = QPushButton("Remover imagem")
-        self.clear_image_button.setObjectName("primaryButton")
+        self.clear_image_button = make_button("Remover", "fa5s.trash-alt", "dangerButton")
         self.clear_image_button.clicked.connect(self._clear_image)
+        image_buttons = QHBoxLayout()
+        image_buttons.setSpacing(8)
+        image_buttons.addWidget(self.upload_image_button, 1)
+        image_buttons.addWidget(self.clear_image_button)
         image_controls.addWidget(self.image_url)
-        image_controls.addWidget(self.upload_image_button)
-        image_controls.addWidget(self.clear_image_button)
+        image_controls.addLayout(image_buttons)
         image_row.addLayout(image_controls, 1)
         image_section.addLayout(image_row)
-        image_section.addWidget(QLabel("PNG, JPG ou WEBP • máximo 8 MB. Upload online usa o armazenamento da organização."))
+        image_hint = QLabel("PNG, JPG ou WEBP • máximo 8 MB. Upload online usa o armazenamento da organização.")
+        image_hint.setObjectName("muted")
+        image_hint.setWordWrap(True)
+        image_section.addWidget(image_hint)
         image_card_layout.addLayout(image_section)
-        root.addWidget(image_card)
-
-        self.active = QCheckBox("Produto ativo para venda")
-        self.active.setChecked(True)
-
-        fields = [
-            ("Código de barras", self.barcode), ("Código interno / SKU", self.sku),
-            ("Nome *", self.name), ("Categoria", self.category),
-            ("Marca", self.brand), ("Fornecedor principal", self.supplier), ("Preço de custo", self.cost_price),
-            ("Preço de venda", self.sale_price), ("Desconto padrão", self.discount),
-            ("Quantidade em estoque", self.stock), ("Estoque mínimo", self.minimum_stock),
-        ]
-        for index, (label_text, field) in enumerate(fields):
-            row, column = divmod(index, 2)
-            label = QLabel(label_text)
-            label.setObjectName("productFieldLabel")
-            form.addWidget(label, row, column * 2)
-            form.addWidget(field, row, column * 2 + 1)
-        details_row = (len(fields) + 1) // 2
-        description_label = QLabel("Descrição")
-        description_label.setObjectName("productFieldLabel")
-        form.addWidget(description_label, details_row, 0)
-        form.addWidget(self.description, details_row, 1, 1, 3)
-        form.addWidget(self.active, details_row + 1, 0, 1, 4)
-        form_card = QFrame()
-        form_card.setObjectName("productFormCard")
-        form_card_layout = QVBoxLayout(form_card)
-        form_card_layout.setContentsMargins(20, 18, 20, 20)
-        form_card_layout.setSpacing(14)
-        form_heading = QLabel("✦  Informações do produto")
-        form_heading.setObjectName("sectionTitle")
-        form_card_layout.addWidget(form_heading)
-        form_description = QLabel("Preencha os dados essenciais, os valores comerciais e os níveis de estoque.")
-        form_description.setObjectName("sectionDescription")
-        form_description.setWordWrap(True)
-        form_card_layout.addWidget(form_description)
-        form_card_layout.addLayout(form)
-        root.addWidget(form_card)
 
         price_card = QFrame()
         price_card.setObjectName("priceSummaryCard")
@@ -330,16 +235,26 @@ class ProductFormDialog(QDialog):
         price_layout.setSpacing(12)
         price_text_layout = QVBoxLayout()
         price_text_layout.setSpacing(4)
-        price_caption = QLabel("RESUMO DE PREÇO")
+        price_caption = QLabel("PREÇO FINAL COM DESCONTO")
         price_caption.setObjectName("priceSummaryLabel")
         price_text_layout.addWidget(price_caption)
-        self.final_price_label = QLabel("Preço final com desconto: R$ 0,00")
+        self.final_price_label = QLabel("R$ 0,00")
         self.final_price_label.setObjectName("priceSummaryValue")
         price_text_layout.addWidget(self.final_price_label)
+        self.margin_label = QLabel("Margem bruta: —")
+        self.margin_label.setObjectName("muted")
+        price_text_layout.addWidget(self.margin_label)
+        price_text_layout.addStretch(1)
         price_layout.addLayout(price_text_layout, 1)
-        root.addWidget(price_card)
-        self.sale_price.valueChanged.connect(self._update_final_price)
-        self.discount.valueChanged.connect(self._update_final_price)
+        bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(14)
+        bottom_row.addWidget(image_card, 3)
+        bottom_row.addWidget(price_card, 2)
+        root.addLayout(bottom_row)
+        root.addStretch(1)
+        for field in (self.sale_price, self.discount, self.cost_price):
+            field.valueChanged.connect(self._update_final_price)
+        self.product_type.currentIndexChanged.connect(self._sync_type_sections)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save)
         buttons.button(QDialogButtonBox.StandardButton.Save).setText("Salvar produto")
@@ -349,11 +264,25 @@ class ProductFormDialog(QDialog):
         outer.addWidget(buttons)
 
         if product:
+            self.product_type.setCurrentIndex(max(0, self.product_type.findData(product.product_type)))
             self.barcode.setText(product.barcode)
             self.sku.setText(product.sku)
             self.name.setText(product.name)
             self.category.setText(product.category)
             self.brand.setText(product.brand)
+            self.model.setText(product.model)
+            self.color.setText(product.color)
+            self.size.setText(product.size)
+            self.material.setText(product.material)
+            self.gender.setCurrentIndex(max(0, self.gender.findData(product.gender)))
+            self.lens_type.setCurrentIndex(max(0, self.lens_type.findData(product.lens_type)))
+            index_position = self.lens_index.findData(product.lens_index)
+            if index_position >= 0:
+                self.lens_index.setCurrentIndex(index_position)
+            else:
+                self.lens_index.setEditText(product.lens_index)
+            self.lens_treatment.setText(product.lens_treatment)
+            self.contact_replacement.setCurrentIndex(max(0, self.contact_replacement.findData(product.contact_replacement)))
             supplier_index = self.supplier.findData(product.supplier_id)
             self.supplier.setCurrentIndex(max(0, supplier_index))
             self.cost_price.setValue(float(product.cost_price))
@@ -361,6 +290,8 @@ class ProductFormDialog(QDialog):
             self.discount.setValue(float(product.discount_percent))
             self.stock.setValue(product.stock_quantity)
             self.minimum_stock.setValue(product.minimum_stock)
+            self.reorder_quantity.setValue(product.reorder_quantity)
+            self.tracks_stock.setChecked(product.tracks_stock)
             self.description.setPlainText(product.description)
             self.image_url.setText(product.image_url)
             if product.image_url.startswith(("https://", "http://")):
@@ -369,8 +300,55 @@ class ProductFormDialog(QDialog):
                 self._render_image(product.image_url)
             self.active.setChecked(product.active)
         else:
+            self.product_type.setCurrentIndex(self.product_type.findData("armacao"))
             self.barcode.setFocus()
+        self._sync_type_sections()
         self._update_final_price()
+
+    @staticmethod
+    def _form_card(title: str, description: str, fields: list[tuple[str, QWidget]]) -> QFrame:
+        card = QFrame()
+        card.setObjectName("productFormCard")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 16, 20, 18)
+        layout.setSpacing(10)
+        heading = QLabel(title)
+        heading.setObjectName("sectionTitle")
+        layout.addWidget(heading)
+        caption = QLabel(description)
+        caption.setObjectName("sectionDescription")
+        caption.setWordWrap(True)
+        layout.addWidget(caption)
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(22)
+        grid.setVerticalSpacing(10)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(3, 1)
+        for index, (label_text, field) in enumerate(fields):
+            row, column = divmod(index, 2)
+            label = QLabel(label_text)
+            label.setObjectName("productFieldLabel")
+            label.setMinimumWidth(150)
+            grid.addWidget(label, row, column * 2)
+            grid.addWidget(field, row, column * 2 + 1)
+        layout.addLayout(grid)
+        return card
+
+    def _sync_type_sections(self, *_args: object) -> None:
+        """Show only the attributes that make sense for the selected product type."""
+        product_type = self.product_type.currentData()
+        self._frame_card.setVisible(product_type in FRAME_TYPES or product_type in ("acessorio", "outro"))
+        self._lens_card.setVisible(product_type == "lente_oftalmica")
+        self._contact_card.setVisible(product_type == "lente_contato")
+        if product_type == "servico":
+            self.tracks_stock.setChecked(False)
+        self.tracks_stock.setEnabled(product_type != "servico")
+        self._sync_stock_fields()
+
+    def _sync_stock_fields(self, *_args: object) -> None:
+        enabled = self.tracks_stock.isChecked()
+        for field in (self.stock, self.minimum_stock, self.reorder_quantity):
+            field.setEnabled(enabled)
 
     @staticmethod
     def _money_input() -> QDoubleSpinBox:
@@ -386,7 +364,13 @@ class ProductFormDialog(QDialog):
             Decimal(str(self.sale_price.value()))
             * (Decimal("1") - Decimal(str(self.discount.value())) / Decimal("100"))
         ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.final_price_label.setText(f"Preço final com desconto: {_currency(final)}")
+        self.final_price_label.setText(_currency(final))
+        cost = Decimal(str(self.cost_price.value()))
+        if final > 0:
+            margin = ((final - cost) / final * Decimal("100")).quantize(Decimal("0.1"))
+            self.margin_label.setText(f"Margem bruta sobre o preço final: {str(margin).replace('.', ',')}% • lucro bruto {_currency(final - cost)}")
+        else:
+            self.margin_label.setText("Margem bruta: —")
 
     def _choose_image(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -438,12 +422,25 @@ class ProductFormDialog(QDialog):
         if self.stock.value() < 0 or self.minimum_stock.value() < 0:
             QMessageBox.warning(self, "Estoque inválido", "As quantidades não podem ser negativas.")
             return
+        if self.sale_price.value() > 0 and self.cost_price.value() > self.sale_price.value():
+            answer = QMessageBox.question(
+                self, "Preço abaixo do custo",
+                "O preço de venda está abaixo do custo. Deseja salvar mesmo assim?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                self.sale_price.setFocus()
+                return
         image_url = self.image_url.text().strip()
         if image_url and not image_url.startswith(("https://", "http://")):
             QMessageBox.warning(self, "URL de imagem inválida", "Informe uma URL pública iniciada por http:// ou https://.")
             self.image_url.setFocus()
             return
         self.accept()
+
+    def _lens_index_value(self) -> str:
+        text = self.lens_index.currentText().strip().replace(",", ".")
+        return "" if text in ("", "Não informado") else text
 
     def build_product(self) -> Product:
         previous = self._product
@@ -453,8 +450,20 @@ class ProductFormDialog(QDialog):
             barcode=self.barcode.text().strip(),
             sku=self.sku.text().strip(),
             name=self.name.text().strip(),
+            product_type=str(self.product_type.currentData() or "outro"),
             category=self.category.text().strip(),
             brand=self.brand.text().strip(),
+            model=self.model.text().strip(),
+            color=self.color.text().strip(),
+            size=self.size.text().strip(),
+            material=self.material.text().strip(),
+            gender=str(self.gender.currentData() or ""),
+            lens_type=str(self.lens_type.currentData() or ""),
+            lens_index=self._lens_index_value(),
+            lens_treatment=self.lens_treatment.text().strip(),
+            contact_replacement=str(self.contact_replacement.currentData() or ""),
+            reorder_quantity=self.reorder_quantity.value(),
+            tracks_stock=self.tracks_stock.isChecked(),
             supplier_id=str(self.supplier.currentData()) if self.supplier.currentData() else None,
             supplier_name=self.supplier.currentText() if self.supplier.currentData() else "",
             cost_price=Decimal(str(self.cost_price.value())).quantize(Decimal("0.01")),
@@ -479,65 +488,6 @@ class ProductsPage(QDialog):
         self.setWindowTitle("Produtos — Ótica Linda Fashion")
         self.resize(1120, 720)
         self.setMinimumSize(860, 600)
-        self.setStyleSheet("""
-            QDialog { background:#F3F5F8; color:#24334B; font-family:"Arial"; font-size:10pt; }
-            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
-            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
-            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
-            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; border-right:1px solid #28456F; padding:11px 8px; min-height:22px; font-weight:700; }
-            QLabel#muted { color:#7184A1; }
-            QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit, QSpinBox, QDoubleSpinBox {
-                background:#FFFFFF; color:#172B4D; border:1px solid #CFD9E8;
-                border-radius:8px; padding:8px 10px; min-height:20px;
-                selection-background-color:#315FE8; selection-color:#FFFFFF;
-            }
-            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
-            QPushButton:hover { background:#F0F5FF; }
-            QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; font-weight:750; }
-            QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
-        
-            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
-            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                selection-background-color: #DCE8FF;
-                selection-color: #17365D;
-                outline: 0;
-            }
-            QComboBox QAbstractItemView::item, QComboBox QListView::item {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                min-height: 24px;
-                padding: 5px 8px;
-            }
-            QComboBox QAbstractItemView::item:selected,
-            QComboBox QAbstractItemView::item:selected:active,
-            QComboBox QAbstractItemView::item:selected:!active,
-            QComboBox QListView::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                padding: 4px;
-            }
-            QMenu::item {
-                background-color: transparent;
-                color: #172B4D;
-                padding: 7px 28px 7px 10px;
-                border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu::item:disabled {
-                color: #8793A6;
-            }
-""")
 
         if preview_mode:
             repository = MemoryProductRepository()
@@ -574,38 +524,54 @@ class ProductsPage(QDialog):
         title_layout.addWidget(title)
         title_layout.addWidget(subtitle)
         header.addWidget(title_bar, 1)
-        self.export_button = QPushButton("Exportar catálogo PDF")
-        self.export_button.setObjectName("secondaryQuickAction")
-        self.export_button.clicked.connect(self._export_pdf)
-        self.template_button = QPushButton("Baixar modelo XLS")
-        self.template_button.setObjectName("secondaryQuickAction")
-        self.template_button.clicked.connect(self._download_template)
-        self.import_button = QPushButton("Importar planilha")
-        self.import_button.setObjectName("secondaryQuickAction")
-        self.import_button.clicked.connect(self._import_spreadsheet)
-        self.new_button = QPushButton("+ Novo produto")
-        self.new_button.setObjectName("primaryButton")
-        self.new_button.clicked.connect(self._new_product)
-        header.addWidget(self.new_button)
         root.addLayout(header)
 
-        catalog_tools = QHBoxLayout()
-        catalog_tools.setSpacing(10)
-        catalog_tools.addWidget(self.export_button)
-        catalog_tools.addWidget(self.template_button)
-        catalog_tools.addWidget(self.import_button)
-        catalog_tools.addStretch()
-        root.addLayout(catalog_tools)
+        self.export_button = make_button("Exportar PDF", "fa5s.file-pdf", "secondaryButton")
+        self.export_button.setToolTip("Exportar a lista atual como catálogo em PDF")
+        self.export_button.clicked.connect(self._export_pdf)
+        self.template_button = make_button("Modelo XLS", "fa5s.file-download", "secondaryButton")
+        self.template_button.setToolTip("Baixar a planilha modelo para importação")
+        self.template_button.clicked.connect(self._download_template)
+        self.import_button = make_button("Importar", "fa5s.file-import", "secondaryButton")
+        self.import_button.setToolTip("Importar produtos de uma planilha .xlsx ou .xls")
+        self.import_button.clicked.connect(self._import_spreadsheet)
+        self.new_button = make_button("Novo produto", "fa5s.plus", "primaryButton")
+        self.new_button.clicked.connect(self._new_product)
+
+        toolbar = QHBoxLayout()
+        toolbar.setSpacing(10)
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Pesquisar por nome, código de barras, SKU, marca ou categoria")
+        self.search.setClearButtonEnabled(True)
+        self.search.addAction(qta.icon("fa5s.search", color="#8A97AB"), QLineEdit.ActionPosition.LeadingPosition)
+        self.search.returnPressed.connect(self._search_from_barcode)
+        self.search.textChanged.connect(self._search_products)
+        search_button = make_button("Ler código", "fa5s.barcode", "secondaryButton")
+        search_button.setToolTip("Pesquisar o código bipado ou digitado")
+        search_button.clicked.connect(self._search_from_barcode)
+        self.type_filter = QComboBox()
+        self.type_filter.addItem("Todos os tipos", "")
+        for code, label in PRODUCT_TYPES.items():
+            self.type_filter.addItem(label, code)
+        self.type_filter.setMinimumWidth(170)
+        self.type_filter.setToolTip("Filtrar o catálogo por tipo de produto")
+        self.type_filter.currentIndexChanged.connect(self._search_products)
+        toolbar.addWidget(self.search, 1)
+        toolbar.addWidget(self.type_filter)
+        toolbar.addWidget(search_button)
+        toolbar.addSpacing(8)
+        toolbar.addWidget(self.import_button)
+        toolbar.addWidget(self.template_button)
+        toolbar.addWidget(self.export_button)
+        toolbar.addWidget(self.new_button)
+        root.addLayout(toolbar)
 
         if preview_mode:
-            preview_note = QLabel("PRÉ-VISUALIZAÇÃO • os produtos cadastrados aqui ficam apenas na memória e são apagados ao fechar.")
-            preview_note.setWordWrap(True)
-            preview_note.setStyleSheet("background:#fff7df; color:#79550b; padding:10px; border-radius:8px;")
-            root.addWidget(preview_note)
+            root.addWidget(notice("PRÉ-VISUALIZAÇÃO • os produtos cadastrados aqui ficam apenas na memória e são apagados ao fechar."))
 
         summary = QHBoxLayout()
         self.count_label = QLabel("0 produtos")
-        self.count_label.setStyleSheet("font-weight:700;")
+        self.count_label.setObjectName("summaryStrong")
         self.stock_alert_label = QLabel("0 abaixo do estoque mínimo")
         self.stock_alert_label.setObjectName("muted")
         summary.addWidget(self.count_label)
@@ -613,21 +579,9 @@ class ProductsPage(QDialog):
         summary.addWidget(self.stock_alert_label)
         root.addLayout(summary)
 
-        search_row = QHBoxLayout()
-        self.search = QLineEdit()
-        self.search.setPlaceholderText("Pesquisar por nome, código de barras, SKU, marca ou categoria")
-        self.search.setClearButtonEnabled(True)
-        self.search.returnPressed.connect(self._search_from_barcode)
-        self.search.textChanged.connect(self._search_products)
-        search_button = QPushButton("Pesquisar / ler código")
-        search_button.clicked.connect(self._search_from_barcode)
-        search_row.addWidget(self.search, 1)
-        search_row.addWidget(search_button)
-        root.addLayout(search_row)
-
-        self.table = QTableWidget(0, 10)
+        self.table = QTableWidget(0, 11)
         self.table.setHorizontalHeaderLabels([
-            "Imagem", "Código / SKU", "Produto", "Categoria", "Custo", "Venda", "Desconto", "Preço final", "Estoque", "Fornecedor",
+            "Imagem", "Código / SKU", "Produto", "Tipo", "Categoria", "Custo", "Venda", "Desconto", "Preço final", "Estoque", "Fornecedor",
         ])
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -636,22 +590,22 @@ class ProductsPage(QDialog):
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.ResizeToContents)
+        for column in (3, 4, 10):
+            self.table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
         self.table.setColumnWidth(0, 68)
         self.table.setColumnWidth(1, 135)
-        for column in (4, 5, 6, 7, 8):
-            self.table.setColumnWidth(column, 105)
+        for column in (5, 6, 7, 8, 9):
+            self.table.setColumnWidth(column, 100)
         self.table.verticalHeader().setDefaultSectionSize(58)
         self.table.doubleClicked.connect(lambda *_: self._edit_product())
         root.addWidget(self.table, 1)
 
         actions = QHBoxLayout()
-        self.edit_button = QPushButton("Editar selecionado")
+        self.edit_button = make_button("Editar selecionado", "fa5s.pen", "secondaryButton")
         self.edit_button.clicked.connect(self._edit_product)
-        self.archive_button = QPushButton("Desativar produto")
+        self.archive_button = make_button("Desativar produto", "fa5s.ban", "dangerButton")
         self.archive_button.clicked.connect(self._archive_product)
-        self.refresh_button = QPushButton("Atualizar lista")
+        self.refresh_button = make_button("Atualizar lista", "fa5s.sync-alt", "secondaryButton")
         self.refresh_button.clicked.connect(self._search_products)
         actions.addWidget(self.edit_button)
         actions.addWidget(self.archive_button)
@@ -700,6 +654,9 @@ class ProductsPage(QDialog):
         term = self.search.text().strip()
         try:
             self._visible_products = self._service.list_products(term)
+            type_code = self.type_filter.currentData() if hasattr(self, "type_filter") else ""
+            if type_code:
+                self._visible_products = [item for item in self._visible_products if item.product_type == type_code]
             supplier_names = {str(row.get("id")): str(row.get("trade_name") or row.get("name") or row.get("legal_name") or "") for row in self._suppliers}
             for product in self._visible_products:
                 product.supplier_name = supplier_names.get(str(product.supplier_id), "") if product.supplier_id else ""
@@ -743,26 +700,34 @@ class ProductsPage(QDialog):
                         self._finish_image_request(current, image_url, product_id)
                     )
             self.table.setItem(row, 0, image_item)
+            characteristics = product.characteristics
             values = [
-                product.barcode or product.sku or "—", product.name, product.category or "—",
+                product.barcode or product.sku or "—",
+                product.name + (f"\n{characteristics}" if characteristics else ""),
+                product.type_label, product.category or "—",
                 _currency(product.cost_price), _currency(product.sale_price),
                 f"{product.discount_percent:.2f}%".replace(".", ","), _currency(product.final_price),
-                str(product.stock_quantity), product.supplier_name or "—",
+                str(product.stock_quantity) if product.tracks_stock else "Não controla",
+                product.supplier_name or "—",
             ]
             for offset, value in enumerate(values, start=1):
                 item = QTableWidgetItem(value)
                 item.setData(Qt.ItemDataRole.UserRole, product.id)
-                if offset in (4, 5, 6, 7, 8):
+                if offset == 2 and characteristics:
+                    item.setToolTip(f"{product.name}\n{characteristics}")
+                if offset in (5, 6, 7, 8, 9):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.table.setItem(row, offset, item)
-            if product.stock_quantity <= product.minimum_stock:
-                self.table.item(row, 8).setForeground(QBrush(QColor("#b42318")))
+            if product.needs_reorder:
+                stock_item = self.table.item(row, 9)
+                stock_item.setForeground(QBrush(QColor("#b42318")))
+                stock_item.setToolTip(f"Atingiu o ponto de reposição ({product.minimum_stock}). Sugestão de compra: {product.suggested_reorder_quantity} un.")
             if not product.active:
                 for column in range(self.table.columnCount()):
                     self.table.item(row, column).setForeground(QBrush(QColor("#8a94a6")))
         self.count_label.setText(f"{len(self._visible_products)} produto(s)")
-        low_stock = sum(1 for item in self._visible_products if item.stock_quantity <= item.minimum_stock)
-        self.stock_alert_label.setText(f"{low_stock} no estoque mínimo ou abaixo")
+        low_stock = sum(1 for item in self._visible_products if item.needs_reorder)
+        self.stock_alert_label.setText(f"{low_stock} no ponto de reposição ou abaixo")
 
     def _finish_image_request(self, reply: QNetworkReply, image_url: str, product_id: str | None) -> None:
         try:

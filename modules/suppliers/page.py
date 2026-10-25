@@ -12,6 +12,8 @@ from config.settings import get_settings
 from core.exceptions import ConfigurationError
 from core.session_manager import session_manager
 from core.supabase_client import get_supabase_client
+from ui.components.ui_kit import make_button, notice
+import qtawesome as qta
 
 SUPPLIER_FIELDS = (
     "name", "legal_name", "trade_name", "document", "state_registration",
@@ -111,21 +113,6 @@ class SupplierFormDialog(QDialog):
         buttons.accepted.connect(self._validate)
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
-        self.setStyleSheet("""
-            QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; font-size:10pt; }
-            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
-            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
-            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
-            QLineEdit, QTextEdit { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:8px; padding:8px; selection-background-color:#2165F5; selection-color:#FFFFFF; }
-            QLineEdit:focus, QTextEdit:focus { border:1px solid #2165F5; }
-            QTabWidget::pane { border:1px solid #E4EAF5; border-radius:8px; background:#FFFFFF; }
-            QTabBar::tab { background:#FFFFFF; color:#4B5675; padding:10px 16px; border:1px solid #E4EAF5; }
-            QTabBar::tab:selected { color:#FFFFFF; background:#2165F5; }
-            QCheckBox { spacing:8px; padding:5px; color:#102957; }
-            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 14px; font-weight:650; }
-            QPushButton:hover { background:#F3F7FF; }
-            QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
-        """)
 
     def _validate(self) -> None:
         name = self.fields["name"].text().strip()
@@ -160,20 +147,6 @@ class SuppliersPage(QDialog):
         self.setWindowTitle("Fornecedores — Ótica Linda Fashion")
         self.resize(1180, 760)
         self.setMinimumSize(900, 620)
-        self.setStyleSheet("""
-            QDialog { background:#F3F5F8; color:#24334B; font-family:"Arial"; font-size:10pt; }
-            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
-            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
-            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
-            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; border-right:1px solid #28456F; padding:11px 8px; min-height:22px; font-weight:700; }
-            QLabel#pageTitle { color:#102957; font-size:23pt; font-weight:800; }
-            QLabel#muted { color:#7184A1; }
-            QLineEdit { background:#FFFFFF; color:#172B4D; border:1px solid #D9E3F1; border-radius:8px; padding:9px; }
-            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
-            QPushButton#primaryButton { background:#245DE0; color:#FFFFFF; border:1px solid #245DE0; }
-            QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
-            QHeaderView::section { background:#EFF4FC; color:#42577B; border:none; padding:10px; font-weight:750; }
-        """)
         self._client = None
         self._organization_id = None
         self._rows: list[dict] = []
@@ -208,16 +181,22 @@ class SuppliersPage(QDialog):
         title_layout.addWidget(subtitle)
         titles.addWidget(title_bar)
         header.addLayout(titles, 1)
-        self.new_button = QPushButton("+ Novo fornecedor")
-        self.new_button.setObjectName("primaryButton")
-        self.new_button.clicked.connect(self._new)
-        header.addWidget(self.new_button)
         root.addLayout(header)
+        toolbar = QHBoxLayout()
+        toolbar.setSpacing(10)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Buscar por nome, razão social, CPF/CNPJ, contato, e-mail ou cidade…")
         self.search.setClearButtonEnabled(True)
+        self.search.addAction(qta.icon("fa5s.search", color="#8A97AB"), QLineEdit.ActionPosition.LeadingPosition)
         self.search.textChanged.connect(self._render)
-        root.addWidget(self.search)
+        toolbar.addWidget(self.search, 1)
+        self.refresh_button = make_button("Atualizar", "fa5s.sync-alt", "secondaryButton")
+        self.refresh_button.clicked.connect(self._load)
+        toolbar.addWidget(self.refresh_button)
+        self.new_button = make_button("Novo fornecedor", "fa5s.plus", "primaryButton")
+        self.new_button.clicked.connect(self._new)
+        toolbar.addWidget(self.new_button)
+        root.addLayout(toolbar)
         self.table = QTableWidget(0, 8)
         self.table.setHorizontalHeaderLabels(["Fornecedor", "CPF / CNPJ", "Contato", "Telefone / WhatsApp", "E-mail", "Cidade / UF", "Produtos", "Status"])
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -237,25 +216,19 @@ class SuppliersPage(QDialog):
         self.table.doubleClicked.connect(self._edit)
         root.addWidget(self.table, 1)
         actions = QHBoxLayout()
-        self.edit_button = QPushButton("Editar selecionado")
+        self.edit_button = make_button("Editar selecionado", "fa5s.pen", "secondaryButton")
         self.edit_button.clicked.connect(self._edit)
-        self.toggle_button = QPushButton("Ativar / desativar")
-        self.toggle_button.clicked.connect(self._toggle_active)
-        self.products_button = QPushButton("Ver produtos vinculados")
+        self.products_button = make_button("Ver produtos vinculados", "fa5s.glasses", "secondaryButton")
         self.products_button.clicked.connect(self._show_products)
-        self.refresh_button = QPushButton("Atualizar")
-        self.refresh_button.clicked.connect(self._load)
+        self.toggle_button = make_button("Ativar / desativar", "fa5s.power-off", "dangerButton")
+        self.toggle_button.clicked.connect(self._toggle_active)
         actions.addWidget(self.edit_button)
-        actions.addWidget(self.toggle_button)
         actions.addWidget(self.products_button)
         actions.addStretch()
-        actions.addWidget(self.refresh_button)
+        actions.addWidget(self.toggle_button)
         root.addLayout(actions)
         if preview_mode:
-            note = QLabel("PRÉ-VISUALIZAÇÃO • o cadastro e a persistência de fornecedores exigem conexão com o Supabase.")
-            note.setWordWrap(True)
-            note.setStyleSheet("background:#FFF7DF;color:#79550B;padding:10px;border-radius:8px;")
-            root.addWidget(note)
+            root.addWidget(notice("PRÉ-VISUALIZAÇÃO • o cadastro e a persistência de fornecedores exigem conexão com o Supabase."))
             for button in (self.new_button, self.edit_button, self.toggle_button, self.products_button):
                 button.setEnabled(False)
         self._load()

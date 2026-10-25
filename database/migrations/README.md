@@ -12,6 +12,21 @@ The application is configured for the Ótica Linda Fashion Supabase project:
 
 The project URL is configured as a safe default in `config/settings.py`; it can still be overridden through `SUPABASE_URL`.
 
+## Gestão óptica de alto padrão — aplicar nesta ordem
+
+Pré-requisito: as migrations anteriores (`202610240001` a `202610241730`, nesta pasta e em `supabase/migrations/`) já aplicadas — em especial clientes/CRM (006), pedidos (007), eventos e fila (008), modelos de WhatsApp (010/011), fornecedores (005), financeiro (006) e vendas (241700).
+
+| Ordem | Arquivo | O que faz |
+|---|---|---|
+| 1 | `202610250001_optical_products.sql` | Tipo de produto (armação, lente oftálmica, lente de contato, solar, acessório, serviço), modelo, cor, tamanho, material, atributos de lente, quantidade de reposição e itens sem controle de estoque. |
+| 2 | `202610250002_customer_prescriptions.sql` | Receitas OD/OE estruturadas com validação no banco (passos de 0,25 D, eixo 0–180 obrigatório com cilindro, faixas de DNP/altura) e vínculo da venda com a receita e as medidas da armação. |
+| 3 | `202610250003_lab_order_pipeline.sql` | Fluxo de 8 status do pedido (aguardando envio → entregue/cancelado), laboratório, custo, prazos, datas de cada etapa preenchidas pelo banco, ocorrências e fila de WhatsApp atualizada. Converte os status antigos sem disparar mensagens. |
+| 4 | `202610250004_pos_payments_quotes.sql` | Configurações da loja (limite de desconto), nome de exibição da equipe, pagamentos múltiplos (sinal, crediário/boleto parcelado), orçamentos, chave de idempotência, `finalize_sales_order_v2` (venda transacional com baixa de estoque auditada, financeiro e pedido de laboratório) e `cancel_sales_order` (devolução ao estoque e estorno). |
+| 5 | `202610250005_commercial_intelligence.sql` | Preenche o custo histórico dos itens já vendidos (aproximação pelo custo atual) e cria índices dos indicadores. |
+| 6 | `202610250006_crm_repurchase.sql` | Preferências do cliente, agenda `crm_tasks` e tarefas automáticas de pós-venda (pedido entregue) e revisão de receita (antes do vencimento). |
+
+Aplique cada arquivo no SQL Editor, na ordem, e confira a mensagem de sucesso antes do próximo. Depois disso, um dono/administrador deve abrir **Configurações** no aplicativo para definir o desconto máximo da loja (padrão 10%) e o nome de exibição de cada vendedor.
+
 ## Products — `202610240001_products.sql`
 
 Before applying this migration, inspect the target project's actual schema and migration history to avoid conflicting with existing tables. Execute SQL migrations in this directory in order only after confirming they are needed.

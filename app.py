@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import sys
 
+from PySide6.QtCore import QLibraryInfo, QLocale, QTranslator
 from PySide6.QtWidgets import QApplication
 
 from config.settings import get_settings
@@ -32,6 +33,11 @@ def main() -> int:
     app.setApplicationName("Ótica Linda Fashion")
     app.setOrganizationName("AMT Sistemas")
     app.setStyle("Fusion")
+    # Native dialog buttons (Cancelar, Sim/Não) in Portuguese.
+    translator = QTranslator(app)
+    if translator.load("qtbase_pt_BR", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):
+        app.installTranslator(translator)
+    QLocale.setDefault(QLocale(QLocale.Language.Portuguese, QLocale.Country.Brazil))
     apply_theme(app)
     install_window_headers(app)
 

@@ -10,7 +10,7 @@ from PySide6.QtCore import Qt, QRectF, QSize
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox, QCalendarWidget, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFormLayout, QFrame,
-    QHBoxLayout, QHeaderView, QLabel, QLineEdit, QInputDialog, QMessageBox, QPushButton,
+    QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton,
     QScrollArea, QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
 
@@ -18,6 +18,14 @@ from config.settings import get_settings
 from core.exceptions import ConfigurationError
 from core.session_manager import session_manager
 from core.supabase_client import get_supabase_client
+from core.organization import OrganizationContext
+from modules.lab_orders import statuses as order_statuses
+from modules.lab_orders.page import LabOrdersPage
+from modules.prescriptions.dialogs import PrescriptionHistoryDialog
+from modules.prescriptions.repository import PrescriptionRepository
+from modules.settings.service import load_store_settings
+from ui.components.ui_kit import MetricTile, make_button
+import qtawesome as qta
 
 
 CUSTOMER_FIELDS = (
@@ -98,6 +106,7 @@ class CustomerFormDialog(QDialog):
             ("Identificação", [("full_name", "Nome completo *"), ("document", "CPF"), ("birth_date", "Data de nascimento")]),
             ("Contato", [("email", "E-mail"), ("phone", "Telefone"), ("whatsapp", "WhatsApp")]),
             ("Endereço", [("postal_code", "CEP"), ("street", "Logradouro"), ("address_number", "Número"), ("address_complement", "Complemento"), ("neighborhood", "Bairro"), ("city", "Cidade"), ("state", "UF")]),
+            ("Preferências", [("preferred_brands", "Marcas preferidas"), ("frame_preferences", "Estilo de armação"), ("lens_preferences", "Preferências de lente")]),
         ]
         for section_name, section_fields in groups:
             section = QLabel(section_name)
@@ -119,15 +128,6 @@ class CustomerFormDialog(QDialog):
                     calendar.setGridVisible(False)
                     calendar.setFirstDayOfWeek(Qt.DayOfWeek.Monday)
                     calendar.setNavigationBarVisible(True)
-                    calendar.setStyleSheet("""
-                        QCalendarWidget QWidget { background:#FFFFFF; color:#102957; }
-                        QCalendarWidget QWidget#qt_calendar_navigationbar { background:#2165F5; }
-                        QCalendarWidget QToolButton { color:#FFFFFF; background:#2165F5; border:none; padding:7px; font-weight:700; }
-                        QCalendarWidget QToolButton:hover { background:#1749C2; }
-                        QCalendarWidget QMenu { background:#FFFFFF; color:#102957; }
-                        QCalendarWidget QSpinBox { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:5px; padding:3px; }
-                        QCalendarWidget QAbstractItemView { background:#FFFFFF; color:#102957; selection-background-color:#2165F5; selection-color:#FFFFFF; outline:0; }
-                    """)
                     widget.setCalendarWidget(calendar)
                     raw = self._customer.get(key)
                     widget.setDate(date.fromisoformat(str(raw)[:10]) if raw else widget.minimumDate())
@@ -146,6 +146,12 @@ class CustomerFormDialog(QDialog):
                         widget.setInputMask("00000-000;_")
                         widget.setPlaceholderText("00000-000")
                         widget.editingFinished.connect(self._lookup_postal_code)
+                    elif key == "preferred_brands":
+                        widget.setPlaceholderText("Ex.: Ray-Ban, Vogue, Prada")
+                    elif key == "frame_preferences":
+                        widget.setPlaceholderText("Ex.: acetato, formato gatinho, cores escuras, aro fechado")
+                    elif key == "lens_preferences":
+                        widget.setPlaceholderText("Ex.: multifocal, antirreflexo, filtro de luz azul")
                     widget.setText(raw_value)
                 widget.setMinimumHeight(38)
                 self.fields[key] = widget
@@ -158,6 +164,11 @@ class CustomerFormDialog(QDialog):
         crm_form = QFormLayout()
         crm_form.setContentsMargins(10, 0, 10, 0)
         crm_form.setSpacing(10)
+        self.preferred_channel = QComboBox()
+        for code, caption in (("", "Sem preferência"), ("whatsapp", "WhatsApp"), ("email", "E-mail"), ("telefone", "Telefone")):
+            self.preferred_channel.addItem(caption, code)
+        self.preferred_channel.setCurrentIndex(max(0, self.preferred_channel.findData(self._customer.get("preferred_channel") or "")))
+        crm_form.addRow("Canal de contato preferido", self.preferred_channel)
         self.notes = QTextEdit()
         self.notes.setPlaceholderText("Preferências, observações e histórico relevante...")
         self.notes.setPlainText(str(self._customer.get("notes") or ""))
@@ -190,27 +201,11 @@ class CustomerFormDialog(QDialog):
         if read_only:
             for widget in self.fields.values():
                 widget.setEnabled(False)
+            self.preferred_channel.setEnabled(False)
             self.notes.setReadOnly(True)
             for checkbox in (self.email_consent, self.whatsapp_consent, self.active):
                 checkbox.setEnabled(False)
 
-        self.setStyleSheet("""
-            QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; }
-            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
-            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
-            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
-            QLabel#formSectionTitle { background:#F3F7FF; color:#17365D; border:1px solid #E0E8F4; border-radius:7px; padding:8px 10px; font-weight:700; }
-            QScrollArea#customerFormScroll { background:#FFFFFF; border:1px solid #E4EAF5; border-radius:8px; }
-            QLineEdit, QDateEdit, QTextEdit { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:8px; padding:8px; selection-background-color:#2165F5; selection-color:#FFFFFF; }
-            QLineEdit:focus, QDateEdit:focus, QTextEdit:focus { border:1px solid #2165F5; }
-            QLineEdit:disabled, QDateEdit:disabled { background:#F7F9FD; color:#526581; }
-            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 14px; }
-            QPushButton:hover { background:#F3F7FF; }
-            QCheckBox { spacing:8px; padding:5px; }
-            QCheckBox::indicator { width:18px; height:18px; border:1px solid #B8C7DC; border-radius:5px; background:#FFFFFF; }
-            QCheckBox::indicator:checked { background:#2165F5; border:1px solid #2165F5; }
-            QCheckBox::indicator:hover { border:1px solid #2165F5; }
-        """)
 
     def _lookup_postal_code(self) -> None:
         cep_widget = self.fields.get("postal_code")
@@ -264,11 +259,16 @@ class CustomerFormDialog(QDialog):
             if isinstance(widget, QDateEdit):
                 record[key] = widget.date().toString("yyyy-MM-dd") if widget.date() > widget.minimumDate() else None
             elif isinstance(widget, QLineEdit):
-                record[key] = widget.text().replace("_", "").strip()
+                text = widget.text().replace("_", "").strip()
+                # An empty masked field returns only its separators (e.g. "..-"): store it as empty.
+                if widget.inputMask() and not any(character.isdigit() for character in text):
+                    text = ""
+                record[key] = text
         record["notes"] = self.notes.toPlainText().strip()
         record["marketing_email_consent"] = self.email_consent.isChecked()
         record["whatsapp_consent"] = self.whatsapp_consent.isChecked()
         record["active"] = self.active.isChecked()
+        record["preferred_channel"] = str(self.preferred_channel.currentData() or "")
         return record
 
 
@@ -316,31 +316,33 @@ class CustomersPage(QDialog):
         heading.addWidget(title)
         heading.addWidget(subtitle)
         header.addWidget(title_bar, 1)
-        self.new_button = QPushButton("+ Novo cliente")
-        self.new_button.setObjectName("primaryButton")
-        self.new_button.clicked.connect(self._new_customer)
-        header.addWidget(self.new_button)
         root.addLayout(header)
 
         metrics = QHBoxLayout()
-        self.total_label = QLabel("0 clientes")
-        self.email_label = QLabel("0 com e-mail autorizado")
-        self.whatsapp_label = QLabel("0 com WhatsApp autorizado")
-        for item in (self.total_label, self.email_label, self.whatsapp_label):
-            item.setStyleSheet("background:#FFFFFF;border:1px solid #E4EAF5;border-radius:9px;padding:12px;color:#102957;font-weight:650;")
-            metrics.addWidget(item)
+        metrics.setSpacing(14)
+        self.total_label = MetricTile("Clientes cadastrados", "0", "fa5s.users", "primary")
+        self.email_label = MetricTile("E-mail autorizado", "0", "fa5s.envelope", "navy", "Consentimento para e-mail marketing")
+        self.whatsapp_label = MetricTile("WhatsApp autorizado", "0", "fa5b.whatsapp", "success", "Consentimento para mensagens")
+        for tile in (self.total_label, self.email_label, self.whatsapp_label):
+            metrics.addWidget(tile, 1)
         root.addLayout(metrics)
 
         filters = QHBoxLayout()
+        filters.setSpacing(10)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Buscar por nome, CPF, e-mail ou telefone...")
         self.search.setClearButtonEnabled(True)
+        self.search.addAction(qta.icon("fa5s.search", color="#8A97AB"), QLineEdit.ActionPosition.LeadingPosition)
         self.search.textChanged.connect(self._render_rows)
         filters.addWidget(self.search, 1)
         self.status_filter = QComboBox()
         self.status_filter.addItems(["Todos os clientes", "Ativos", "Inativos"])
+        self.status_filter.setMinimumWidth(180)
         self.status_filter.currentIndexChanged.connect(self._render_rows)
         filters.addWidget(self.status_filter)
+        self.new_button = make_button("Novo cliente", "fa5s.user-plus", "primaryButton")
+        self.new_button.clicked.connect(self._new_customer)
+        filters.addWidget(self.new_button)
         root.addLayout(filters)
 
         self.table = QTableWidget(0, 6)
@@ -363,98 +365,31 @@ class CustomersPage(QDialog):
         root.addWidget(self.table, 1)
 
         crm_actions = QHBoxLayout()
-        self.orders_button = QPushButton("Pedidos e status")
+        crm_actions.setSpacing(8)
+        self.prescriptions_button = make_button("Receitas", "fa5s.eye", "secondaryButton")
+        self.prescriptions_button.setToolTip("Histórico de receitas oftálmicas do cliente selecionado")
+        self.prescriptions_button.clicked.connect(self._manage_prescriptions)
+        crm_actions.addWidget(self.prescriptions_button)
+        self.orders_button = make_button("Pedidos e status", "fa5s.clipboard-check", "secondaryButton")
+        self.orders_button.setToolTip("Acompanhar pedidos do cliente selecionado")
         self.orders_button.clicked.connect(self._manage_orders)
         crm_actions.addWidget(self.orders_button)
-        self.sales_history_button = QPushButton("Histórico de vendas")
+        self.sales_history_button = make_button("Histórico de vendas", "fa5s.receipt", "secondaryButton")
         self.sales_history_button.clicked.connect(self._view_sales_history)
         crm_actions.addWidget(self.sales_history_button)
-        self.history_button = QPushButton("Ver histórico CRM")
+        self.history_button = make_button("Histórico CRM", "fa5s.history", "secondaryButton")
         self.history_button.clicked.connect(self._view_interactions)
         crm_actions.addWidget(self.history_button)
-        self.whatsapp_templates_button = QPushButton("Mensagens automáticas WhatsApp")
+        self.whatsapp_templates_button = make_button("Mensagens WhatsApp", "fa5b.whatsapp", "secondaryButton")
+        self.whatsapp_templates_button.setToolTip("Configurar mensagens automáticas de status de pedido")
         self.whatsapp_templates_button.clicked.connect(self._manage_whatsapp_templates)
         crm_actions.addWidget(self.whatsapp_templates_button)
-        self.crm_button = QPushButton("Registrar interação / follow-up")
-        self.crm_button.setObjectName("primaryButton")
+        crm_actions.addStretch(1)
+        self.crm_button = make_button("Registrar interação", "fa5s.comment-dots", "primaryButton")
+        self.crm_button.setToolTip("Registrar interação ou follow-up para o cliente selecionado")
         self.crm_button.clicked.connect(self._add_interaction)
         crm_actions.addWidget(self.crm_button)
         root.addLayout(crm_actions)
-        self.setStyleSheet("""
-            QDialog { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; font-size:10pt; }
-            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
-            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
-            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
-                        QLineEdit, QComboBox { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:8px; padding:9px; min-height:22px; }
-            QLineEdit:focus, QComboBox:focus { border:1px solid #2165F5; }
-            QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
-            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; padding:10px; font-weight:700; }
-            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
-            QPushButton:hover { background:#F3F7FF; }
-            QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
-            QPushButton#viewCustomerButton, QPushButton#editCustomerButton {
-                background-color:#2165F5;
-                color:#FFFFFF;
-                border:1px solid #2165F5;
-                border-radius:6px;
-                padding:0px;
-                margin:0px;
-                min-width:36px;
-                max-width:36px;
-                min-height:36px;
-                max-height:36px;
-            }
-            QPushButton#viewCustomerButton:hover, QPushButton#editCustomerButton:hover {
-                background-color:#1749C2;
-                border-color:#1749C2;
-            }
-            QPushButton#viewCustomerButton:pressed, QPushButton#editCustomerButton:pressed {
-                background-color:#103A9F;
-                border-color:#103A9F;
-            }
-        
-            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
-            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                selection-background-color: #DCE8FF;
-                selection-color: #17365D;
-                outline: 0;
-            }
-            QComboBox QAbstractItemView::item, QComboBox QListView::item {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                min-height: 24px;
-                padding: 5px 8px;
-            }
-            QComboBox QAbstractItemView::item:selected,
-            QComboBox QAbstractItemView::item:selected:active,
-            QComboBox QAbstractItemView::item:selected:!active,
-            QComboBox QListView::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                padding: 4px;
-            }
-            QMenu::item {
-                background-color: transparent;
-                color: #172B4D;
-                padding: 7px 28px 7px 10px;
-                border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu::item:disabled {
-                color: #8793A6;
-            }
-""")
         self._load_customers()
 
     def _load_customers(self) -> None:
@@ -494,12 +429,17 @@ class CustomersPage(QDialog):
                 record.get("full_name", ""),
                 " / ".join(filter(None, [record.get("phone", ""), record.get("whatsapp", "")])),
                 record.get("email", ""),
-                "E-mail ✓" if record.get("marketing_email_consent") else "E-mail —",
+                "  ·  ".join([
+                    "E-mail ✓" if record.get("marketing_email_consent") else "E-mail —",
+                    "WhatsApp ✓" if record.get("whatsapp_consent") else "WhatsApp —",
+                ]),
                 "Ativo" if record.get("active", True) else "Inativo",
             ]
             for col, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
                 item.setData(Qt.ItemDataRole.UserRole, record.get("id"))
+                if col == 4:
+                    item.setForeground(QColor("#0E8A5B" if record.get("active", True) else "#8A97AB"))
                 self.table.setItem(row_index, col, item)
             actions_widget = QWidget()
             actions_layout = QHBoxLayout(actions_widget)
@@ -507,28 +447,14 @@ class CustomersPage(QDialog):
             actions_layout.setSpacing(6)
             actions_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            action_button_style = """
-                QPushButton {
-                    background-color: #2165F5;
-                    color: #FFFFFF;
-                    border: 1px solid #2165F5;
-                    border-radius: 6px;
-                    padding: 0px;
-                    margin: 0px;
-                }
-                QPushButton:hover { background-color: #1749C2; border-color: #1749C2; }
-                QPushButton:pressed { background-color: #103A9F; border-color: #103A9F; }
-                QPushButton:focus { border: 2px solid #8DB5FF; }
-            """
-
             view_button = QPushButton()
             view_button.setObjectName("viewCustomerButton")
             view_button.setToolTip("Visualizar cliente")
             view_button.setAccessibleName(f"Visualizar cliente {record.get('full_name', '')}")
             view_button.setIcon(_action_icon("view"))
             view_button.setIconSize(QSize(20, 20))
-            view_button.setFixedSize(36, 36)
-            view_button.setStyleSheet(action_button_style)
+            view_button.setFixedSize(34, 34)
+            view_button.setCursor(Qt.CursorShape.PointingHandCursor)
             view_button.clicked.connect(lambda checked=False, item=record: self._view_customer(item))
             actions_layout.addWidget(view_button)
 
@@ -538,8 +464,8 @@ class CustomersPage(QDialog):
             edit_button.setAccessibleName(f"Editar cliente {record.get('full_name', '')}")
             edit_button.setIcon(_action_icon("edit"))
             edit_button.setIconSize(QSize(20, 20))
-            edit_button.setFixedSize(36, 36)
-            edit_button.setStyleSheet(action_button_style)
+            edit_button.setFixedSize(34, 34)
+            edit_button.setCursor(Qt.CursorShape.PointingHandCursor)
             edit_button.clicked.connect(lambda checked=False, item=record: self._edit_customer(item))
             actions_layout.addWidget(edit_button)
             actions_widget.setMinimumWidth(100)
@@ -549,9 +475,9 @@ class CustomersPage(QDialog):
         total = len(self._rows)
         email_count = sum(bool(row.get("marketing_email_consent") and row.get("email")) for row in self._rows)
         whatsapp_count = sum(bool(row.get("whatsapp_consent") and row.get("whatsapp")) for row in self._rows)
-        self.total_label.setText(f"{total} clientes cadastrados")
-        self.email_label.setText(f"{email_count} com e-mail autorizado")
-        self.whatsapp_label.setText(f"{whatsapp_count} com WhatsApp autorizado")
+        self.total_label.set_value(str(total))
+        self.email_label.set_value(str(email_count))
+        self.whatsapp_label.set_value(str(whatsapp_count))
 
     def _selected_customer(self) -> dict | None:
         row_index = self.table.currentRow()
@@ -642,14 +568,13 @@ class CustomersPage(QDialog):
         total_spent = sum(float(order.get("total") or 0) for order in orders)
         last_purchase = str(orders[0].get("created_at") or "")[:10] if orders else "—"
         metrics = QHBoxLayout()
-        for text in (
-            f"{len(orders)} venda(s)",
-            f"Total comprado: {self._format_sales_history_money(total_spent)}",
-            f"Última compra: {last_purchase}",
+        metrics.setSpacing(12)
+        for title, value, icon_name, tone in (
+            ("Vendas", str(len(orders)), "fa5s.shopping-bag", "primary"),
+            ("Total comprado", self._format_sales_history_money(total_spent), "fa5s.coins", "success"),
+            ("Última compra", last_purchase, "fa5s.calendar-alt", "navy"),
         ):
-            metric = QLabel(text)
-            metric.setStyleSheet("background:#F7F9FD;border:1px solid #E0E8F4;border-radius:8px;padding:11px;color:#102957;font-weight:650;")
-            metrics.addWidget(metric)
+            metrics.addWidget(MetricTile(title, value, icon_name, tone), 1)
         root.addLayout(metrics)
 
         table = QTableWidget(0, 6)
@@ -686,7 +611,7 @@ class CustomersPage(QDialog):
 
         if not orders:
             empty = QLabel("Este cliente ainda não possui vendas registradas.")
-            empty.setStyleSheet("color:#64748b;padding:12px;")
+            empty.setObjectName("emptyState")
             root.addWidget(empty)
 
         actions = QHBoxLayout()
@@ -734,7 +659,7 @@ class CustomersPage(QDialog):
             detail.resize(760, 420)
             detail_layout = QVBoxLayout(detail)
             detail_title = QLabel(f"Venda {order.get('order_number') or '—'} · {self._format_sales_history_money(order.get('total'))}")
-            detail_title.setStyleSheet("font-size:14pt;font-weight:700;color:#102957;padding:6px;")
+            detail_title.setObjectName("sectionTitle")
             detail_layout.addWidget(detail_title)
             detail_table = QTableWidget(0, 5)
             detail_table.setHorizontalHeaderLabels(["Produto", "SKU", "Qtd.", "Preço unitário", "Total do item"])
@@ -759,21 +684,10 @@ class CustomersPage(QDialog):
             done = QPushButton("Fechar")
             done.clicked.connect(detail.accept)
             detail_layout.addWidget(done, alignment=Qt.AlignmentFlag.AlignRight)
-            detail.setStyleSheet(dialog.styleSheet())
             detail.exec()
 
         details_button.clicked.connect(show_sale_details)
         close_button.clicked.connect(dialog.accept)
-        dialog.setStyleSheet("""
-            QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; }
-            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
-            QLabel#windowTitle { color:#FFFFFF; background:transparent; font-size:15pt; font-weight:700; }
-            QLabel#windowSubtitle { color:#DCE7F7; background:transparent; }
-            QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; border:1px solid #E0E8F4; gridline-color:#EDF1F7; selection-background-color:#DCE8FF; selection-color:#17365D; }
-            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; padding:9px; font-weight:700; }
-            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; font-weight:650; }
-            QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
-        """)
         dialog.exec()
 
     @staticmethod
@@ -787,278 +701,32 @@ class CustomersPage(QDialog):
         if not customer:
             QMessageBox.information(self, "Selecione um cliente", "Selecione um cliente para consultar ou cadastrar pedidos.")
             return
-        if self._preview_mode:
-            QMessageBox.information(self, "Pedidos demonstrativos", "O acompanhamento de pedidos exige uma sessão autenticada para salvar dados.")
+        try:
+            LabOrdersPage(preview_mode=self._preview_mode, customer=customer, parent=self).exec()
+        except Exception as exc:
+            QMessageBox.critical(self, "Pedidos indisponíveis", str(exc))
+
+    def _manage_prescriptions(self) -> None:
+        customer = self._selected_customer()
+        if not customer:
+            QMessageBox.information(self, "Selecione um cliente", "Selecione um cliente para consultar ou cadastrar receitas.")
             return
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"Pedidos — {customer.get('full_name', 'Cliente')}")
-        dialog.resize(900, 560)
-        layout = QVBoxLayout(dialog)
-        title_bar = QFrame()
-        title_bar.setObjectName("windowTitleBar")
-        title_layout = QVBoxLayout(title_bar)
-        title_layout.setContentsMargins(18, 12, 18, 12)
-        title = QLabel(f"Pedidos de {customer.get('full_name', 'Cliente')}")
-        title.setObjectName("windowTitle")
-        title_layout.addWidget(title)
-        layout.addWidget(title_bar)
-        table = QTableWidget(0, 5)
-        table.setHorizontalHeaderLabels(["Nº pedido", "Descrição", "Status", "Previsão", "Criado em"])
-        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        table.verticalHeader().setVisible(False)
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        layout.addWidget(table, 1)
-        form = QFormLayout()
-        number = QLineEdit()
-        number.setPlaceholderText("Ex.: OC-2026-001 (opcional)")
-        description = QLineEdit()
-        description.setPlaceholderText("Ex.: Armação + lentes multifocais")
-        status = QComboBox()
-        status.addItem("Em desenvolvimento", "em_desenvolvimento")
-        status.addItem("Óculos pronto", "pronto")
-        status.addItem("Entregue", "entregue")
-        status.addItem("Cancelado", "cancelado")
-        expected = QDateEdit()
-        expected.setCalendarPopup(True)
-        expected.setDisplayFormat("dd/MM/yyyy")
-        expected.setDate(date.today())
-        notes = QTextEdit()
-        notes.setPlaceholderText("Observações do pedido...")
-        notes.setMaximumHeight(70)
-        form.addRow("Número", number)
-        form.addRow("Descrição *", description)
-        form.addRow("Status", status)
-        form.addRow("Previsão", expected)
-        form.addRow("Observações", notes)
-        layout.addLayout(form)
-        actions = QHBoxLayout()
-        refresh_button = QPushButton("Atualizar lista")
-        update_status_button = QPushButton("Alterar status selecionado")
-        history_button = QPushButton("Histórico de status")
-        save_button = QPushButton("Cadastrar pedido")
-        save_button.setObjectName("primaryButton")
-        actions.addWidget(refresh_button)
-        actions.addWidget(update_status_button)
-        actions.addWidget(history_button)
-        actions.addStretch(1)
-        actions.addWidget(save_button)
-        layout.addLayout(actions)
-        status_labels = {"em_desenvolvimento":"Em desenvolvimento","pronto":"Óculos pronto","entregue":"Entregue","cancelado":"Cancelado"}
+        ctx = self._context()
+        PrescriptionHistoryDialog(
+            customer, PrescriptionRepository(ctx), load_store_settings(ctx).prescription_validity_months, parent=self,
+        ).exec()
 
-        def load_orders() -> None:
-            try:
-                rows = self._client.table("customer_orders").select(
-                    "id,order_number,description,status,expected_at,created_at"
-                ).eq("organization_id", self._organization_id).eq(
-                    "customer_id", customer["id"]
-                ).order("created_at", desc=True).execute().data or []
-            except Exception as exc:
-                QMessageBox.critical(dialog, "Erro ao carregar pedidos", f"Não foi possível carregar os pedidos.\\n\\n{exc}")
-                return
-            table.setRowCount(len(rows))
-            for index, row in enumerate(rows):
-                values = [
-                    row.get("order_number") or "—", row.get("description") or "",
-                    status_labels.get(row.get("status", ""), row.get("status", "")),
-                    row.get("expected_at") or "—", str(row.get("created_at") or "")[:10],
-                ]
-                for column, value in enumerate(values):
-                    cell = QTableWidgetItem(str(value))
-                    if column == 0:
-                        cell.setData(Qt.ItemDataRole.UserRole, row.get("id"))
-                    table.setItem(index, column, cell)
-
-        def update_order_status() -> None:
-            row_index = table.currentRow()
-            if row_index < 0 or table.item(row_index, 0) is None:
-                QMessageBox.information(dialog, "Selecione um pedido", "Selecione um pedido na lista para alterar seu status.")
-                return
-            order_id = table.item(row_index, 0).data(Qt.ItemDataRole.UserRole)
-            choices = ["Em desenvolvimento", "Óculos pronto", "Entregue", "Cancelado"]
-            values = ["em_desenvolvimento", "pronto", "entregue", "cancelado"]
-            selected, accepted = QInputDialog.getItem(dialog, "Atualizar status", "Novo status:", choices, 0, False)
-            if not accepted:
-                return
-            new_status = values[choices.index(selected)]
-            try:
-                current_rows = self._client.table("customer_orders").select(
-                    "status"
-                ).eq("id", order_id).eq("organization_id", self._organization_id).eq(
-                    "customer_id", customer["id"]
-                ).limit(1).execute().data or []
-                if not current_rows:
-                    QMessageBox.warning(dialog, "Pedido não encontrado", "O pedido não foi localizado nesta organização.")
-                    return
-                previous_status = str(current_rows[0].get("status") or "")
-                if previous_status == new_status:
-                    QMessageBox.information(dialog, "Sem alteração", "O pedido já está com esse status.")
-                    return
-                now = __import__("datetime").datetime.now().astimezone().isoformat()
-                payload = {"status": new_status, "updated_at": now}
-                if new_status == "pronto":
-                    payload["completed_at"] = now
-                elif new_status == "entregue":
-                    payload["delivered_at"] = now
-                self._client.table("customer_orders").update(payload).eq("id", order_id).eq(
-                    "organization_id", self._organization_id
-                ).eq("customer_id", customer["id"]).execute()
-                QMessageBox.information(
-                    dialog, "Status atualizado",
-                    "Status atualizado e registrado no histórico. Nenhuma mensagem externa foi enviada.",
-                )
-                load_orders()
-            except Exception as exc:
-                QMessageBox.critical(dialog, "Erro ao atualizar status", f"Não foi possível atualizar o status.\\n\\n{exc}")
-
-        def view_order_history() -> None:
-            row_index = table.currentRow()
-            if row_index < 0 or table.item(row_index, 0) is None:
-                QMessageBox.information(dialog, "Selecione um pedido", "Selecione um pedido para consultar o histórico.")
-                return
-            order_id = table.item(row_index, 0).data(Qt.ItemDataRole.UserRole)
-            try:
-                events = self._client.table("customer_order_events").select(
-                    "previous_status,new_status,changed_at,note"
-                ).eq("organization_id", self._organization_id).eq(
-                    "customer_id", customer["id"]
-                ).eq("order_id", order_id).order("changed_at", desc=True).limit(100).execute().data or []
-            except Exception as exc:
-                QMessageBox.critical(dialog, "Erro no histórico", f"Não foi possível carregar o histórico de status.\\n\\n{exc}")
-                return
-            history_dialog = QDialog(dialog)
-            history_dialog.setWindowTitle("Histórico de status do pedido")
-            history_dialog.resize(720, 420)
-            history_layout = QVBoxLayout(history_dialog)
-            history_title_bar = QFrame()
-            history_title_bar.setObjectName("windowTitleBar")
-            history_title_layout = QVBoxLayout(history_title_bar)
-            history_title_layout.setContentsMargins(18, 12, 18, 12)
-            history_title = QLabel(f"Histórico — {customer.get('full_name', 'Cliente')}")
-            history_title.setObjectName("windowTitle")
-            history_title_layout.addWidget(history_title)
-            history_layout.addWidget(history_title_bar)
-            history_table = QTableWidget(0, 4)
-            history_table.setHorizontalHeaderLabels(["Data", "Status anterior", "Novo status", "Observação"])
-            history_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-            history_table.verticalHeader().setVisible(False)
-            history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-            history_table.setRowCount(len(events))
-            for index, event in enumerate(events):
-                previous = status_labels.get(event.get("previous_status", ""), event.get("previous_status", "") or "—")
-                current = status_labels.get(event.get("new_status", ""), event.get("new_status", ""))
-                values = [
-                    str(event.get("changed_at") or "")[:16].replace("T", " "),
-                    previous, current, event.get("note", ""),
-                ]
-                for column, value in enumerate(values):
-                    history_table.setItem(index, column, QTableWidgetItem(str(value)))
-            history_layout.addWidget(history_table)
-            if not events:
-                empty = QLabel("Ainda não há alterações de status registradas para este pedido.")
-                empty.setStyleSheet("color:#64748b;padding:8px;")
-                history_layout.addWidget(empty)
-            close_history = QPushButton("Fechar")
-            close_history.clicked.connect(history_dialog.accept)
-            history_layout.addWidget(close_history, alignment=Qt.AlignmentFlag.AlignRight)
-            history_dialog.setStyleSheet(dialog.styleSheet())
-            history_dialog.exec()
-
-        def save_order() -> None:
-            if not description.text().strip():
-                QMessageBox.warning(dialog, "Descrição obrigatória", "Informe a descrição do pedido.")
-                description.setFocus()
-                return
-            order_status = status.currentData()
-            now = __import__("datetime").datetime.now().astimezone().isoformat()
-            record = {
-                "organization_id": self._organization_id,
-                "customer_id": customer["id"],
-                "order_number": number.text().strip(),
-                "description": description.text().strip(),
-                "status": order_status,
-                "expected_at": expected.date().toString("yyyy-MM-dd"),
-                "notes": notes.toPlainText().strip(),
-                "created_by": self._user_id,
-                "completed_at": now if order_status == "pronto" else None,
-                "delivered_at": now if order_status == "entregue" else None,
-            }
-            try:
-                self._client.table("customer_orders").insert(record).execute()
-                QMessageBox.information(dialog, "Pedido cadastrado", "Pedido salvo. Nenhuma mensagem externa foi enviada.")
-                number.clear()
-                description.clear()
-                notes.clear()
-                load_orders()
-            except Exception as exc:
-                QMessageBox.critical(dialog, "Erro ao salvar pedido", f"Não foi possível salvar o pedido.\\n\\n{exc}")
-
-        refresh_button.clicked.connect(load_orders)
-        update_status_button.clicked.connect(update_order_status)
-        history_button.clicked.connect(view_order_history)
-        save_button.clicked.connect(save_order)
-        load_orders()
-        dialog.setStyleSheet("""
-            QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; }
-            QLineEdit, QComboBox, QDateEdit, QTextEdit { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:8px; padding:8px; }
-            QTableWidget { background:#FFFFFF; alternate-background-color:#F7F9FD; gridline-color:#EDF1F7; selection-background-color:#E8F0FF; selection-color:#102957; }
-            QHeaderView::section { background:#102957; color:#FFFFFF; border:none; padding:9px; }
-            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 13px; }
-            QPushButton#primaryButton { background:#2165F5; color:#FFFFFF; border:1px solid #2165F5; }
-        
-            /* Explicit popup styling: local dialog styles must not fall back to a dark native palette. */
-            QComboBox QAbstractItemView, QComboBox QListView, QComboBox QAbstractItemView:focus {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                selection-background-color: #DCE8FF;
-                selection-color: #17365D;
-                outline: 0;
-            }
-            QComboBox QAbstractItemView::item, QComboBox QListView::item {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                min-height: 24px;
-                padding: 5px 8px;
-            }
-            QComboBox QAbstractItemView::item:selected,
-            QComboBox QAbstractItemView::item:selected:active,
-            QComboBox QAbstractItemView::item:selected:!active,
-            QComboBox QListView::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu {
-                background-color: #FFFFFF;
-                color: #172B4D;
-                border: 1px solid #D6E0EF;
-                padding: 4px;
-            }
-            QMenu::item {
-                background-color: transparent;
-                color: #172B4D;
-                padding: 7px 28px 7px 10px;
-                border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #DCE8FF;
-                color: #17365D;
-            }
-            QMenu::item:disabled {
-                color: #8793A6;
-            }
-""")
-        dialog.exec()
-
+    def _context(self) -> OrganizationContext | None:
+        if self._preview_mode:
+            return None
+        return OrganizationContext(self._client, str(self._organization_id), str(self._user_id), "member")
 
     def _manage_whatsapp_templates(self) -> None:
         if self._preview_mode:
             QMessageBox.information(self, "Pré-visualização", "A configuração das mensagens WhatsApp exige uma sessão autenticada.")
             return
         templates = [
-            ("order_em_desenvolvimento", "Em desenvolvimento", "Olá, {{cliente}}! Seu pedido {{pedido}} ({{descricao}}) está em desenvolvimento. Previsão: {{previsao}}. — Ótica Linda Fashion"),
-            ("order_pronto", "Óculos pronto", "Olá, {{cliente}}! Boas notícias: seu pedido {{pedido}} ({{descricao}}) está pronto para retirada. — Ótica Linda Fashion"),
-            ("order_entregue", "Entregue", "Olá, {{cliente}}! Registramos a entrega do pedido {{pedido}} ({{descricao}}). Obrigado por escolher a Ótica Linda Fashion!"),
-            ("order_cancelado", "Cancelado", "Olá, {{cliente}}. O pedido {{pedido}} ({{descricao}}) foi cancelado. Entre em contato conosco se precisar de ajuda. — Ótica Linda Fashion"),
+            (f"order_{status.code}", status.label, status.default_message) for status in order_statuses.template_statuses()
         ]
         try:
             existing = self._client.table("customer_whatsapp_templates").select(
@@ -1087,19 +755,28 @@ class CustomersPage(QDialog):
         root.addWidget(title_bar)
         help_text = QLabel("Variáveis disponíveis: {{cliente}}, {{pedido}}, {{descricao}}, {{status}}, {{previsao}}. A mensagem entra na fila apenas se o cliente estiver ativo, tiver WhatsApp cadastrado e consentimento marcado.")
         help_text.setWordWrap(True)
-        help_text.setStyleSheet("color:#475569;padding:4px;")
+        help_text.setObjectName("infoNotice")
         root.addWidget(help_text)
         editors: dict[str, tuple[QTextEdit, QCheckBox]] = {}
+        templates_scroll = QScrollArea()
+        templates_scroll.setWidgetResizable(True)
+        templates_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        templates_host = QWidget()
+        templates_layout = QVBoxLayout(templates_host)
+        templates_layout.setContentsMargins(0, 0, 8, 0)
+        templates_layout.setSpacing(10)
+        templates_scroll.setWidget(templates_host)
+        root.addWidget(templates_scroll, 1)
         for event_type, label, default_body in templates:
             row = existing_by_type.get(event_type, {})
             section = QFrame()
-            section.setStyleSheet("QFrame { background:#F7F9FD; border:1px solid #E0E8F4; border-radius:8px; }")
+            section.setObjectName("templateCard")
             section_layout = QVBoxLayout(section)
             section_layout.setContentsMargins(12, 10, 12, 10)
             section_layout.setSpacing(6)
             heading = QHBoxLayout()
             heading_label = QLabel(label)
-            heading_label.setStyleSheet("font-weight:700;color:#102957;background:transparent;border:none;")
+            heading_label.setObjectName("cardHeading")
             enabled = QCheckBox("Ativar")
             enabled.setChecked(bool(row.get("enabled", True)))
             heading.addWidget(heading_label)
@@ -1110,22 +787,13 @@ class CustomersPage(QDialog):
             editor.setMinimumHeight(86)
             editor.setPlainText(str(row.get("message_body") or default_body))
             section_layout.addWidget(editor)
-            root.addWidget(section)
+            templates_layout.addWidget(section)
             editors[event_type] = (editor, enabled)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save)
         buttons.button(QDialogButtonBox.StandardButton.Save).setText("Salvar modelos")
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
         root.addWidget(buttons)
-        dialog.setStyleSheet("""
-            QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; }
-            QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
-            QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
-            QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
-            QTextEdit { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:7px; padding:8px; }
-            QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 14px; }
-            QPushButton:hover { background:#F3F7FF; }
-        """)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         payload = []
@@ -1188,7 +856,8 @@ class CustomersPage(QDialog):
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         type_labels = {"observacao":"Observação","ligacao":"Ligação","email":"E-mail","whatsapp":"WhatsApp","follow_up":"Follow-up","status_pedido":"Status do pedido"}
-        status_labels = {"em_desenvolvimento":"Em desenvolvimento","pronto":"Óculos pronto","entregue":"Entregue","cancelado":"Cancelado","": "—"}
+        status_labels = {status.code: status.label for status in order_statuses.ALL_STATUSES}
+        status_labels[""] = "—"
         table.setRowCount(len(rows))
         for index, item in enumerate(rows):
             values = [
@@ -1226,10 +895,8 @@ class CustomersPage(QDialog):
         body.setPlaceholderText("Registre o contato, próximo passo ou atualização...")
         status = QComboBox()
         status.addItem("Sem alteração de status", "")
-        status.addItem("Em desenvolvimento", "em_desenvolvimento")
-        status.addItem("Óculos pronto", "pronto")
-        status.addItem("Entregue", "entregue")
-        status.addItem("Cancelado", "cancelado")
+        for order_status in order_statuses.ALL_STATUSES:
+            status.addItem(order_status.label, order_status.code)
         follow_up = QDateEdit()
         follow_up.setCalendarPopup(True)
         follow_up.setDisplayFormat("dd/MM/yyyy")

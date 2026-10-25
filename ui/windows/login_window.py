@@ -6,6 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
+import qtawesome as qta
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -22,6 +23,7 @@ from config.branding import APP_NAME, APP_SUBTITLE
 from config.settings import get_settings
 from core.auth_service import AuthService
 from core.exceptions import ApplicationError
+from ui.components.ui_kit import set_button_icon
 from ui.windows.main_window import MainWindow
 
 logger = logging.getLogger(__name__)
@@ -56,12 +58,12 @@ class LoginWindow(QMainWindow):
         logo = QLabel()
         logo.setObjectName("loginLogo")
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo.setMinimumHeight(120)
+        logo.setFixedHeight(100)
         if LOGO_PATH.is_file():
             pixmap = QPixmap(str(LOGO_PATH))
             if not pixmap.isNull():
                 logo.setPixmap(pixmap.scaled(
-                    245, 125,
+                    250, 78,
                     Qt.AspectRatioMode.KeepAspectRatio,
                     Qt.TransformationMode.SmoothTransformation,
                 ))
@@ -140,6 +142,7 @@ class LoginWindow(QMainWindow):
         self.email_input.setClearButtonEnabled(True)
         self.email_input.setMinimumHeight(46)
         self.email_input.setAccessibleName("E-mail")
+        self.email_input.addAction(qta.icon("fa5s.envelope", color="#8A97AB"), QLineEdit.ActionPosition.LeadingPosition)
 
         password_label = QLabel("Senha")
         password_label.setObjectName("fieldLabel")
@@ -149,14 +152,16 @@ class LoginWindow(QMainWindow):
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setMinimumHeight(46)
         self.password_input.setAccessibleName("Senha")
+        self.password_input.addAction(qta.icon("fa5s.lock", color="#8A97AB"), QLineEdit.ActionPosition.LeadingPosition)
         self.password_input.returnPressed.connect(self._submit)
 
         self.status_label = QLabel("")
         self.status_label.setObjectName("loginStatus")
         self.status_label.setWordWrap(True)
 
-        self.login_button = QPushButton("Entrar na plataforma   →")
+        self.login_button = QPushButton("Entrar na plataforma")
         self.login_button.setObjectName("primaryButton")
+        set_button_icon(self.login_button, "fa5s.sign-in-alt", 16)
         self.login_button.setMinimumHeight(48)
         self.login_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.login_button.clicked.connect(self._submit)
@@ -209,4 +214,4 @@ class LoginWindow(QMainWindow):
             self.status_label.setText("Ocorreu um erro inesperado. Tente novamente.")
         finally:
             self.login_button.setEnabled(True)
-            self.login_button.setText("Entrar na plataforma   →")
+            self.login_button.setText("Entrar na plataforma")

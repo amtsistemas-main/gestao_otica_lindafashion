@@ -35,6 +35,9 @@ class MemoryProductRepository:
                 or needle in item.sku.casefold()
                 or needle in item.category.casefold()
                 or needle in item.brand.casefold()
+                or needle in item.model.casefold()
+                or needle in item.color.casefold()
+                or needle in item.type_label.casefold()
             ]
         return sorted(products, key=lambda item: item.name.casefold())
 
@@ -117,6 +120,9 @@ class SupabaseProductRepository:
                 or needle in item.sku.casefold()
                 or needle in item.category.casefold()
                 or needle in item.brand.casefold()
+                or needle in item.model.casefold()
+                or needle in item.color.casefold()
+                or needle in item.type_label.casefold()
             ]
         return products
 
