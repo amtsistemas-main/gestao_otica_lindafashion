@@ -215,9 +215,15 @@ class DashboardPage(QWidget):
         root.addWidget(WelcomeBanner(preview_mode))
 
         actions, action_layout = make_card("Ações rápidas")
-        action_row = QHBoxLayout()
-        action_row.setSpacing(12)
-        action_row.addWidget(label("Acesse os fluxos do dia a dia com um clique.", "actionHint"), 1)
+        hint = label("Acesse os fluxos do dia a dia com um clique.", "actionHint")
+        hint.setWordWrap(True)
+        action_layout.addWidget(hint)
+        # Tiles reflow between 4 and 2 columns so their text is never clipped.
+        self._quick_grid = QGridLayout()
+        self._quick_grid.setHorizontalSpacing(12)
+        self._quick_grid.setVerticalSpacing(12)
+        self._quick_tiles: list[QPushButton] = []
+        self._quick_columns = 0
         for title, desc, icon, module, tint in [
             ("Nova venda", "PDV com receita\ne pagamentos", "fa5s.cash-register", "Vendas", "#3478F6"),
             ("Pedidos", "Laboratório e\nentregas", "fa5s.clipboard-list", "Pedidos", "#16A889"),
@@ -238,8 +244,11 @@ class DashboardPage(QWidget):
             tile_layout.addLayout(texts, 1)
             tile_layout.addWidget(label("→", "quickArrow"))
             tile.clicked.connect(lambda checked=False, target=module: self.module_requested.emit(target))
-            action_row.addWidget(tile, 1)
-        action_layout.addLayout(action_row)
+            tile.setMinimumWidth(tile_layout.sizeHint().width())
+            tile.setProperty("module", module)
+            self._quick_tiles.append(tile)
+        action_layout.addLayout(self._quick_grid)
+        self._reflow_quick_tiles()
         root.addWidget(actions)
 
         columns = QGridLayout()
@@ -404,3 +413,34 @@ class DashboardPage(QWidget):
         footer.addStretch()
         footer.addWidget(label("ÓTICA LINDA FASHION", "footerBrand"))
         root.addLayout(footer)
+
+    def apply_module_access(self, allowed) -> None:
+        """Hides quick tiles of modules this login cannot open (multilogin)."""
+        for tile in self._quick_tiles:
+            self._quick_grid.removeWidget(tile)
+            tile.setVisible(bool(allowed(tile.property("module"))))
+        self._quick_tiles = [tile for tile in self._quick_tiles if not tile.isHidden()]
+        self._quick_columns = 0
+        self._reflow_quick_tiles()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt override
+        super().resizeEvent(event)
+        self._reflow_quick_tiles()
+
+    def _reflow_quick_tiles(self) -> None:
+        """Four tiles side by side when they fit at full text width, otherwise a 2×2 grid."""
+        if not self._quick_tiles:
+            return
+        needed = max(tile.minimumWidth() for tile in self._quick_tiles)
+        spacing = self._quick_grid.horizontalSpacing()
+        available = self.width() - 36  # card padding
+        columns = 4 if available >= 4 * needed + 3 * spacing else 2
+        if columns == self._quick_columns:
+            return
+        self._quick_columns = columns
+        for tile in self._quick_tiles:
+            self._quick_grid.removeWidget(tile)
+        for index, tile in enumerate(self._quick_tiles):
+            self._quick_grid.addWidget(tile, index // columns, index % columns)
+        for column in range(4):
+            self._quick_grid.setColumnStretch(column, 1 if column < columns else 0)

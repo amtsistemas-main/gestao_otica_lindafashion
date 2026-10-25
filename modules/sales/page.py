@@ -8,8 +8,7 @@ from urllib.parse import quote
 import re
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QColor, QDesktopServices, QTextDocument
-from PySide6.QtPrintSupport import QPrinter
+from PySide6.QtGui import QColor, QDesktopServices
 import qtawesome as qta
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QFileDialog, QFrame, QHBoxLayout, QHeaderView, QInputDialog, QLabel, QLineEdit,
@@ -17,7 +16,9 @@ from PySide6.QtWidgets import (
 )
 
 from core.organization import OrganizationContext, current_organization
-from modules.sales.pos import PosDialog
+from modules.prescriptions.repository import PrescriptionRepository
+from modules.sales.document_pdf import SalesDocument, StoreIdentity, build_sales_pdf
+from modules.sales.pos import SERVICE_ORDER_MARKER, PosDialog
 from modules.settings.service import load_store_settings
 from ui.components.ui_kit import make_button, notice
 
@@ -252,134 +253,103 @@ class SalesPage(QDialog):
         items = self._client.table("sales_order_items").select("product_name,sku,quantity,unit_price,discount,line_total").eq("sales_order_id", order_id).eq("organization_id", self._organization_id).execute().data or []
         return order_rows[0], items
 
+    def _optional_rows(self, query) -> list[dict]:
+        """Complementary data (payments, lab order...) must never block the document."""
+        try:
+            return list(query.execute().data or [])
+        except Exception:
+            return []
+
+    def _sales_document(self, order_id: str) -> SalesDocument:
+        client, org = self._client, self._organization_id
+        order_rows = client.table("sales_orders").select(
+            "*,customers(full_name,document,phone,whatsapp,email,street,address_number,address_complement,"
+            "neighborhood,city,state,postal_code)"
+        ).eq("id", order_id).eq("organization_id", org).limit(1).execute().data or []
+        if not order_rows:
+            raise RuntimeError("Pedido não encontrado ou sem permissão.")
+        order = order_rows[0]
+        items = client.table("sales_order_items").select(
+            "product_name,sku,quantity,unit_price,discount,line_total,product_type"
+        ).eq("sales_order_id", order_id).eq("organization_id", org).order("created_at").execute().data or []
+        payments = self._optional_rows(
+            client.table("sales_order_payments").select("method,amount,installments,is_down_payment,receivable,first_due_date")
+            .eq("sales_order_id", order_id).eq("organization_id", org).order("created_at")
+        )
+        receivables = []
+        if any(payment.get("receivable") for payment in payments) and order.get("status") != "cancelled":
+            receivables = self._optional_rows(
+                client.table("financial_entries").select("due_date,amount,status")
+                .eq("organization_id", org).eq("sales_order_id", order_id).eq("direction", "entrada")
+                .eq("status", "pendente").order("due_date")
+            )
+        lab_rows = self._optional_rows(
+            client.table("customer_orders").select("expected_at,lens_description,description,status")
+            .eq("organization_id", org).eq("sales_order_id", order_id).order("created_at").limit(1)
+        )
+        prescription = None
+        if order.get("prescription_id"):
+            try:
+                prescription = PrescriptionRepository(self._ctx).get(str(order["prescription_id"]))
+            except Exception:
+                prescription = None
+        seller_id = order.get("seller_id") or order.get("created_by")
+        seller_rows = self._optional_rows(
+            client.table("organization_members").select("display_name").eq("organization_id", org).eq("user_id", seller_id).limit(1)
+        ) if seller_id else []
+
+        notes_text, legacy = str(order.get("notes") or ""), {}
+        if notes_text.startswith(SERVICE_ORDER_MARKER):
+            metadata_text, _sep, rest = notes_text[len(SERVICE_ORDER_MARKER):].partition("\n")
+            try:
+                legacy = (json.loads(metadata_text) or {}).get("prescription") or {}
+                notes_text = rest
+            except (json.JSONDecodeError, TypeError, AttributeError):
+                legacy = {}
+        frame = order.get("frame_measurements") or legacy.get("armacao") or {}
+
+        settings = load_store_settings(self._ctx)
+        store_name = settings.store_name
+        if not store_name:
+            org_rows = self._optional_rows(client.table("organizations").select("name").eq("id", org).limit(1))
+            store_name = (org_rows[0].get("name") if org_rows else "") or "Ótica Linda Fashion"
+        store = StoreIdentity(
+            name=store_name, document=settings.store_document, phone=settings.store_phone,
+            whatsapp=settings.store_whatsapp, email=settings.store_email, address=settings.store_address,
+            website=settings.store_website, terms=settings.document_terms,
+            quote_validity_days=settings.quote_validity_days,
+        )
+        return SalesDocument(
+            order=order, customer=order.get("customers") or {}, items=list(items), payments=payments,
+            receivables=receivables, prescription=prescription, legacy_prescription=legacy,
+            frame=frame if isinstance(frame, dict) else {}, lab_order=lab_rows[0] if lab_rows else None,
+            seller_name=str((seller_rows[0].get("display_name") if seller_rows else "") or ""),
+            notes=notes_text, store=store,
+        )
+
     def _export_pdf(self, order_id: str) -> None:
         try:
-            order, items = self._order_data(order_id)
-            default_name = str(order.get("order_number") or "ordem_servico") + ".pdf"
-            path, _ = QFileDialog.getSaveFileName(self, "Salvar ordem de serviço", default_name, "Documento PDF (*.pdf)")
-            if not path:
-                return
-            if not path.lower().endswith(".pdf"):
-                path += ".pdf"
-            customer = order.get("customers") or {}
-            def esc(value) -> str:
-                return (str(value) if value is not None else "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#39;")
-            lines = "".join(
-                "<tr><td>" + esc(r.get("product_name")) + "</td><td>" + esc(r.get("sku")) + "</td><td>" + esc(r.get("quantity")) + "</td><td>" + _money(r.get("unit_price")) + "</td><td>" + _money(r.get("discount")) + "</td><td>" + _money(r.get("line_total")) + "</td></tr>"
-                for r in items
-            )
-            notes_raw = str(order.get("notes") or "")
-            notes_text = notes_raw
-            metadata = {}
-            marker = "[[LF_OS_DATA]]"
-            if notes_raw.startswith(marker):
-                metadata_text, separator, notes_text = notes_raw[len(marker):].partition("\n")
-                try:
-                    metadata = json.loads(metadata_text)
-                except (json.JSONDecodeError, TypeError):
-                    metadata = {}
-                    notes_text = notes_raw
-            prescription = metadata.get("prescription") or {}
-
-            def prescription_table(title: str, columns: list[str], rows: list[tuple[str, dict]]) -> str:
-                header = "".join("<th>" + esc(column) + "</th>" for column in columns)
-                body = ""
-                for row_name, values in rows:
-                    body += "<tr><th>" + esc(row_name) + "</th>"
-                    for column in columns:
-                        key = column.lower().replace(" ", "_").replace(".", "")
-                        body += "<td>" + esc(values.get(key) or "—") + "</td>"
-                    body += "</tr>"
-                return "<h3>" + esc(title) + "</h3><table class='data'><thead><tr><th></th>" + header + "</tr></thead><tbody>" + body + "</tbody></table>"
-
-            longe = prescription.get("longe") or {}
-            perto = prescription.get("perto") or {}
-            armacao = prescription.get("armacao") or {}
-            optical_html = prescription_table("Tabela 1 — Longe", ["ESF", "CIL", "EIXO", "DNP"], [("OD", longe.get("od") or {}), ("OE", longe.get("oe") or {})])
-            optical_html += prescription_table("Tabela 2 — Perto", ["ESF", "CIL", "EIXO", "DNP", "ALT.", "AD"], [("OD", perto.get("od") or {}), ("OE", perto.get("oe") or {})])
-            optical_html += prescription_table("Medidas das armações", ["Ponte", "Horiz.", "Vert.", "Diag. Maior", "Diâmetro"], [("Medida", armacao)])
-
-            root = Path(__file__).resolve().parents[2]
-            logo_candidates = [root / "assets" / "images" / "logootica.png", root / "assets" / "images" / "logo_linda_fashion.png", root / "assets" / "images" / "logo.png", root / "assets" / "logo.png"]
-            logo_path = next((candidate for candidate in logo_candidates if candidate.is_file()), None)
-            logo_html = '<img src="' + QUrl.fromLocalFile(str(logo_path)).toString() + '" width="100" height="48">' if logo_path else '<b style="color:white">LINDA FASHION</b>'
-            document_kind = "ORÇAMENTO" if order.get("status") == "draft" else "ORDEM DE SERVIÇO"
-            order_number = esc(order.get("order_number") or "")
-            order_date = esc(str(order.get("created_at") or "")[:10])
-            customer_name = esc(customer.get("full_name") or "Venda avulsa")
-            customer_document = esc(customer.get("document") or "")
-            customer_phone = esc(customer.get("phone") or customer.get("whatsapp") or "")
-            customer_address = esc(str(customer.get("street") or "") + " " + str(customer.get("address_number") or "") + " — " + str(customer.get("city") or "") + "/" + str(customer.get("state") or ""))
-            notes_html = esc(notes_text).replace("\n", "<br>") or "—"
-            html = """<html><head><meta charset="utf-8"><style>
-            @page { margin: 28px; }
-            body { font-family: Arial, sans-serif; color: #233653; font-size: 8.5pt; }
-            .brand { width:100%; border-collapse:collapse; background:#102957; color:#FFFFFF; }
-            .brand td { border:0; padding:14px 16px; vertical-align:middle; }
-            .brand-title { color:#FFFFFF; font-size:19pt; font-weight:bold; letter-spacing:1px; }
-            .brand-sub { color:#DCE7F7; font-size:8pt; padding-top:4px; }
-            .doc-label { color:#DCE7F7; font-size:8pt; text-align:right; }
-            .doc-number { color:#FFFFFF; font-size:12pt; font-weight:bold; text-align:right; }
-            .accent { height:4px; background:#2165F5; }
-            .meta { width:100%; border-collapse:collapse; margin:12px 0; }
-            .meta td { width:50%; border:1px solid #DFE7F2; background:#F7F9FD; padding:9px 10px; vertical-align:top; }
-            .label { color:#72819A; font-size:7pt; font-weight:bold; text-transform:uppercase; }
-            .value { color:#102957; font-size:9pt; font-weight:bold; padding-top:3px; }
-            h3 { color:#102957; font-size:9.5pt; margin:13px 0 6px; padding-bottom:4px; border-bottom:2px solid #DCE7F7; }
-            table.data { width:100%; border-collapse:collapse; margin:0 0 8px; }
-            table.data th { background:#EAF0FB; color:#102957; font-size:7.5pt; font-weight:bold; }
-            table.data td, table.data th { border:1px solid #D5DFED; padding:5px 6px; text-align:left; }
-            table.data tr:nth-child(even) td { background:#F8FAFE; }
-            .optical-wrap { width:100%; border-collapse:collapse; }
-            .optical-wrap td { border:0; padding:0 5px 0 0; vertical-align:top; }
-            .optical-title { color:#244B86; font-size:8pt; font-weight:bold; margin:4px 0; }
-            .totals { width:100%; border-collapse:collapse; margin-top:8px; }
-            .totals td { border:0; padding:4px 7px; text-align:right; }
-            .grand-total { background:#102957; color:#FFFFFF; font-size:13pt; font-weight:bold; padding:9px; }
-            .notes { border:1px solid #DFE7F2; background:#FAFBFE; padding:8px 10px; }
-            .tear { border-top:1px dashed #7890B4; margin-top:20px; padding-top:10px; }
-            .stub-title { color:#102957; font-size:9pt; font-weight:bold; }
-            .stub { color:#405575; font-size:8pt; }
-            .signature { color:#60718D; font-size:7.5pt; padding-top:10px; }
-            </style></head><body>
-            <table class="brand"><tr>
-              <td width="112">""" + logo_html + """</td>
-              <td><div class="brand-title">ÓTICA LINDA FASHION</div><div class="brand-sub">VISÃO • ESTILO • VOCÊ &nbsp; | &nbsp; CUIDADO ÓPTICO COM QUALIDADE</div></td>
-              <td width="160"><div class="doc-label">""" + document_kind + """</div><div class="doc-number">""" + order_number + """</div><div class="doc-label">EMITIDA EM """ + order_date + """</div></td>
-            </tr></table><div class="accent"></div>
-            <table class="meta"><tr>
-              <td><div class="label">Cliente</div><div class="value">""" + (customer_name or "Venda avulsa") + """</div><div>""" + customer_document + """</div></td>
-              <td><div class="label">Contato</div><div class="value">""" + (customer_phone or "Não informado") + """</div><div>""" + (customer_address or "Endereço não informado") + """</div></td>
-            </tr></table>
-            <h3>01 &nbsp; Produtos e serviços</h3>
-            <table class="data"><thead><tr><th>Produto</th><th>Referência</th><th>Qtd.</th><th>Preço unitário</th><th>Desconto</th><th>Total</th></tr></thead><tbody>""" + lines + """</tbody></table>
-            <h3>02 &nbsp; Receita e medidas ópticas</h3>
-            <table class="optical-wrap"><tr>
-              <td width="34%"><div class="optical-title">VISÃO DE LONGE</div>""" + prescription_table("Longe", ["ESF", "CIL", "EIXO", "DNP"], [("OD", longe.get("od") or {}), ("OE", longe.get("oe") or {})]) + """</td>
-              <td width="42%"><div class="optical-title">VISÃO DE PERTO</div>""" + prescription_table("Perto", ["ESF", "CIL", "EIXO", "DNP", "ALT.", "AD"], [("OD", perto.get("od") or {}), ("OE", perto.get("oe") or {})]) + """</td>
-              <td width="24%"><div class="optical-title">ARMAÇÃO</div>""" + prescription_table("Medidas", ["Ponte", "Horiz.", "Vert.", "Diag. Maior", "Diâmetro"], [("Medida", armacao)]) + """</td>
-            </tr></table>
-            <table class="totals">
-              <tr><td>Subtotal: """ + _money(order.get("subtotal")) + """</td></tr>
-              <tr><td>Descontos: """ + _money(order.get("discount")) + """</td></tr>
-              <tr><td class="grand-total">TOTAL DA VENDA &nbsp; """ + _money(order.get("total")) + """</td></tr>
-            </table>
-            <h3>03 &nbsp; Observações</h3><div class="notes">""" + notes_html + """</div>
-            <div class="tear"><div class="stub-title">CANHOTO DO CLIENTE &nbsp; | &nbsp; COMPROVANTE DE PEDIDO</div>
-              <div class="stub">Ordem: <b>""" + order_number + """</b> &nbsp; • &nbsp; Cliente: <b>""" + customer_name + """</b> &nbsp; • &nbsp; Data: """ + order_date + """<br>
-              Valor do pedido: <b>""" + _money(order.get("total")) + """</b> &nbsp; • &nbsp; Contato: """ + customer_phone + """</div>
-              <div class="signature">Assinatura / retirada: ______________________________________ &nbsp;&nbsp; Data: ____/____/________</div>
-            </div></body></html>"""
-            document = QTextDocument()
-            document.setHtml(html)
-            printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-            printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
-            printer.setOutputFileName(path)
-            document.print_(printer)
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(path).resolve())))
-            QMessageBox.information(self, "PDF gerado", "Ordem de serviço salva e aberta para visualização/impressão:\n" + path)
+            document = self._sales_document(order_id)
+        except Exception as exc:
+            QMessageBox.critical(self, "Erro ao gerar PDF", f"Não foi possível carregar os dados do pedido.\n\n{exc}")
+            return
+        prefix = {"ORÇAMENTO": "Orçamento", "ORDEM DE SERVIÇO": "OS"}.get(document.kind, "Venda")
+        default_name = f"{prefix} {document.order.get('order_number') or 'documento'}.pdf"
+        path, _ = QFileDialog.getSaveFileName(self, f"Salvar {document.kind.lower()}", default_name, "Documento PDF (*.pdf)")
+        if not path:
+            return
+        if not path.lower().endswith(".pdf"):
+            path += ".pdf"
+        try:
+            build_sales_pdf(path, document)
+        except PermissionError:
+            QMessageBox.critical(self, "Arquivo em uso", "Não foi possível salvar: o arquivo está aberto em outro programa. "
+                                 "Feche-o ou escolha outro nome.")
+            return
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao gerar PDF", f"Não foi possível gerar o documento.\n\n{exc}")
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(path).resolve())))
 
     def _prepare_whatsapp(self, order_id: str) -> None:
         try:

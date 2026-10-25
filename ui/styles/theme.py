@@ -50,7 +50,7 @@ PALETTE = {
     "danger_soft": "#FDECEC",
 }
 
-FONT_FAMILY = "Segoe UI"
+FONT_FAMILY = "Arial"
 
 
 THEME_QSS = """
@@ -59,7 +59,7 @@ THEME_QSS = """
    ===================================================================== */
 QWidget {
     color: @text@;
-    font-family: "Segoe UI", "Segoe UI Variable Text", Arial, sans-serif;
+    font-family: Arial, "Liberation Sans", Helvetica, sans-serif;
     font-size: 9.5pt;
 }
 QMainWindow, QDialog, QWidget#appShell {
@@ -896,12 +896,38 @@ QProgressBar::chunk {
    Application shell: navy sidebar, white topbar, light canvas
    ===================================================================== */
 QFrame#appSidebar {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @navy@, stop:1 #0C2149);
+    background: #F1F4F9;
     border: none;
-    border-right: 1px solid @navy_line@;
+    border-right: 1px solid @border@;
+}
+/* The menu scrolls on short screens; its layers stay transparent over the sidebar background. */
+QScrollArea#sidebarScroll, QScrollArea#sidebarScroll > QWidget#qt_scrollarea_viewport,
+QWidget#sidebarBody {
+    background: transparent;
+    border: none;
+}
+QScrollArea#sidebarScroll QScrollBar:vertical {
+    background: transparent;
+    width: 6px;
+    margin: 0;
+}
+QScrollArea#sidebarScroll QScrollBar::handle:vertical {
+    background: rgba(16, 41, 87, 0.22);
+    border-radius: 3px;
+    min-height: 32px;
+}
+QScrollArea#sidebarScroll QScrollBar::add-line:vertical, QScrollArea#sidebarScroll QScrollBar::sub-line:vertical,
+QScrollArea#sidebarScroll QScrollBar::add-page:vertical, QScrollArea#sidebarScroll QScrollBar::sub-page:vertical {
+    background: transparent;
+    height: 0px;
+}
+QScrollArea#moduleScroll, QScrollArea#moduleScroll > QWidget#qt_scrollarea_viewport {
+    background: transparent;
+    border: none;
 }
 QLabel#sidebarLogo {
     background: @surface@;
+    border: 1px solid @border@;
     border-radius: 14px;
     padding: 6px;
 }
@@ -913,38 +939,37 @@ QLabel#logoFallback {
     font-weight: 800;
 }
 QLabel#sidebarEyebrow {
-    color: @on_navy_muted@;
+    color: #4A5A75;
     font-size: 7.5pt;
     font-weight: 700;
     letter-spacing: 1.5px;
 }
 QLabel#sidebarSection {
-    color: #8EA6CF;
+    color: #5B6B85;
     font-size: 7.5pt;
     font-weight: 700;
     letter-spacing: 1.2px;
     padding: 4px 10px;
 }
 QLabel#sidebarFooter {
-    color: #8EA6CF;
+    color: #5B6B85;
     font-size: 7.5pt;
-    font-weight: 700;
-    letter-spacing: 1px;
-    padding: 10px 4px 2px 4px;
-    border-top: 1px solid #23406F;
+    font-weight: 600;
+    padding: 10px 2px 2px 2px;
+    border-top: 1px solid @border@;
 }
 QPushButton#navButton {
     background: transparent;
-    color: #DCE6F7;
+    color: @primary@;
     border: none;
     border-radius: 9px;
-    padding: 10px 12px;
+    padding: 8px 12px;
     text-align: left;
     font-size: 9.5pt;
     font-weight: 500;
 }
 QPushButton#navButton:hover {
-    background: @navy_hover@;
+    background: @primary@;
     color: #FFFFFF;
 }
 QPushButton#navButton:checked {
@@ -1033,7 +1058,7 @@ QLabel#bannerDescription {
 }
 QLabel#bannerSlogan {
     color: #1C396B;
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: Arial, "Liberation Sans", Helvetica, sans-serif;
     font-size: 13pt;
     font-style: italic;
 }

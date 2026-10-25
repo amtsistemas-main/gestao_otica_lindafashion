@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import QEvent, QObject, Qt, QSize
 from PySide6.QtGui import QPixmap
 import qtawesome as qta
 from PySide6.QtWidgets import (
@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QStackedWidget,
     QStatusBar,
     QLineEdit,
     QVBoxLayout,
@@ -23,19 +24,21 @@ from PySide6.QtWidgets import (
 
 from config.branding import APP_NAME, WINDOW_TITLE
 from core.auth_service import AuthService
+from core.organization import OrganizationContext, current_organization
+from core.permissions import ROLE_LABELS
 from core.session_manager import session_manager
 from modules.products.page import ProductsPage
 from modules.inventory.page import InventoryPage
 from modules.suppliers.page import SuppliersPage
 from modules.finance.page import FinancePage
 from modules.customers.page import CustomersPage
-from modules.sales.page import SalesPage
-from modules.lab_orders.page import LabOrdersPage
+from modules.sales.hub import SalesHubPage
 from modules.crm.page import CrmPage
 from modules.analytics.page import AnalyticsPage
 from modules.settings.page import SettingsDialog
 from ui.pages.dashboard_page import DashboardPage
 from ui.components.ai_results_panel import BusinessAnalysisPanel
+from ui.components.module_host import embed_dialog, scroll_container
 from core.ai_analysis_service import AIAnalysisWorker
 
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
@@ -43,7 +46,6 @@ LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logooti
 NAV_ITEMS = [
     ("Visão geral", "fa5s.home", None),
     ("Vendas / PDV", "fa5s.cash-register", "Vendas"),
-    ("Pedidos", "fa5s.clipboard-list", "Pedidos"),
     ("Clientes", "fa5s.users", "Clientes"),
     ("Relacionamento", "fa5s.heart", "Relacionamento"),
     ("Produtos", "fa5s.glasses", "Produtos"),
@@ -55,10 +57,11 @@ NAV_ITEMS = [
     ("Configurações", "fa5s.cog", "Configurações"),
 ]
 
-# Module windows opened from the navigation; each receives preview_mode and parent.
+# First screen of each module, shown inside the workspace (in place of the overview).
+# Each receives preview_mode and parent; secondary screens keep opening as windows.
 MODULE_WINDOWS = {
-    "Vendas": SalesPage,
-    "Pedidos": LabOrdersPage,
+    "Vendas": SalesHubPage,
+    "Produtos": ProductsPage,
     "Clientes": CustomersPage,
     "Relacionamento": CrmPage,
     "Estoque": InventoryPage,
@@ -69,16 +72,35 @@ MODULE_WINDOWS = {
 }
 
 
+class _NavHoverIcons(QObject):
+    """Qt keeps a button's icon in Normal mode on hover; swap to the white icon on the blue hover."""
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # noqa: N802 - Qt override
+        if event.type() == QEvent.Type.Enter:
+            watched.setIcon(watched.property("_hover_icon"))
+        elif event.type() == QEvent.Type.Leave:
+            watched.setIcon(watched.property("_normal_icon"))
+        return False
+
+
 class MainWindow(QMainWindow):
     def __init__(self, preview_mode: bool = False) -> None:
         super().__init__()
         self._preview_mode = preview_mode
         self.setWindowTitle(f"{WINDOW_TITLE} — Pré-visualização" if preview_mode else WINDOW_TITLE)
         self.resize(1440, 920)
-        self.setMinimumSize(1120, 720)
+        self.setMinimumSize(1024, 600)
         self._auth_service = AuthService()
-        self._products_window: ProductsPage | None = None
+        self._module_containers: dict[str, QScrollArea] = {}
         self._nav_buttons: dict[str, QPushButton] = {}
+        self._nav_hover = _NavHoverIcons(self)
+        # Modules released to this login (multilogin); preview mode shows everything.
+        self._access: OrganizationContext | None = None
+        if not preview_mode:
+            try:
+                self._access = current_organization("O sistema")
+            except Exception:
+                self._access = None
         self._sidebar_collapsed = False
 
         shell = QWidget()
@@ -91,10 +113,22 @@ class MainWindow(QMainWindow):
         sidebar.setObjectName("appSidebar")
         self._sidebar = sidebar
         sidebar.setFixedWidth(230)
-        side_layout = QVBoxLayout(sidebar)
+        # The menu scrolls on short screens instead of pushing the window off-screen.
+        sidebar_outer = QVBoxLayout(sidebar)
+        sidebar_outer.setContentsMargins(0, 0, 0, 0)
+        sidebar_scroll = QScrollArea()
+        sidebar_scroll.setObjectName("sidebarScroll")
+        sidebar_scroll.setWidgetResizable(True)
+        sidebar_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        sidebar_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        sidebar_body = QWidget()
+        sidebar_body.setObjectName("sidebarBody")
+        sidebar_scroll.setWidget(sidebar_body)
+        sidebar_outer.addWidget(sidebar_scroll)
+        side_layout = QVBoxLayout(sidebar_body)
         self._sidebar_layout = side_layout
-        side_layout.setContentsMargins(18, 22, 18, 18)
-        side_layout.setSpacing(4)
+        side_layout.setContentsMargins(18, 18, 18, 14)
+        side_layout.setSpacing(3)
 
         # The transparent brand artwork is the visual anchor of the sidebar.
         logo = QLabel()
@@ -122,7 +156,7 @@ class MainWindow(QMainWindow):
         self._brand_subtitle = brand_subtitle
         side_layout.addWidget(brand_subtitle)
 
-        side_layout.addSpacing(18)
+        side_layout.addSpacing(12)
         nav_label = QLabel("MENU PRINCIPAL")
         nav_label.setObjectName("sidebarSection")
         self._nav_label = nav_label
@@ -130,18 +164,24 @@ class MainWindow(QMainWindow):
 
         for label, icon_name, module in NAV_ITEMS:
             button = QPushButton(label)
-            button.setIcon(qta.icon(icon_name, color="#C9D7EE", color_on="#FFFFFF", color_active="#FFFFFF", color_on_active="#FFFFFF"))
+            # Black like the text; white on the blue hover and on the selected item.
+            normal_icon = qta.icon(icon_name, color="#000000", color_on="#FFFFFF", color_active="#000000", color_on_active="#FFFFFF")
+            button.setProperty("_normal_icon", normal_icon)
+            button.setProperty("_hover_icon", qta.icon(icon_name, color="#FFFFFF"))
+            button.setIcon(normal_icon)
+            button.installEventFilter(self._nav_hover)
             button.setIconSize(QSize(17, 17))
             button.setObjectName("navButton")
             button.setToolTip(label)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setCheckable(True)
-            button.setMinimumHeight(38)
+            button.setMinimumHeight(36)
             button.setChecked(module is None)
             button.clicked.connect(
                 lambda checked=False, selected=module: self._navigate(selected)
             )
             self._nav_buttons[label] = button
+            button.setVisible(self._can_open(module))
             side_layout.addWidget(button)
 
         side_layout.addStretch()
@@ -204,7 +244,7 @@ class MainWindow(QMainWindow):
             profile_name, profile_role = "Ana Silva", "Administrador"
         else:
             profile_name = session_manager.current.email if session_manager.current else "Usuário"
-            profile_role = "Conta conectada"
+            profile_role = ROLE_LABELS.get(self._access.role, "Conta conectada") if self._access else "Conta conectada"
         profile_name_label = QLabel(profile_name)
         profile_name_label.setObjectName("profileName")
         profile_box.addWidget(profile_name_label)
@@ -234,16 +274,31 @@ class MainWindow(QMainWindow):
         self._dashboard = DashboardPage(preview_mode=preview_mode)
         self._dashboard.setContentsMargins(0, 0, 0, 0)
         self._dashboard.module_requested.connect(self._open_module)
+        self._dashboard.apply_module_access(self._can_open)
         self._scroll.setWidget(self._dashboard)
         scroll_host = QWidget()
         scroll_host.setObjectName("scrollHost")
         scroll_layout = QVBoxLayout(scroll_host)
         scroll_layout.setContentsMargins(24, 22, 24, 16)
         scroll_layout.addWidget(self._scroll)
-        workspace_layout.addWidget(scroll_host, 1)
+        # Overview and module pages share the workspace; only one is visible at a time.
+        self._stack = QStackedWidget()
+        self._stack.setObjectName("workspaceStack")
+        self._overview = scroll_host
+        self._stack.addWidget(scroll_host)
+        workspace_layout.addWidget(self._stack, 1)
 
-        side_footer = QLabel("AMT SISTEMAS  •  DESKTOP")
+        side_footer = QLabel(
+            "Desenvolvido por<br>AMT Sistemas &amp; Soluções<br>"
+            "<a href='https://www.amtsistemas.com.br' style='color:#2165F5; text-decoration:none;'>"
+            "https://www.amtsistemas.com.br</a>"
+        )
         side_footer.setObjectName("sidebarFooter")
+        side_footer.setTextFormat(Qt.TextFormat.RichText)
+        side_footer.setOpenExternalLinks(True)
+        side_footer.setWordWrap(True)
+        side_footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        side_footer.setToolTip("Abrir o site da AMT Sistemas & Soluções")
         self._sidebar_footer = side_footer
         side_layout.addWidget(side_footer)
 
@@ -295,66 +350,93 @@ class MainWindow(QMainWindow):
                 else ""
             )
 
-    def _navigate(self, module: str | None) -> None:
+    def _check_nav(self, module: str | None) -> None:
         for label, _abbreviation, target in NAV_ITEMS:
-            button = self._nav_buttons[label]
-            button.setChecked(target == module)
+            self._nav_buttons[label].setChecked(target == module)
+
+    def _navigate(self, module: str | None) -> None:
         if module is None:
-            self._scroll.verticalScrollBar().setValue(0)
+            self._show_overview()
             return
         self._open_module(module)
 
+    def _show_overview(self) -> None:
+        self._check_nav(None)
+        self._show_page(self._overview)
+        self._scroll.verticalScrollBar().setValue(0)
+
+    def _show_page(self, container: QWidget) -> None:
+        previous = self._stack.currentWidget()
+        self._stack.setCurrentWidget(container)
+        # Pages are rebuilt on each visit (fresh data, like the old windows); the catalog
+        # is kept because preview mode stores its products in memory.
+        for module, page in list(self._module_containers.items()):
+            if page is previous and page is not container and module != "Produtos":
+                del self._module_containers[module]
+                self._stack.removeWidget(page)
+                page.deleteLater()
+
+    def _can_open(self, module: str | None) -> bool:
+        return self._access is None or self._access.can_access(module)
+
     def _open_module(self, module: str) -> None:
-        for label, _abbreviation, target in NAV_ITEMS:
-            self._nav_buttons[label].setChecked(target == module)
+        tab = None
+        if module == "Pedidos":
+            # Pedidos is part of Vendas / PDV.
+            module, tab = "Vendas", SalesHubPage.TAB_ORDERS
+        if not self._can_open(module):
+            QMessageBox.information(self, "Acesso não liberado",
+                                    f"Seu usuário não tem acesso ao módulo {module}. Fale com o administrador da loja.")
+            return
+        if module != "Análises" and module not in MODULE_WINDOWS:
+            QMessageBox.information(self, module, f"O módulo {module.lower()} será implementado na próxima etapa.")
+            return
+        try:
+            container = self._module_container(module)
+        except Exception as exc:
+            QMessageBox.critical(self, f"Não foi possível abrir {module}", str(exc))
+            self._show_overview()
+            return
+        page = container.widget()
+        if tab is not None and isinstance(page, SalesHubPage):
+            page.show_tab(tab)
+        self._check_nav(module)
+        self._show_page(container)
+
+    def _module_container(self, module: str) -> QScrollArea:
+        cached = self._module_containers.get(module)
+        if cached is not None and (module == "Produtos" or cached is self._stack.currentWidget()):
+            return cached
+        if cached is not None:
+            del self._module_containers[module]
+            self._stack.removeWidget(cached)
+            cached.deleteLater()
         if module == "Análises":
-            self._open_business_analysis()
-            self._nav_buttons["Visão geral"].setChecked(True)
-            return
+            page = self._business_analysis_page()
+        else:
+            page = MODULE_WINDOWS[module](preview_mode=self._preview_mode, parent=self._stack)
+            if isinstance(page, QDialog):
+                # Pages that close themselves (e.g. after saving settings) return to the overview.
+                embed_dialog(page, on_finished=self._show_overview)
+        container = scroll_container(page)
+        self._stack.addWidget(container)
+        self._module_containers[module] = container
+        return container
 
-        if module == "Produtos" or module in MODULE_WINDOWS:
-            try:
-                if module == "Produtos":
-                    # The catalog keeps its in-memory preview data while the app is open.
-                    if self._products_window is None:
-                        self._products_window = ProductsPage(preview_mode=self._preview_mode, parent=self)
-                    self._products_window.exec()
-                else:
-                    MODULE_WINDOWS[module](preview_mode=self._preview_mode, parent=self).exec()
-            except Exception as exc:
-                QMessageBox.critical(self, f"Não foi possível abrir {module}", str(exc))
-            finally:
-                self._nav_buttons["Visão geral"].setChecked(True)
-            return
-
-        QMessageBox.information(
-            self,
-            module,
-            f"O módulo {module.lower()} será implementado na próxima etapa.",
-        )
-        self._nav_buttons["Visão geral"].setChecked(True)
-
-    def _open_business_analysis(self) -> None:
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Análises da operação — Ótica Linda Fashion")
-        dialog.resize(1040, 780)
-        dialog.setMinimumSize(820, 620)
-        layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(24, 24, 24, 24)
-        panel = BusinessAnalysisPanel(dialog)
+    def _business_analysis_page(self) -> QWidget:
+        page = QWidget()
+        page.setObjectName("analysisPage")
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(24, 22, 24, 22)
+        panel = BusinessAnalysisPanel(page)
         panel.generate_requested.connect(
             lambda request: self._analysis_generation_unavailable(panel, request)
         )
         panel.regenerate_requested.connect(
             lambda request: self._analysis_generation_unavailable(panel, request)
         )
-        scroll = QScrollArea(dialog)
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setWidget(panel)
-        layout.addWidget(scroll)
-        dialog.exec()
+        layout.addWidget(panel)
+        return page
 
     @staticmethod
     def _analysis_generation_unavailable(panel: BusinessAnalysisPanel, request: dict) -> None:

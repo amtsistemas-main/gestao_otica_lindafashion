@@ -80,7 +80,8 @@ class StageChip(QPushButton):
         self.setObjectName("stageChip")
         self.setCheckable(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setMinimumHeight(70)
+        # Room for a two-line caption ("Enviado ao laboratório") on narrow windows.
+        self.setMinimumHeight(84)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(2)
@@ -285,6 +286,7 @@ class OrderTimelineDialog(QDialog):
             box = QLabel(f"{caption}\n{_fmt_date(order.get(key))}")
             box.setObjectName("infoNotice" if order.get(key) else "emptyState")
             box.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            box.setMinimumWidth(box.sizeHint().width())
             stamps.addWidget(box, 1)
         root.addLayout(stamps)
 

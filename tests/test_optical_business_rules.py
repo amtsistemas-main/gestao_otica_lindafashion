@@ -167,3 +167,36 @@ def test_segmentation_flags_risk_new_and_prescription_expiry() -> None:
     assert "novos" in insights["new"].segments
     assert "receita_vencendo" in insights["rx"].segments
     assert "sem_compra" in insights["none"].segments
+
+
+def test_module_access_respects_role_and_released_modules() -> None:
+    from core.permissions import can_access, modules_summary, normalize_modules
+
+    seller = normalize_modules(["vendas", "clientes", "desconhecido"])
+    assert seller == frozenset({"vendas", "clientes"})
+    assert can_access("member", seller, None)  # visão geral sempre visível
+    assert can_access("member", seller, "Vendas") and can_access("member", seller, "Pedidos")
+    assert not can_access("member", seller, "Financeiro")
+    assert can_access("admin", frozenset(), "Financeiro")
+    assert can_access("member", None, "Configurações")  # sem restrição cadastrada
+    assert modules_summary("owner", ["vendas"]) == "Todos os módulos"
+    assert modules_summary("member", []) == "Somente visão geral"
+
+
+def test_sales_document_fits_one_page_even_with_many_items() -> None:
+    from io import BytesIO
+
+    from modules.sales.document_pdf import DENSITIES, SalesDocument, _render
+
+    item = {"product_name": "Lente multifocal 1.67 antirreflexo (par)", "sku": "LEN-1", "product_type": "lente_oftalmica",
+            "quantity": 1, "unit_price": 1000, "discount": 0, "line_total": 1000}
+    document = SalesDocument(
+        order={"order_number": "V-TESTE", "status": "completed", "created_at": "2026-10-25T12:00:00+00:00",
+               "subtotal": 12000, "discount": 0, "total": 12000},
+        customer={"full_name": "Cliente Teste"}, items=[item] * 12,
+        payments=[{"method": "pix", "amount": 12000}],
+        prescription=Prescription(od_sphere=-1.0, oe_sphere=-1.25), frame={"ponte": "18"},
+        lab_order={"expected_at": "2026-11-01", "status": "aguardando_envio"}, notes="Observação",
+    )
+    pages = [_render(BytesIO(), document, k) for k in DENSITIES]
+    assert min(pages) == 1

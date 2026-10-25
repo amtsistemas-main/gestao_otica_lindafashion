@@ -26,8 +26,18 @@ Pré-requisito: as migrations anteriores (`202610240001` a `202610241730`, nesta
 | 6 | `202610250006_crm_repurchase.sql` | Preferências do cliente, agenda `crm_tasks` e tarefas automáticas de pós-venda (pedido entregue) e revisão de receita (antes do vencimento). |
 | 7 | `202610250007_sales_write_through_rpc.sql` | Vendas, itens e pagamentos passam a ser somente leitura pela API; a gravação ocorre apenas por `finalize_sales_order_v2`/`cancel_sales_order` (security definer), impedindo contornar o limite de desconto, a conferência de pagamentos e a baixa de estoque. Revoga a função antiga `finalize_sales_order`. |
 | 8 | `202610250008_trigger_functions_not_rpc.sql` | Remove a exposição das funções de gatilho como RPC (os gatilhos continuam funcionando). |
+| 9 | `202610250009_store_document_identity.sql` | Dados da loja impressos nos documentos de venda (nome, CNPJ, contatos, endereço, validade do orçamento e condições). |
+| 10 | `202610250010_multi_user_module_access.sql` | Multilogin: e-mail e módulos liberados por usuário (`allowed_modules`), função `has_module_access` e RLS do Financeiro por módulo (ler exige Financeiro ou Indicadores; gravar exige Financeiro). |
 
-As oito migrations foram aplicadas no projeto conectado em 25/10/2026 e registradas em `supabase_migrations.schema_migrations`. O fluxo completo (venda com sinal e crediário, idempotência, pipeline do laboratório, pós-venda, orçamento, cancelamento com estorno e bloqueios por papel e RLS) foi validado como usuário autenticado, em transação revertida.
+As dez migrations foram aplicadas no projeto conectado em 25/10/2026 e registradas em `supabase_migrations.schema_migrations`. O fluxo completo (venda com sinal e crediário, idempotência, pipeline do laboratório, pós-venda, orçamento, cancelamento com estorno, bloqueios por papel, RLS e acesso por módulo) foi validado como usuário autenticado, em transação revertida.
+
+### Edge Function `admin-users` (multilogin)
+
+Cria logins, edita perfil e módulos, redefine senha e ativa/desativa usuários. A chave de serviço existe só no servidor da função; o aplicativo envia apenas o token do usuário conectado, e a função confirma a cada chamada que ele é dono ou administrador ativo da organização (somente o dono cria administradores; ninguém altera o dono por ela). Publicada no projeto conectado. Para publicar em outro projeto:
+
+```powershell
+npx supabase functions deploy admin-users --project-ref <ref-do-projeto> --use-api
+```
 
 Para aplicar em outro projeto, execute cada arquivo no SQL Editor, na ordem, e confira a mensagem de sucesso antes do próximo. Depois disso, um dono/administrador deve abrir **Configurações** no aplicativo para definir o desconto máximo da loja (padrão 10%) e o nome de exibição de cada vendedor.
 
