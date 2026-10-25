@@ -1012,6 +1012,85 @@ QPushButton#topbarIconButton {
 QPushButton#topbarIconButton:hover, QPushButton#topbarIconButton:checked {
     background: @primary_soft@;
 }
+/* Calendars (inline picker and date-field popups) */
+QCalendarWidget {
+    background: @surface@;
+    border: 1px solid @border@;
+    border-radius: 12px;
+}
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background: @surface_alt@;
+    border-bottom: 1px solid @border@;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    min-height: 38px;
+    padding: 2px 6px;
+}
+QCalendarWidget QToolButton {
+    color: @navy@;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    font-size: 10pt;
+    font-weight: 700;
+    padding: 5px 9px;
+    margin: 2px;
+}
+QCalendarWidget QToolButton:hover {
+    background: @primary_soft@;
+    color: @primary@;
+}
+QCalendarWidget QToolButton::menu-indicator {
+    image: none;
+    width: 0px;
+}
+QCalendarWidget QMenu {
+    background: @surface@;
+    color: @text_strong@;
+}
+QCalendarWidget QSpinBox {
+    background: @surface@;
+    color: @navy@;
+    border: 1px solid @border_strong@;
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-weight: 700;
+    min-height: 0px;
+}
+QCalendarWidget QAbstractItemView {
+    background: @surface@;
+    color: @text_strong@;
+    selection-background-color: @primary@;
+    selection-color: #FFFFFF;
+    font-size: 9.5pt;
+    outline: 0;
+    border: none;
+}
+QCalendarWidget QAbstractItemView:disabled {
+    color: #B6C0CF;
+}
+QPushButton#dateShortcut {
+    background: @surface@;
+    color: @navy@;
+    border: 1px solid @border@;
+    border-radius: 14px;
+    padding: 5px 12px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    min-height: 0px;
+}
+QPushButton#dateShortcut:hover {
+    background: @primary_soft@;
+    border-color: @primary@;
+    color: @primary@;
+}
+QLabel#dateSummary {
+    color: @text_strong@;
+    background: @primary_soft@;
+    border: 1px solid #D6E3FB;
+    border-radius: 10px;
+    padding: 8px 12px;
+}
 QPushButton#profileChip {
     background: transparent;
     border: 1px solid transparent;

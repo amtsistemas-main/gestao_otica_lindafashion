@@ -5,7 +5,7 @@ import re
 
 import qtawesome as qta
 from PySide6.QtCore import QPoint, QSize, Qt, Signal
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenu, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenu, QPushButton, QVBoxLayout, QWidget, QWidgetAction
 
 
 def initials(name: str) -> str:
@@ -64,8 +64,28 @@ class ProfileChip(QPushButton):
     def _open_menu(self) -> None:
         menu = QMenu(self)
         menu.setObjectName("profileMenu")
-        header = menu.addAction(qta.icon("fa5s.user-circle", color="#102957"), f"{self._name}\n{self._role}")
-        header.setEnabled(False)
+        header = QWidget()
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(12, 6, 12, 8)
+        header_layout.setSpacing(10)
+        avatar = QLabel(initials(self._name))
+        avatar.setObjectName("accountAvatar")
+        avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        avatar.setFixedSize(36, 36)
+        header_layout.addWidget(avatar)
+        texts = QVBoxLayout()
+        texts.setSpacing(0)
+        name_label = QLabel(self._name)
+        name_label.setObjectName("profileName")
+        role_label = QLabel(self._role)
+        role_label.setObjectName("profileRole")
+        texts.addWidget(name_label)
+        texts.addWidget(role_label)
+        header_layout.addLayout(texts, 1)
+        header_action = QWidgetAction(menu)
+        header_action.setDefaultWidget(header)
+        header_action.setEnabled(False)
+        menu.addAction(header_action)
         menu.addSeparator()
         settings = menu.addAction(qta.icon("fa5s.cog", color="#2165F5"), "Configurações")
         settings.setEnabled(self._can_open_settings)

@@ -10,7 +10,7 @@ from uuid import uuid4
 from PySide6.QtCore import QDate, Qt, QUrl
 from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
-    QApplication, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QHeaderView,
+    QApplication, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QHeaderView,
     QInputDialog, QLabel, QLineEdit, QMessageBox, QTabWidget, QTableWidget, QTableWidgetItem, QTextEdit,
     QVBoxLayout, QWidget,
 )
@@ -21,6 +21,7 @@ from modules.crm.segments import SEGMENTS, TASK_TYPES, CustomerInsight, segment_
 from modules.lab_orders.page import StageChip
 from modules.settings.service import load_store_settings, store_display_name
 from modules.whatsapp.service import WhatsAppService, describe_result
+from ui.components.date_picker import DatePickerPanel
 from ui.components.ui_kit import MetricTile, make_button, notice
 
 
@@ -418,18 +419,27 @@ class CrmPage(QDialog):
         dialog.setWindowTitle("Reagendar tarefa")
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(22, 20, 22, 20)
-        picker = QDateEdit()
-        picker.setCalendarPopup(True)
-        picker.setDisplayFormat("dd/MM/yyyy")
-        picker.setDate(QDate.currentDate().addDays(3))
-        form = QFormLayout()
-        form.addRow("Nova data", picker)
-        layout.addLayout(form)
+        layout.setSpacing(12)
+        info = QLabel(f"<b>{task.get('title') or 'Tarefa'}</b><br>Escolha a nova data do contato.")
+        info.setWordWrap(True)
+        layout.addWidget(info)
+        busy = []
+        for other in self._tasks:
+            if other.get("status") == "aberta" and other.get("due_date") and other.get("id") != task.get("id"):
+                try:
+                    busy.append(date.fromisoformat(str(other["due_date"])[:10]))
+                except ValueError:
+                    pass
+        picker = DatePickerPanel(QDate.currentDate().addDays(3), busy, minimum=QDate.currentDate())
+        layout.addWidget(picker)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Reagendar")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
-        if dialog.exec() == QDialog.DialogCode.Accepted and self._update_task(task, {"due_date": picker.date().toPython().isoformat()}):
+        if dialog.exec() == QDialog.DialogCode.Accepted and self._update_task(
+                task, {"due_date": picker.selected_date().toPython().isoformat()}):
             self._load()
 
     def _insert_tasks(self, records: list[dict]) -> int:
@@ -449,10 +459,26 @@ class CrmPage(QDialog):
             return
         dialog = QDialog(self)
         dialog.setWindowTitle("Nova tarefa de relacionamento")
-        dialog.resize(560, 380)
+        dialog.resize(900, 520)
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(22, 20, 22, 20)
+        layout.setSpacing(14)
+        bar = QFrame()
+        bar.setObjectName("windowTitleBar")
+        bar_layout = QVBoxLayout(bar)
+        bar_layout.setContentsMargins(18, 13, 18, 13)
+        heading = QLabel("Nova tarefa de relacionamento")
+        heading.setObjectName("windowTitle")
+        caption = QLabel("Agende um contato com o cliente: pós-venda, revisão de receita, aniversário ou campanha.")
+        caption.setObjectName("windowSubtitle")
+        caption.setWordWrap(True)
+        bar_layout.addWidget(heading)
+        bar_layout.addWidget(caption)
+        layout.addWidget(bar)
+        body = QHBoxLayout()
+        body.setSpacing(20)
         form = QFormLayout()
+        form.setSpacing(12)
         customer = QComboBox()
         customer.setEditable(True)
         customer.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
@@ -464,19 +490,32 @@ class CrmPage(QDialog):
             kind.addItem(caption, code)
         title = QLineEdit()
         title.setPlaceholderText("Ex.: Apresentar nova coleção solar")
-        due = QDateEdit()
-        due.setCalendarPopup(True)
-        due.setDisplayFormat("dd/MM/yyyy")
-        due.setDate(QDate.currentDate())
         notes = QTextEdit()
-        notes.setMaximumHeight(80)
+        notes.setPlaceholderText("Detalhes do contato (opcional)")
         form.addRow("Cliente", customer)
         form.addRow("Tipo", kind)
         form.addRow("Tarefa *", title)
-        form.addRow("Data", due)
         form.addRow("Observações", notes)
-        layout.addLayout(form)
+        body.addLayout(form, 1)
+        # Calendar always visible; days that already have open tasks are highlighted.
+        busy = []
+        for task in self._tasks:
+            if task.get("status") == "aberta" and task.get("due_date"):
+                try:
+                    busy.append(date.fromisoformat(str(task["due_date"])[:10]))
+                except ValueError:
+                    pass
+        picker_box = QVBoxLayout()
+        picker_title = QLabel("Data do contato")
+        picker_title.setObjectName("sectionTitle")
+        picker_box.addWidget(picker_title)
+        picker = DatePickerPanel(QDate.currentDate(), busy, minimum=QDate.currentDate())
+        picker_box.addWidget(picker)
+        body.addLayout(picker_box)
+        layout.addLayout(body, 1)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Salvar tarefa")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
@@ -487,7 +526,7 @@ class CrmPage(QDialog):
             return
         try:
             self._insert_tasks([{"customer_id": customer.currentData(), "task_type": kind.currentData(), "title": title.text().strip(),
-                                 "due_date": due.date().toPython().isoformat(), "notes": notes.toPlainText().strip()}])
+                                 "due_date": picker.selected_date().toPython().isoformat(), "notes": notes.toPlainText().strip()}])
         except Exception as exc:
             QMessageBox.critical(self, "Não foi possível criar a tarefa", f"{exc}\n\nConfirme se a migration 202610250006 foi aplicada.")
             return
