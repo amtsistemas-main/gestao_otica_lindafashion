@@ -232,7 +232,7 @@ class SalesOrderDialog(QDialog):
                 field.setMaximumHeight(28)
                 field.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 grid.addWidget(field, row_index, col_index)
-                key = column.lower().replace(" ", "_").replace(".", "").replace("diâmetro", "diametro").replace("diâmetro", "diametro")
+                key = column.lower().replace(" ", "_").replace(".", "").replace("diâmetro", "diametro").replace("diâmetro", "diametro").replace("diâmetro", "diametro")
                 self._os_fields[prefix + "." + row_label.lower() + "." + key] = field
         parent_layout.addWidget(group)
 
