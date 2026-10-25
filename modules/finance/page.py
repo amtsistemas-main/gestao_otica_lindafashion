@@ -268,17 +268,65 @@ class FinancePage(QDialog):
 
         filters = QHBoxLayout()
         filters.setSpacing(10)
+        period_label = QLabel("Período")
+        period_label.setObjectName("filterLabel")
+        period_label.setStyleSheet("background:transparent;color:#24334B;font-weight:650;")
         self.period = QComboBox()
+        self.period.setObjectName("periodSelector")
         self.period.addItems(["Este mês", "Últimos 7 dias", "Últimos 30 dias", "Este ano", "Todo o período"])
         self.period.setMinimumWidth(165)
+        self.period.setFixedHeight(40)
         self.period.setToolTip("Filtra indicadores e tabelas pelo período selecionado.")
         self.period.currentIndexChanged.connect(self._render)
+        # A dedicated blue trigger keeps the arrow consistent across OS themes.
+        self.period.setStyleSheet("""
+            QComboBox#periodSelector {
+                background:#FFFFFF; color:#172B4D; border:1px solid #CFD9E8;
+                border-radius:8px; padding:8px 10px; padding-right:4px;
+            }
+            QComboBox#periodSelector::drop-down {
+                width:0px; border:none; background:transparent;
+            }
+            QComboBox#periodSelector::down-arrow { image:none; width:0px; height:0px; }
+            QComboBox QAbstractItemView, QComboBox QListView {
+                background-color:#FFFFFF; color:#172B4D; border:1px solid #D6E0EF;
+                selection-background-color:#DCE8FF; selection-color:#17365D; outline:0;
+            }
+            QComboBox QAbstractItemView::item, QComboBox QListView::item {
+                background-color:#FFFFFF; color:#172B4D; padding:6px 9px; min-height:24px;
+            }
+            QComboBox QAbstractItemView::item:selected, QComboBox QListView::item:selected {
+                background-color:#DCE8FF; color:#17365D;
+            }
+        """)
+        period_control = QWidget()
+        period_control.setStyleSheet("background:transparent;")
+        period_layout = QHBoxLayout(period_control)
+        period_layout.setContentsMargins(0, 0, 0, 0)
+        period_layout.setSpacing(0)
+        period_layout.addWidget(self.period)
+        self.period_button = QPushButton("▾")
+        self.period_button.setObjectName("periodDropdownButton")
+        self.period_button.setFixedSize(38, 40)
+        self.period_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.period_button.setToolTip("Selecionar período")
+        self.period_button.setStyleSheet("""
+            QPushButton#periodDropdownButton {
+                background:#2165F5; color:#FFFFFF; border:1px solid #2165F5;
+                border-radius:8px; font-size:15pt; font-weight:800; padding:0;
+                margin-left:-1px;
+            }
+            QPushButton#periodDropdownButton:hover { background:#1749C2; border-color:#1749C2; }
+            QPushButton#periodDropdownButton:pressed { background:#103A9F; border-color:#103A9F; }
+        """)
+        self.period_button.clicked.connect(self.period.showPopup)
+        period_layout.addWidget(self.period_button)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Buscar descrição, categoria, cliente ou referência…")
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self._render)
-        filters.addWidget(QLabel("Período"))
-        filters.addWidget(self.period)
+        filters.addWidget(period_label)
+        filters.addWidget(period_control)
         filters.addWidget(self.search, 1)
         self.refresh_button = QPushButton("Atualizar")
         self.refresh_button.clicked.connect(self._load)
@@ -286,7 +334,8 @@ class FinancePage(QDialog):
         root.addLayout(filters)
 
         dashboard_label = QLabel("Visão geral")
-        dashboard_label.setStyleSheet("color:#17365D;font-size:12pt;font-weight:750;padding:2px 0;")
+        dashboard_label.setObjectName("sectionLabel")
+        dashboard_label.setStyleSheet("background:transparent;color:#17365D;font-size:12pt;font-weight:750;padding:2px 0;")
         root.addWidget(dashboard_label)
         metrics = QHBoxLayout()
         self.income_metric = QLabel("Entradas no período\nR$ 0,00")
@@ -304,7 +353,10 @@ class FinancePage(QDialog):
         root.addLayout(metrics)
 
         self.tabs = QTabWidget()
+        self._reference_column_width: int | None = None
         self.cash_table = self._table(["Vencimento", "Tipo", "Descrição", "Categoria", "Cliente / fornecedor", "Valor", "Situação", "Forma", "Referência"])
+        # The last column must not stretch/shrink when period filtering changes the row content.
+        self.cash_table.horizontalHeader().setStretchLastSection(False)
         self.payables_table = self._table(["Vencimento", "Descrição", "Fornecedor / favorecido", "Categoria", "Valor", "Situação"])
         self.receivables_table = self._table(["Vencimento", "Descrição", "Cliente", "Categoria", "Valor", "Situação"])
         self.sales_table = self._table(["Data", "Venda / descrição", "Cliente", "Forma de pagamento", "Valor", "Situação", "Referência"])
@@ -470,8 +522,19 @@ class FinancePage(QDialog):
                     elif entry.get("status") == "pendente":
                         item.setForeground(Qt.GlobalColor.darkYellow)
                 table.setItem(row_index, column, item)
-        table.resizeColumnsToContents()
-        table.horizontalHeader().setStretchLastSection(True)
+        # Calculate widths on the first render, then preserve the Reference column exactly.
+        if table is self.cash_table and self._reference_column_width is not None:
+            table.horizontalHeader().setStretchLastSection(False)
+            table.resizeColumnsToContents()
+            table.setColumnWidth(len(fields) - 1, self._reference_column_width)
+        else:
+            if table is self.cash_table:
+                table.horizontalHeader().setStretchLastSection(False)
+            table.resizeColumnsToContents()
+            if table is self.cash_table:
+                self._reference_column_width = table.columnWidth(len(fields) - 1)
+        if table is not self.cash_table:
+            table.horizontalHeader().setStretchLastSection(True)
 
     def _selected_entry(self) -> dict[str, Any] | None:
         table = [self.cash_table, self.payables_table, self.receivables_table, self.sales_table][self.tabs.currentIndex()]
