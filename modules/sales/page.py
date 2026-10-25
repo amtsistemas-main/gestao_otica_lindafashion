@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
+import json
 from pathlib import Path
 from urllib.parse import quote
 import re
@@ -12,8 +13,8 @@ from PySide6.QtGui import QDesktopServices, QTextDocument
 from PySide6.QtPrintSupport import QPrinter
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout,
-    QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton,
-    QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
+    QFrame, QGridLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton,
+    QScrollArea, QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
 
 from config.settings import get_settings
@@ -31,7 +32,8 @@ class SalesOrderDialog(QDialog):
     def __init__(self, client, organization_id: str, user_id: str, parent=None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Nova venda / ordem de serviço — Ótica Linda Fashion")
-        self.setMinimumSize(820, 620)
+        self.setMinimumSize(960, 820)
+        self.resize(1080, 900)
         self._client, self._organization_id, self._user_id = client, organization_id, user_id
         self._products: list[dict] = []
         self._customers: list[dict] = []
@@ -68,6 +70,19 @@ class SalesOrderDialog(QDialog):
         form.addRow("Preço unitário", self.unit_price)
         form.addRow("Desconto do item (R$)", self.discount)
         root.addLayout(form)
+        self._os_fields = {}
+        prescription_box = QGroupBox("Receita / prescrição óptica")
+        prescription_layout = QVBoxLayout(prescription_box)
+        self._add_measurement_table(prescription_layout, "Longe", ["ESF", "CIL", "EIXO", "DNP"], ["OD", "OE"], "longe")
+        self._add_measurement_table(prescription_layout, "Perto", ["ESF", "CIL", "EIXO", "DNP", "ALT.", "AD"], ["OD", "OE"], "perto")
+        self._add_measurement_table(prescription_layout, "Medidas das armações", ["Ponte", "Horiz.", "Vert.", "Diag. Maior", "Diâmetro"], ["Medida"], "armacao")
+        prescription_scroll = QScrollArea()
+        prescription_scroll.setWidgetResizable(True)
+        prescription_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        prescription_scroll.setMinimumHeight(235)
+        prescription_scroll.setMaximumHeight(285)
+        prescription_scroll.setWidget(prescription_box)
+        root.addWidget(prescription_scroll)
         item_actions = QHBoxLayout()
         add_item = QPushButton("Adicionar item")
         add_item.setObjectName("primaryButton")
@@ -168,6 +183,40 @@ class SalesOrderDialog(QDialog):
 """)
         self._load_options()
 
+    def _add_measurement_table(self, parent_layout, title: str, columns: list[str], rows: list[str], prefix: str) -> None:
+        group = QGroupBox(title)
+        grid = QGridLayout(group)
+        grid.setContentsMargins(10, 12, 10, 8)
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(6)
+        grid.addWidget(QLabel(""), 0, 0)
+        for col, column in enumerate(columns, start=1):
+            label = QLabel(column)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setStyleSheet("font-weight:700;color:#102957;background:#EEF3FC;padding:5px;border-radius:4px;")
+            grid.addWidget(label, 0, col)
+        for row_index, row_label in enumerate(rows, start=1):
+            label = QLabel(row_label)
+            label.setStyleSheet("font-weight:700;color:#102957;")
+            grid.addWidget(label, row_index, 0)
+            for col_index, column in enumerate(columns, start=1):
+                field = QLineEdit()
+                field.setPlaceholderText("—")
+                field.setMaximumWidth(150)
+                field.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                grid.addWidget(field, row_index, col_index)
+                key = column.lower().replace(" ", "_").replace(".", "")
+                self._os_fields[prefix + "." + row_label.lower() + "." + key] = field
+        parent_layout.addWidget(group)
+
+    def _prescription_payload(self) -> dict:
+        values = {key: field.text().strip() for key, field in self._os_fields.items()}
+        return {
+            "longe": {eye: {column: values.get("longe." + eye + "." + column, "") for column in ("esf", "cil", "eixo", "dnp")} for eye in ("od", "oe")},
+            "perto": {eye: {column: values.get("perto." + eye + "." + column, "") for column in ("esf", "cil", "eixo", "dnp", "alt", "ad")} for eye in ("od", "oe")},
+            "armacao": {column: values.get("armacao.medida." + column, "") for column in ("ponte", "horiz", "vert", "diag_maior", "diametro")},
+        }
+
     def _load_options(self) -> None:
         customers = self._client.table("customers").select("id,full_name,whatsapp,whatsapp_consent").eq("organization_id", self._organization_id).eq("active", True).order("full_name").execute().data or []
         self._customers = customers
@@ -226,7 +275,10 @@ class SalesOrderDialog(QDialog):
         total = sum((Decimal(str(r["line_total"])) for r in rows), Decimal("0"))
         order_number = "V-" + datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:20]
         payload = [{"product_id": r["product_id"], "quantity": r["quantity"], "unit_price": r["unit_price"], "discount": r["discount"], "line_total": r["line_total"]} for r in rows]
-        params = {"p_organization_id": self._organization_id, "p_customer_id": self.customer.currentData(), "p_order_number": order_number, "p_subtotal": float(subtotal), "p_discount": float(discount), "p_total": float(total), "p_payment_method": self.payment_method.currentText(), "p_notes": self.notes.toPlainText().strip(), "p_items": payload}
+        notes_text = self.notes.toPlainText().strip()
+        metadata = {"version": 1, "prescription": self._prescription_payload()}
+        stored_notes = "[[LF_OS_DATA]]" + json.dumps(metadata, ensure_ascii=False, separators=(",", ":")) + "\\n" + notes_text
+        params = {"p_organization_id": self._organization_id, "p_customer_id": self.customer.currentData(), "p_order_number": order_number, "p_subtotal": float(subtotal), "p_discount": float(discount), "p_total": float(total), "p_payment_method": self.payment_method.currentText(), "p_notes": stored_notes, "p_items": payload}
         self.save_button.setEnabled(False)
         try:
             result = self._client.rpc("finalize_sales_order", params).execute().data
