@@ -1,0 +1,5 @@
+[33m8f91902[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32m24out2026[m[33m)[m Novas atualizações
+[33mf06ddde[m[33m ([m[1;31morigin/24out2026[m[33m)[m Prevent global dialog event filter errors during document export
+[33m522ce8a[m Fix finance period filter layout and light popup styling
+[33mbce87ee[m Corrige correspondência do campo diâmetro na ordem de serviço PDF
+[33m905c753[m Define padrão global azul para botões de ação e aplica estilos compartilhados

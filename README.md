@@ -71,7 +71,7 @@ No cadastro de Produtos, o campo **Fornecedor principal** vincula o produto a um
 
 ## Gestão óptica de alto padrão
 
-Seis frentes integradas. As migrations e a ordem de aplicação estão em `database/migrations/README.md` (arquivos `202610250001` a `202610250006`).
+Seis frentes integradas. As migrations e a ordem de aplicação estão em `database/migrations/README.md` (arquivos `202610250001` a `202610250008`, já aplicados no projeto Supabase conectado).
 
 1. **Produtos ópticos** (`modules/products/`): tipo de produto com campos próprios (armação, lente oftálmica, lente de contato, solar, acessório, serviço), modelo, cor, tamanho, material, índice e tratamentos de lente, ponto e quantidade de reposição, serviços sem controle de estoque e filtro por tipo.
 2. **Receitas** (`modules/prescriptions/`): OD/OE estruturado (esférico, cilíndrico, eixo, adição, DNP longe/perto, altura, prisma), passos de 0,25 D, eixo obrigatório com cilindro, alertas de digitação (anisometropia, DNP de perto maior que a de longe, receita vencida), histórico por cliente e vínculo com a venda e o pedido.
