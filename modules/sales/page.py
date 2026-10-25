@@ -8,9 +8,10 @@ from pathlib import Path
 from urllib.parse import quote
 import re
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QUrl, QSize
 from PySide6.QtGui import QDesktopServices, QTextDocument
 from PySide6.QtPrintSupport import QPrinter
+import qtawesome as qta
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFileDialog, QFormLayout,
     QFrame, QGridLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton,
@@ -79,12 +80,15 @@ class SalesOrderDialog(QDialog):
         root.addLayout(customer_product_row)
 
         item_entry_row = QHBoxLayout()
-        item_entry_row.setSpacing(8)
+        item_entry_row.setSpacing(3)
         item_entry_row.addWidget(QLabel("Qtd."))
+        self.quantity.setFixedWidth(86)
         item_entry_row.addWidget(self.quantity)
         item_entry_row.addWidget(QLabel("Preço unit."))
+        self.unit_price.setFixedWidth(142)
         item_entry_row.addWidget(self.unit_price)
         item_entry_row.addWidget(QLabel("Desconto (R$)"))
+        self.discount.setFixedWidth(142)
         item_entry_row.addWidget(self.discount)
         add_item = QPushButton("Adicionar item")
         add_item.setObjectName("primaryButton")
@@ -388,9 +392,22 @@ class SalesPage(QDialog):
             values = [order.get("order_number",""), str(order.get("created_at",""))[:16].replace("T"," "), customer.get("full_name","Venda avulsa"), order.get("status",""), _money(order.get("total"))]
             for col, value in enumerate(values):
                 self.table.setItem(row, col, QTableWidgetItem(str(value)))
-            actions = QWidget(); actions_layout = QHBoxLayout(actions); actions_layout.setContentsMargins(2,2,2,2)
-            pdf = QPushButton("Gerar PDF"); pdf.clicked.connect(lambda checked=False, oid=order["id"]: self._export_pdf(oid))
-            wa = QPushButton("WhatsApp"); wa.clicked.connect(lambda checked=False, oid=order["id"]: self._prepare_whatsapp(oid))
+            actions = QWidget()
+            actions_layout = QHBoxLayout(actions)
+            actions_layout.setContentsMargins(3, 3, 3, 3)
+            actions_layout.setSpacing(5)
+            pdf = QPushButton("Gerar PDF")
+            pdf.setObjectName("actionButton")
+            pdf.setIcon(qta.icon("fa5s.file-pdf", color="#FFFFFF"))
+            pdf.setIconSize(QSize(16, 16))
+            pdf.setToolTip("Gerar ou visualizar a ordem de serviço em PDF")
+            pdf.clicked.connect(lambda checked=False, oid=order["id"]: self._export_pdf(oid))
+            wa = QPushButton("WhatsApp")
+            wa.setObjectName("actionButton")
+            wa.setIcon(qta.icon("fa5b.whatsapp", color="#FFFFFF"))
+            wa.setIconSize(__import__("PySide6.QtCore", fromlist=["QSize"]).QSize(16, 16))
+            wa.setToolTip("Preparar contato com o cliente no WhatsApp")
+            wa.clicked.connect(lambda checked=False, oid=order["id"]: self._prepare_whatsapp(oid))
             actions_layout.addWidget(pdf); actions_layout.addWidget(wa)
             self.table.setCellWidget(row, 5, actions)
 
@@ -471,30 +488,65 @@ class SalesPage(QDialog):
             customer_phone = esc(customer.get("phone") or customer.get("whatsapp") or "")
             customer_address = esc(str(customer.get("street") or "") + " " + str(customer.get("address_number") or "") + " — " + str(customer.get("city") or "") + "/" + str(customer.get("state") or ""))
             notes_html = esc(notes_text).replace("\n", "<br>") or "—"
-            html = """<html><meta charset="utf-8"><style>
-            body{font-family:Arial,sans-serif;color:#102957;font-size:9pt}
-            .brand{width:100%;background:#102957;color:white;border-collapse:collapse}
-            .brand td{border:0;padding:12px;vertical-align:middle}
-            .brand-title{color:white;font-size:16pt;font-weight:bold}
-            h3{color:#102957;font-size:10pt;margin:10px 0 5px}
-            table.data{width:100%;border-collapse:collapse;margin-bottom:8px}
-            th{background:#EAF0FB;color:#102957}td,th{border:1px solid #CCD6E6;padding:5px;text-align:left}
-            .total{font-size:12pt;font-weight:bold;text-align:right;padding:10px}
-            .tear{border-top:1px dashed #526079;margin-top:18px;padding-top:10px}
-            .stub{font-size:8pt;color:#33496C}
-            </style>
-            <table class="brand"><tr><td width="120">""" + logo_html + """</td><td><div class="brand-title">ÓTICA LINDA FASHION</div><div>ORDEM DE SERVIÇO / PEDIDO</div></td></tr></table>
-            <p><b>Número:</b> """ + order_number + """ &nbsp; <b>Data:</b> """ + order_date + """</p>
-            <h3>Dados do cliente</h3><p>""" + customer_name + "<br>" + customer_document + "<br>" + customer_phone + "<br>" + customer_address + """</p>
-            <h3>Itens da venda</h3><table class="data"><thead><tr><th>Produto</th><th>SKU</th><th>Qtd.</th><th>Unitário</th><th>Desc.</th><th>Total</th></tr></thead><tbody>""" + lines + """</tbody></table>
-            """ + optical_html + """
-            <p class="total">Subtotal: """ + _money(order.get("subtotal")) + """<br>Descontos: """ + _money(order.get("discount")) + """<br>Total: """ + _money(order.get("total")) + """</p>
-            <p><b>Observações:</b><br>""" + notes_html + """</p>
-            <div class="tear"><b>CANHOTO — COMPROVANTE DO CLIENTE</b><div class="stub">
-            Ordem: """ + order_number + """ &nbsp; | &nbsp; Cliente: """ + customer_name + """ &nbsp; | &nbsp; Data: """ + order_date + """<br>
-            Valor: """ + _money(order.get("total")) + """ &nbsp; | &nbsp; Telefone: """ + customer_phone + """<br>
-            Assinatura/retirada: ____________________________________ &nbsp; Data: ____/____/________
-            </div></div></html>"""
+            html = """<html><head><meta charset="utf-8"><style>
+            @page { margin: 28px; }
+            body { font-family: Arial, sans-serif; color: #233653; font-size: 8.5pt; }
+            .brand { width:100%; border-collapse:collapse; background:#102957; color:#FFFFFF; }
+            .brand td { border:0; padding:14px 16px; vertical-align:middle; }
+            .brand-title { color:#FFFFFF; font-size:19pt; font-weight:bold; letter-spacing:1px; }
+            .brand-sub { color:#DCE7F7; font-size:8pt; padding-top:4px; }
+            .doc-label { color:#DCE7F7; font-size:8pt; text-align:right; }
+            .doc-number { color:#FFFFFF; font-size:12pt; font-weight:bold; text-align:right; }
+            .accent { height:4px; background:#2165F5; }
+            .meta { width:100%; border-collapse:collapse; margin:12px 0; }
+            .meta td { width:50%; border:1px solid #DFE7F2; background:#F7F9FD; padding:9px 10px; vertical-align:top; }
+            .label { color:#72819A; font-size:7pt; font-weight:bold; text-transform:uppercase; }
+            .value { color:#102957; font-size:9pt; font-weight:bold; padding-top:3px; }
+            h3 { color:#102957; font-size:9.5pt; margin:13px 0 6px; padding-bottom:4px; border-bottom:2px solid #DCE7F7; }
+            table.data { width:100%; border-collapse:collapse; margin:0 0 8px; }
+            table.data th { background:#EAF0FB; color:#102957; font-size:7.5pt; font-weight:bold; }
+            table.data td, table.data th { border:1px solid #D5DFED; padding:5px 6px; text-align:left; }
+            table.data tr:nth-child(even) td { background:#F8FAFE; }
+            .optical-wrap { width:100%; border-collapse:collapse; }
+            .optical-wrap td { border:0; padding:0 5px 0 0; vertical-align:top; }
+            .optical-title { color:#244B86; font-size:8pt; font-weight:bold; margin:4px 0; }
+            .totals { width:100%; border-collapse:collapse; margin-top:8px; }
+            .totals td { border:0; padding:4px 7px; text-align:right; }
+            .grand-total { background:#102957; color:#FFFFFF; font-size:13pt; font-weight:bold; padding:9px; }
+            .notes { border:1px solid #DFE7F2; background:#FAFBFE; padding:8px 10px; }
+            .tear { border-top:1px dashed #7890B4; margin-top:20px; padding-top:10px; }
+            .stub-title { color:#102957; font-size:9pt; font-weight:bold; }
+            .stub { color:#405575; font-size:8pt; }
+            .signature { color:#60718D; font-size:7.5pt; padding-top:10px; }
+            </style></head><body>
+            <table class="brand"><tr>
+              <td width="112">""" + logo_html + """</td>
+              <td><div class="brand-title">ÓTICA LINDA FASHION</div><div class="brand-sub">VISÃO • ESTILO • VOCÊ &nbsp; | &nbsp; CUIDADO ÓPTICO COM QUALIDADE</div></td>
+              <td width="160"><div class="doc-label">ORDEM DE SERVIÇO</div><div class="doc-number">""" + order_number + """</div><div class="doc-label">EMITIDA EM """ + order_date + """</div></td>
+            </tr></table><div class="accent"></div>
+            <table class="meta"><tr>
+              <td><div class="label">Cliente</div><div class="value">""" + (customer_name or "Venda avulsa") + """</div><div>""" + customer_document + """</div></td>
+              <td><div class="label">Contato</div><div class="value">""" + (customer_phone or "Não informado") + """</div><div>""" + (customer_address or "Endereço não informado") + """</div></td>
+            </tr></table>
+            <h3>01 &nbsp; Produtos e serviços</h3>
+            <table class="data"><thead><tr><th>Produto</th><th>Referência</th><th>Qtd.</th><th>Preço unitário</th><th>Desconto</th><th>Total</th></tr></thead><tbody>""" + lines + """</tbody></table>
+            <h3>02 &nbsp; Receita e medidas ópticas</h3>
+            <table class="optical-wrap"><tr>
+              <td width="34%"><div class="optical-title">VISÃO DE LONGE</div>""" + prescription_table("Longe", ["ESF", "CIL", "EIXO", "DNP"], [("OD", longe.get("od") or {}), ("OE", longe.get("oe") or {})]) + """</td>
+              <td width="42%"><div class="optical-title">VISÃO DE PERTO</div>""" + prescription_table("Perto", ["ESF", "CIL", "EIXO", "DNP", "ALT.", "AD"], [("OD", perto.get("od") or {}), ("OE", perto.get("oe") or {})]) + """</td>
+              <td width="24%"><div class="optical-title">ARMAÇÃO</div>""" + prescription_table("Medidas", ["Ponte", "Horiz.", "Vert.", "Diag. Maior", "Diâmetro"], [("Medida", armacao)]) + """</td>
+            </tr></table>
+            <table class="totals">
+              <tr><td>Subtotal: """ + _money(order.get("subtotal")) + """</td></tr>
+              <tr><td>Descontos: """ + _money(order.get("discount")) + """</td></tr>
+              <tr><td class="grand-total">TOTAL DA VENDA &nbsp; """ + _money(order.get("total")) + """</td></tr>
+            </table>
+            <h3>03 &nbsp; Observações</h3><div class="notes">""" + notes_html + """</div>
+            <div class="tear"><div class="stub-title">CANHOTO DO CLIENTE &nbsp; | &nbsp; COMPROVANTE DE PEDIDO</div>
+              <div class="stub">Ordem: <b>""" + order_number + """</b> &nbsp; • &nbsp; Cliente: <b>""" + customer_name + """</b> &nbsp; • &nbsp; Data: """ + order_date + """<br>
+              Valor do pedido: <b>""" + _money(order.get("total")) + """</b> &nbsp; • &nbsp; Contato: """ + customer_phone + """</div>
+              <div class="signature">Assinatura / retirada: ______________________________________ &nbsp;&nbsp; Data: ____/____/________</div>
+            </div></body></html>"""
             document = QTextDocument()
             document.setHtml(html)
             printer = QPrinter(QPrinter.PrinterMode.HighResolution)
