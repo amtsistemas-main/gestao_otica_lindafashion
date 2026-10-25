@@ -37,10 +37,6 @@ class SalesOrderDialog(QDialog):
         self._client, self._organization_id, self._user_id = client, organization_id, user_id
         self._products: list[dict] = []
         self._customers: list[dict] = []
-        self.setMinimumSize(1000, 700)
-        self._client, self._organization_id, self._user_id = client, organization_id, user_id
-        self._products: list[dict] = []
-        self._customers: list[dict] = []
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 12, 14, 12)
         root.setSpacing(8)
