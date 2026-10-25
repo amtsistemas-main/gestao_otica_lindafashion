@@ -6,11 +6,12 @@ import json
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QRectF, QSize
+from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox, QCalendarWidget, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFormLayout, QFrame,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QInputDialog, QMessageBox, QPushButton,
-    QTableWidget, QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
+    QScrollArea, QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
 
 from config.settings import get_settings
@@ -44,11 +45,12 @@ def _eye_icon() -> QIcon:
 
 
 class CustomerFormDialog(QDialog):
-    def __init__(self, customer: dict | None = None, parent: QWidget | None = None) -> None:
+    def __init__(self, customer: dict | None = None, parent: QWidget | None = None, read_only: bool = False) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Editar cliente" if customer else "Novo cliente")
+        self._read_only = read_only
+        self.setWindowTitle("Visualizar cliente" if read_only else ("Editar cliente" if customer else "Novo cliente"))
         self.setMinimumSize(760, 620)
-        self.resize(900, 720)
+        self.resize(900, 760)
         self._customer = customer or {}
         self.fields: dict[str, QWidget] = {}
         root = QVBoxLayout(self)
@@ -60,37 +62,38 @@ class CustomerFormDialog(QDialog):
         title_layout = QVBoxLayout(title_bar)
         title_layout.setContentsMargins(18, 13, 18, 13)
         title_layout.setSpacing(4)
-        title = QLabel("Cadastro do cliente")
+        title = QLabel("Dados do cliente" if read_only else "Cadastro do cliente")
         title.setObjectName("windowTitle")
-        subtitle = QLabel("Centralize os dados de contato e as preferências de comunicação do cliente.")
+        subtitle = QLabel("Consulte as informações cadastradas." if read_only else "Preencha os dados em uma única tela, organizados por seção.")
         subtitle.setObjectName("windowSubtitle")
         subtitle.setWordWrap(True)
         title_layout.addWidget(title)
         title_layout.addWidget(subtitle)
         root.addWidget(title_bar)
 
-        tabs = QTabWidget()
-        root.addWidget(tabs, 1)
+        scroll = QScrollArea()
+        scroll.setObjectName("customerFormScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(4, 4, 12, 4)
+        content_layout.setSpacing(14)
+
         groups = [
-            ("Identificação", [
-                ("full_name", "Nome completo *"), ("document", "CPF"),
-                ("birth_date", "Data de nascimento"),
-            ]),
-            ("Contato", [
-                ("email", "E-mail"), ("phone", "Telefone"), ("whatsapp", "WhatsApp"),
-            ]),
-            ("Endereço", [
-                ("postal_code", "CEP"), ("street", "Logradouro"),
-                ("address_number", "Número"), ("address_complement", "Complemento"),
-                ("neighborhood", "Bairro"), ("city", "Cidade"), ("state", "UF"),
-            ]),
+            ("Identificação", [("full_name", "Nome completo *"), ("document", "CPF"), ("birth_date", "Data de nascimento")]),
+            ("Contato", [("email", "E-mail"), ("phone", "Telefone"), ("whatsapp", "WhatsApp")]),
+            ("Endereço", [("postal_code", "CEP"), ("street", "Logradouro"), ("address_number", "Número"), ("address_complement", "Complemento"), ("neighborhood", "Bairro"), ("city", "Cidade"), ("state", "UF")]),
         ]
-        for tab_name, fields in groups:
-            page = QWidget()
-            form = QFormLayout(page)
-            form.setContentsMargins(18, 18, 18, 18)
-            form.setSpacing(12)
-            for key, label_text in fields:
+        for section_name, section_fields in groups:
+            section = QLabel(section_name)
+            section.setObjectName("formSectionTitle")
+            content_layout.addWidget(section)
+            form = QFormLayout()
+            form.setContentsMargins(10, 0, 10, 0)
+            form.setSpacing(10)
+            form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+            for key, label_text in section_fields:
                 if key == "birth_date":
                     widget = QDateEdit()
                     widget.setObjectName("birthDateEdit")
@@ -113,13 +116,10 @@ class CustomerFormDialog(QDialog):
                     """)
                     widget.setCalendarWidget(calendar)
                     raw = self._customer.get(key)
-                    if raw:
-                        widget.setDate(date.fromisoformat(str(raw)[:10]))
-                    else:
-                        widget.setDate(widget.minimumDate())
+                    widget.setDate(date.fromisoformat(str(raw)[:10]) if raw else widget.minimumDate())
                 else:
                     widget = QLineEdit()
-                    widget.setClearButtonEnabled(True)
+                    widget.setClearButtonEnabled(not read_only)
                     widget.setPlaceholderText(label_text)
                     raw_value = str(self._customer.get(key) or "")
                     if key == "document":
@@ -136,52 +136,65 @@ class CustomerFormDialog(QDialog):
                 widget.setMinimumHeight(38)
                 self.fields[key] = widget
                 form.addRow(label_text, widget)
-            tabs.addTab(page, tab_name)
+            content_layout.addLayout(form)
 
-        crm_page = QWidget()
-        crm_form = QFormLayout(crm_page)
-        crm_form.setContentsMargins(18, 18, 18, 18)
-        crm_form.setSpacing(12)
+        section = QLabel("Observações e permissões")
+        section.setObjectName("formSectionTitle")
+        content_layout.addWidget(section)
+        crm_form = QFormLayout()
+        crm_form.setContentsMargins(10, 0, 10, 0)
+        crm_form.setSpacing(10)
         self.notes = QTextEdit()
         self.notes.setPlaceholderText("Preferências, observações e histórico relevante...")
         self.notes.setPlainText(str(self._customer.get("notes") or ""))
+        self.notes.setMinimumHeight(90)
         self.notes.setMaximumHeight(130)
         crm_form.addRow("Observações internas", self.notes)
+        content_layout.addLayout(crm_form)
         self.email_consent = QCheckBox("Autorizou receber e-mail marketing")
         self.email_consent.setChecked(bool(self._customer.get("marketing_email_consent", False)))
         self.whatsapp_consent = QCheckBox("Autorizou contato pelo WhatsApp")
         self.whatsapp_consent.setChecked(bool(self._customer.get("whatsapp_consent", False)))
         self.active = QCheckBox("Cliente ativo")
         self.active.setChecked(bool(self._customer.get("active", True)))
-        crm_form.addRow(self.email_consent)
-        crm_form.addRow(self.whatsapp_consent)
-        crm_form.addRow(self.active)
-        tabs.addTab(crm_page, "CRM e permissões")
+        for checkbox in (self.email_consent, self.whatsapp_consent, self.active):
+            content_layout.addWidget(checkbox)
+        content_layout.addStretch(1)
+        scroll.setWidget(content)
+        root.addWidget(scroll, 1)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save)
-        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Salvar cliente")
-        buttons.accepted.connect(self._validate)
-        buttons.rejected.connect(self.reject)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close if read_only else (QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save))
+        if read_only:
+            buttons.button(QDialogButtonBox.StandardButton.Close).setText("Fechar")
+            buttons.rejected.connect(self.reject)
+        else:
+            buttons.button(QDialogButtonBox.StandardButton.Save).setText("Salvar cliente")
+            buttons.accepted.connect(self._validate)
+            buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
+
+        if read_only:
+            for widget in self.fields.values():
+                widget.setEnabled(False)
+            self.notes.setReadOnly(True)
+            for checkbox in (self.email_consent, self.whatsapp_consent, self.active):
+                checkbox.setEnabled(False)
+
         self.setStyleSheet("""
             QDialog, QWidget { background:#FFFFFF; color:#102957; font-family:"Segoe UI"; }
             QFrame#windowTitleBar { background:#102957; border:1px solid #203D68; border-radius:8px; }
             QLabel#windowTitle { background:transparent; color:#FFFFFF; font-size:16pt; font-weight:700; }
             QLabel#windowSubtitle { background:transparent; color:#DCE7F7; font-size:9pt; }
-                        QLineEdit, QDateEdit, QTextEdit {
-                background:#FFFFFF; color:#102957; border:1px solid #D9E3F1;
-                border-radius:8px; padding:8px;
-                selection-background-color:#2165F5; selection-color:#FFFFFF;
-            }
+            QLabel#formSectionTitle { background:#F3F7FF; color:#17365D; border:1px solid #E0E8F4; border-radius:7px; padding:8px 10px; font-weight:700; }
+            QScrollArea#customerFormScroll { background:#FFFFFF; border:1px solid #E4EAF5; border-radius:8px; }
+            QLineEdit, QDateEdit, QTextEdit { background:#FFFFFF; color:#102957; border:1px solid #D9E3F1; border-radius:8px; padding:8px; selection-background-color:#2165F5; selection-color:#FFFFFF; }
             QLineEdit:focus, QDateEdit:focus, QTextEdit:focus { border:1px solid #2165F5; }
-            QTabWidget::pane { border:1px solid #E4EAF5; border-radius:8px; }
-            QTabBar::tab { background:#FFFFFF; color:#4B5675; padding:10px 16px; border:1px solid #E4EAF5; }
-            QTabBar::tab:selected { color:#FFFFFF; background:#2165F5; }
+            QLineEdit:disabled, QDateEdit:disabled { background:#F7F9FD; color:#526581; }
             QPushButton { background:#FFFFFF; color:#244BAA; border:1px solid #DCE5F5; border-radius:8px; padding:9px 14px; }
             QPushButton:hover { background:#F3F7FF; }
             QCheckBox { spacing:8px; padding:5px; }
             QCheckBox::indicator { width:18px; height:18px; border:1px solid #B8C7DC; border-radius:5px; background:#FFFFFF; }
-            QCheckBox::indicator:checked { background:#2165F5; border:1px solid #2165F5; image:url(:/qt-project.org/styles/commonstyle/images/checkbox_checked.png); }
+            QCheckBox::indicator:checked { background:#2165F5; border:1px solid #2165F5; }
             QCheckBox::indicator:hover { border:1px solid #2165F5; }
         """)
 
