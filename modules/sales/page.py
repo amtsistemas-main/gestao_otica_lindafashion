@@ -380,9 +380,8 @@ class SalesPage(QDialog):
             self._load_orders()
             saved = getattr(dialog, "_saved_order", None)
             if saved:
-                choice = QMessageBox.question(self, "Ordem de serviço", "Pedido salvo. Deseja gerar a ordem de serviço em PDF agora?")
-                if choice == QMessageBox.StandardButton.Yes:
-                    self._export_pdf(saved["id"])
+                # Every completed sale immediately offers the service-order PDF for saving and printing.
+                self._export_pdf(saved["id"])
 
     def _order_data(self, order_id: str) -> tuple[dict, list[dict]]:
         order_rows = self._client.table("sales_orders").select("*,customers(full_name,document,phone,whatsapp,address_number,street,city,state)").eq("id", order_id).eq("organization_id", self._organization_id).limit(1).execute().data or []
