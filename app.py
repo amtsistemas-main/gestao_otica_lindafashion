@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication
 
 from config.settings import get_settings
 from config.version import APP_VERSION
+from ui.components.update_notifier import UpdateNotifier
 from ui.styles.theme import apply_theme
 from ui.components.window_header import install_window_headers
 from ui.windows.login_window import LoginWindow
@@ -79,6 +80,7 @@ def main() -> int:
 
     settings = get_settings()
     configure_logging(settings.log_level)
+    logging.getLogger(__name__).info("Ótica Linda Fashion %s iniciado", APP_VERSION)
 
     set_windows_app_id()
     app = QApplication(qt_args)
@@ -99,6 +101,8 @@ def main() -> int:
 
     if smoke:
         return smoke_test(app)
+    updates = UpdateNotifier(app)
+    updates.start()
     if preview_mode:
         window = MainWindow(preview_mode=True)
     else:

@@ -23,4 +23,5 @@ Primeira versão de produção.
 
 ### Distribuição
 - Instalador para Windows (Inno Setup) com executável PyInstaller, configuração pública embutida, verificação `--smoke-test` e log local.
+- Atualizações automáticas pelas GitHub Releases: download em segundo plano, conferência SHA-256 e instalação silenciosa (agora ou ao fechar o sistema).
 - Banco: migrations `202610240001` a `202610250015` aplicadas no Supabase.

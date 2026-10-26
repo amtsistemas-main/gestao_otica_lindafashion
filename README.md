@@ -102,6 +102,17 @@ O script lê a versão de `config/version.py`, copia do `.env` **somente** `SUPA
 
 Na máquina do cliente, um arquivo `%APPDATA%\OticaLindaFashion\.env` substitui a configuração embutida, se necessário. O log do aplicativo fica em `%LOCALAPPDATA%\OticaLindaFashion\logs\app.log`.
 
+### Atualizações automáticas
+
+O aplicativo instalado consulta as GitHub Releases do repositório público `amtsistemas-main/oticalindafashion-releases` (`UPDATE_REPO` em `config/version.py`), que contém somente os instaladores. Nenhum token fica no cliente. A consulta é feita 8 segundos após abrir o sistema e a cada 6 horas. Quando existe versão maior, o instalador é baixado em segundo plano para `%LOCALAPPDATA%\OticaLindaFashion\updates` e só é usado se o SHA-256 conferir com o arquivo `.sha256` da release. O usuário escolhe **Atualizar agora** (o sistema fecha, atualiza em silêncio e reabre) ou **Ao fechar o sistema** (a instalação silenciosa ocorre quando o programa é encerrado, sem interromper uma venda). Para desligar em uma máquina, defina `OTICA_DISABLE_UPDATES=1`.
+
+Para lançar uma versão nova:
+
+1. Altere `APP_VERSION` em `config/version.py` (ex.: `1.0.1`) e registre as novidades em `CHANGELOG.md`, numa seção `## 1.0.1`.
+2. Gere o instalador: `powershell -ExecutionPolicy Bypass -File packaging\build.ps1`.
+3. Publique: `powershell -ExecutionPolicy Bypass -File packaging\publish.ps1`. O script usa a credencial do GitHub já salva no Git, cria a release `v1.0.1` com o instalador, o `.sha256` e as novidades do CHANGELOG, e só a torna visível depois do envio completo.
+4. Faça o commit e crie a tag `v1.0.1` no repositório do código.
+
 ## Segurança e integridade
 
 - Nunca configure `service_role` ou qualquer segredo privilegiado do Supabase no cliente desktop.

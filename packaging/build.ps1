@@ -34,4 +34,9 @@ $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFile
 if (-not $iscc) { throw "Inno Setup 6 não encontrado: winget install JRSoftware.InnoSetup" }
 & $iscc "/DAppVersion=$version" "packaging\installer.iss"
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup falhou." }
-Write-Host "Instalador: dist\installer\OticaLindaFashion-Setup-$version.exe" -ForegroundColor Green
+$setup = "dist\installer\OticaLindaFashion-Setup-$version.exe"
+# The app only installs an update whose hash matches this file.
+$hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
+[IO.File]::WriteAllText((Resolve-Path "dist\installer").Path + "\OticaLindaFashion-Setup-$version.exe.sha256", "$hash  OticaLindaFashion-Setup-$version.exe`n")
+Write-Host "Instalador: $setup" -ForegroundColor Green
+Write-Host "Para publicar a atualização: powershell -ExecutionPolicy Bypass -File packaging\publish.ps1" -ForegroundColor Cyan

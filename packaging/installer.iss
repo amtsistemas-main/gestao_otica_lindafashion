@@ -17,8 +17,8 @@ AppSupportURL=https://www.amtsistemas.com.br
 DefaultDirName={autopf}\OticaLindaFashion
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
+; Per-user install: automatic updates run silently, without administrator rights.
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
@@ -51,3 +51,11 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; Automatic update chosen as "Atualizar agora": reopen the app after the silent install.
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: ShouldRelaunch
+
+[Code]
+function ShouldRelaunch: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:RELAUNCH|0}') = '1');
+end;
