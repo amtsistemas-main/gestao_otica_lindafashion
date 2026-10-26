@@ -21,7 +21,7 @@ _TONE_ICON_COLORS = {
 def set_button_icon(button: QPushButton, icon_name: str, size: int = 15) -> QPushButton:
     """Attach a qtawesome icon whose colour matches the button variant."""
     variant = button.objectName()
-    if variant in ("primaryButton", "actionButton"):
+    if variant in ("primaryButton", "actionButton", "whatsappButton"):
         color, active = "#FFFFFF", "#FFFFFF"
     elif variant == "dangerButton":
         color, active = DANGER, "#B42318"

@@ -235,6 +235,28 @@ QPushButton#actionButton {
     padding: 6px 11px;
     border-radius: 7px;
 }
+QPushButton#whatsappButton {
+    background: #15924A;
+    color: #FFFFFF;
+    border: 1px solid #15924A;
+    font-weight: 700;
+    padding: 6px 11px;
+    border-radius: 7px;
+}
+QPushButton#whatsappButton:hover {
+    background: #117A3D;
+    border-color: #117A3D;
+    color: #FFFFFF;
+}
+QPushButton#whatsappButton:pressed {
+    background: #0D6532;
+    border-color: #0D6532;
+}
+QPushButton#whatsappButton:disabled {
+    background: #9FD1B3;
+    border-color: #9FD1B3;
+    color: #F4FBF7;
+}
 QPushButton#secondaryButton, QPushButton#secondaryQuickAction {
     background: @surface@;
     color: #1E3A6E;

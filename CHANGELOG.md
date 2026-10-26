@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.0.1 — 26/10/2026
+
+- Vendas / PDV: botão do WhatsApp em verde, com tamanho fixo para ícone e texto aparecerem por inteiro.
+- Coluna "Ações" das vendas com largura calculada pelos botões: nada fica cortado.
+
 ## 1.0.0 — 25/10/2026
 
 Primeira versão de produção.

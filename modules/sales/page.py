@@ -13,7 +13,7 @@ from PySide6.QtGui import QColor, QDesktopServices
 import qtawesome as qta
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, QHeaderView, QInputDialog, QLabel, QLineEdit,
-    QMessageBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QMessageBox, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from core.organization import OrganizationContext, current_organization
@@ -39,6 +39,16 @@ STATUS_COLORS = {
 def _money(value: object) -> str:
     amount = Decimal(str(value or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     return f"R$ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+ACTION_BUTTON_HEIGHT = 32
+
+
+def _fix_button_size(button: QPushButton) -> None:
+    """Fixed size measured with the button's own style, so icon and text never get clipped in the row."""
+    button.ensurePolished()
+    hint = button.sizeHint()
+    button.setFixedSize(hint.width() + 8, max(ACTION_BUTTON_HEIGHT, hint.height()))
 
 
 class SalesPage(QDialog):
@@ -103,8 +113,10 @@ class SalesPage(QDialog):
         self.table.verticalHeader().setDefaultSectionSize(50)
         self.table.setHorizontalHeaderLabels(["Venda", "Data", "Cliente", "Situação", "Status do pedido", "Pagamento", "Total", "Ações"])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        for col in (0, 1, 3, 4, 5, 6, 7):
+        for col in (0, 1, 3, 4, 5, 6):
             self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        # ResizeToContents ignores cell widgets: the actions column gets the buttons' width when rows load.
+        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
         self.table.itemSelectionChanged.connect(self._sync_actions)
         root.addWidget(self.table, 1)
 
@@ -158,16 +170,22 @@ class SalesPage(QDialog):
                 self.table.setItem(row, col, item)
             actions = QWidget()
             actions_layout = QHBoxLayout(actions)
-            actions_layout.setContentsMargins(6, 4, 6, 4)
-            actions_layout.setSpacing(6)
+            actions_layout.setContentsMargins(8, 4, 8, 4)
+            actions_layout.setSpacing(8)
+            actions_layout.addStretch(1)
             pdf = make_button("PDF", "fa5s.file-pdf", "actionButton")
             pdf.setToolTip("Visualizar o documento em PDF para imprimir, salvar ou enviar por WhatsApp")
             pdf.clicked.connect(lambda checked=False, oid=order["id"]: self._export_pdf(oid))
-            wa = make_button("WhatsApp", "fa5b.whatsapp", "actionButton")
+            wa = make_button("WhatsApp", "fa5b.whatsapp", "whatsappButton")
             wa.setToolTip("Preparar contato com o cliente no WhatsApp")
             wa.clicked.connect(lambda checked=False, oid=order["id"]: self._prepare_whatsapp(oid))
-            actions_layout.addWidget(pdf); actions_layout.addWidget(wa)
+            for button in (pdf, wa):
+                _fix_button_size(button)
+                actions_layout.addWidget(button)
+            actions_layout.addStretch(1)
             self.table.setCellWidget(row, 7, actions)
+            # Slack for the cell padding the table style adds around cell widgets.
+            self.table.setColumnWidth(7, max(self.table.columnWidth(7), actions.sizeHint().width() + 28))
         self._filter_orders()
 
     def _filter_orders(self, *_args: object) -> None:
