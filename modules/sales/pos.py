@@ -27,6 +27,7 @@ from modules.sales.payments import (
     discount_check, installment_schedule, money, remaining_amount, validate_sale,
 )
 from modules.settings.service import StoreSettings
+from ui.components.calendar import make_date_edit
 from ui.components.ui_kit import make_button, notice
 
 SERVICE_ORDER_MARKER = "[[LF_OS_DATA]]"
@@ -270,10 +271,7 @@ class PosDialog(QDialog):
         lab_row.addWidget(self.order_status, 1)
         lab_row.addSpacing(8)
         lab_row.addWidget(_field_label("Prazo para o cliente"))
-        self.lab_expected = QDateEdit()
-        self.lab_expected.setCalendarPopup(True)
-        self.lab_expected.setDisplayFormat("dd/MM/yyyy")
-        self.lab_expected.setDate(QDate.currentDate().addDays(7))
+        self.lab_expected = make_date_edit(QDate.currentDate().addDays(7))
         lab_row.addWidget(self.lab_expected)
         layout.addLayout(lab_row)
         self.lens_description = QLineEdit()
@@ -337,10 +335,7 @@ class PosDialog(QDialog):
         self.installments = QSpinBox()
         self.installments.setRange(1, 24)
         self.installments.setSuffix("x")
-        self.first_due = QDateEdit()
-        self.first_due.setCalendarPopup(True)
-        self.first_due.setDisplayFormat("dd/MM/yyyy")
-        self.first_due.setDate(QDate.currentDate().addDays(30))
+        self.first_due = make_date_edit(QDate.currentDate().addDays(30))
         self.down_payment = QCheckBox("Sinal / entrada")
         form.addWidget(_field_label("Forma"), 0, 0)
         form.addWidget(self.method, 0, 1, 1, 3)

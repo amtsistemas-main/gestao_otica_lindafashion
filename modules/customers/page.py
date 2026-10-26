@@ -6,10 +6,10 @@ import json
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
 
-from PySide6.QtCore import Qt, QRectF, QSize
+from PySide6.QtCore import QDate, Qt, QRectF, QSize
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (
-    QCheckBox, QCalendarWidget, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFormLayout, QFrame,
+    QCheckBox, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFormLayout, QFrame,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton,
     QScrollArea, QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
@@ -24,6 +24,7 @@ from modules.lab_orders.page import LabOrdersPage
 from modules.prescriptions.dialogs import PrescriptionHistoryDialog
 from modules.prescriptions.repository import PrescriptionRepository
 from modules.settings.service import load_store_settings
+from ui.components.calendar import MaskedDateEdit, make_date_edit
 from ui.components.ui_kit import MetricTile, make_button
 import qtawesome as qta
 
@@ -118,19 +119,12 @@ class CustomerFormDialog(QDialog):
             form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
             for key, label_text in section_fields:
                 if key == "birth_date":
-                    widget = QDateEdit()
-                    widget.setObjectName("birthDateEdit")
-                    widget.setCalendarPopup(True)
-                    widget.setDisplayFormat("dd/MM/yyyy")
-                    widget.setSpecialValueText("dd/MM/yyyy")
-                    widget.setDate(widget.minimumDate())
-                    calendar = QCalendarWidget()
-                    calendar.setGridVisible(False)
-                    calendar.setFirstDayOfWeek(Qt.DayOfWeek.Monday)
-                    calendar.setNavigationBarVisible(True)
-                    widget.setCalendarWidget(calendar)
                     raw = self._customer.get(key)
-                    widget.setDate(date.fromisoformat(str(raw)[:10]) if raw else widget.minimumDate())
+                    # Typed over the mask DD/MM/AAAA; the calendar opens around a typical adult birth year.
+                    widget = MaskedDateEdit(
+                        date.fromisoformat(str(raw)[:10]) if raw else None,
+                        minimum=QDate(1900, 1, 1), maximum=QDate.currentDate(),
+                        empty_page=QDate.currentDate().addYears(-30))
                 else:
                     widget = QLineEdit()
                     widget.setClearButtonEnabled(not read_only)
@@ -246,6 +240,13 @@ class CustomerFormDialog(QDialog):
             QMessageBox.warning(self, "Campo obrigatório", "Informe o nome completo do cliente.")
             self.fields["full_name"].setFocus()
             return
+        birth = self.fields.get("birth_date")
+        if isinstance(birth, MaskedDateEdit) and not birth.is_valid():
+            QMessageBox.warning(self, "Data de nascimento inválida",
+                                "Informe a data completa no formato DD/MM/AAAA (dia, mês e ano com 4 dígitos) "
+                                "ou deixe o campo vazio.")
+            birth.setFocus()
+            return
         email = self.fields["email"].text().strip()
         if email and ("@" not in email or "." not in email.rsplit("@", 1)[-1]):
             QMessageBox.warning(self, "E-mail inválido", "Confira o endereço de e-mail informado.")
@@ -256,7 +257,9 @@ class CustomerFormDialog(QDialog):
     def record(self) -> dict:
         record: dict = {}
         for key, widget in self.fields.items():
-            if isinstance(widget, QDateEdit):
+            if isinstance(widget, MaskedDateEdit):
+                record[key] = widget.date().toString("yyyy-MM-dd") if not widget.is_empty() else None
+            elif isinstance(widget, QDateEdit):
                 record[key] = widget.date().toString("yyyy-MM-dd") if widget.date() > widget.minimumDate() else None
             elif isinstance(widget, QLineEdit):
                 text = widget.text().replace("_", "").strip()
@@ -897,10 +900,7 @@ class CustomersPage(QDialog):
         status.addItem("Sem alteração de status", "")
         for order_status in order_statuses.ALL_STATUSES:
             status.addItem(order_status.label, order_status.code)
-        follow_up = QDateEdit()
-        follow_up.setCalendarPopup(True)
-        follow_up.setDisplayFormat("dd/MM/yyyy")
-        follow_up.setDate(date.today())
+        follow_up = make_date_edit(date.today())
         form.addRow("Tipo", kind)
         form.addRow("Assunto", subject)
         form.addRow("Registro", body)

@@ -1,22 +1,24 @@
-"""Finance module: cash flow, payables, receivables and period-based sales."""
+"""Finance module: cash flow, payables, receivables, period-based sales and accountant reports."""
 from __future__ import annotations
 
 from datetime import date, timedelta
-from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QDate, Qt, QUrl
+from PySide6.QtGui import QColor, QDesktopServices, QFont
 from PySide6.QtWidgets import (
-    QComboBox, QDateEdit, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
-    QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QTabWidget,
-    QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
+    QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QFrame,
+    QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QRadioButton, QTabWidget, QTableWidget,
+    QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
 
-from config.settings import get_settings
-from core.exceptions import ConfigurationError
+from core.organization import OrganizationContext, current_organization
 from core.session_manager import session_manager
-from core.supabase_client import get_supabase_client
+from modules.finance import reports
+from modules.settings.service import load_store_settings, store_display_name
+from ui.components.calendar import make_date_edit
+from ui.components.money import MoneyEdit
 from ui.components.ui_kit import MetricTile, make_button, notice
 import qtawesome as qta
 
@@ -24,15 +26,17 @@ import qtawesome as qta
 TYPES = {"Entrada": "entrada", "Saída": "saida"}
 STATUSES = {"Pendente": "pendente", "Pago/Recebido": "pago", "Cancelado": "cancelado"}
 METHODS = ["Não definido", "Dinheiro", "Pix", "Cartão de débito", "Cartão de crédito", "Transferência", "Boleto", "Outro"]
-
-
-def _money(value: Any) -> str:
-    amount = Decimal(str(value or 0))
-    return ("R$ {:,.2f}".format(amount)).replace(",", "X").replace(".", ",").replace("X", ".")
+SALES_CATEGORIES = ("venda", "vendas")
 
 
 def _date(value: Any) -> str:
     return str(value or "")[:10]
+
+
+def _bold() -> QFont:
+    font = QFont()
+    font.setBold(True)
+    return font
 
 
 class FinancialEntryDialog(QDialog):
@@ -68,15 +72,9 @@ class FinancialEntryDialog(QDialog):
         self.category.addItems(["Venda", "Produto", "Fornecedor", "Aluguel", "Energia", "Água", "Internet", "Salários", "Impostos", "Serviços", "Outros"])
         self.description = QLineEdit()
         self.description.setPlaceholderText("Ex.: venda de armação, pagamento fornecedor…")
-        self.amount = QDoubleSpinBox()
-        self.amount.setDecimals(2)
-        self.amount.setMaximum(999999999.99)
-        self.amount.setMinimum(0.01)
-        self.amount.setPrefix("R$ ")
-        self.due_date = QDateEdit()
-        self.due_date.setCalendarPopup(True)
-        self.due_date.setDisplayFormat("dd/MM/yyyy")
-        self.due_date.setDate(QDate.currentDate())
+        # Typed through the cents (1, 2, 5, 0 -> R$ 12,50): no default value left in front of the digits.
+        self.amount = MoneyEdit()
+        self.due_date = make_date_edit(QDate.currentDate())
         self.status = QComboBox()
         self.status.addItems(list(STATUSES))
         self.method = QComboBox()
@@ -104,11 +102,11 @@ class FinancialEntryDialog(QDialog):
             self.direction.setCurrentText("Entrada" if entry.get("direction") == "entrada" else "Saída")
             self.category.setCurrentText(str(entry.get("category") or "Outros"))
             self.description.setText(str(entry.get("description") or ""))
-            self.amount.setValue(float(entry.get("amount") or 0.01))
+            self.amount.setValue(float(entry.get("amount") or 0))
             due = QDate.fromString(_date(entry.get("due_date")), "yyyy-MM-dd")
             if due.isValid():
                 self.due_date.setDate(due)
-            self.status.setCurrentText({"pendente": "Pendente", "pago": "Pago/Recebido", "cancelado": "Cancelado"}.get(str(entry.get("status")), "Pendente"))
+            self.status.setCurrentText(reports.STATUS_LABELS.get(str(entry.get("status")), "Pendente"))
             self.method.setCurrentText(str(entry.get("payment_method") or "Não definido"))
             self.counterparty.setText(str(entry.get("counterparty") or ""))
             self.reference.setText(str(entry.get("reference") or ""))
@@ -126,10 +124,9 @@ class FinancialEntryDialog(QDialog):
         self.accept()
 
     def record(self) -> dict[str, Any]:
-        direction_label = self.direction.currentText()
-        status = {"Pendente": "pendente", "Pago/Recebido": "pago", "Cancelado": "cancelado"}[self.status.currentText()]
+        status = STATUSES[self.status.currentText()]
         return {
-            "direction": TYPES[direction_label],
+            "direction": TYPES[self.direction.currentText()],
             "category": self.category.currentText().strip() or "Outros",
             "description": self.description.text().strip(),
             "amount": round(self.amount.value(), 2),
@@ -148,6 +145,102 @@ class FinancialEntryDialog(QDialog):
         }
 
 
+class ReportExportDialog(QDialog):
+    """Period and format for the accountant report."""
+
+    def __init__(self, initial_period: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Exportar relatório financeiro")
+        self.setMinimumWidth(520)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(22, 20, 22, 20)
+        root.setSpacing(14)
+        title_bar = QFrame()
+        title_bar.setObjectName("windowTitleBar")
+        title_layout = QVBoxLayout(title_bar)
+        title_layout.setContentsMargins(18, 12, 18, 12)
+        title = QLabel("Relatório para a contabilidade")
+        title.setObjectName("windowTitle")
+        subtitle = QLabel("Resumo, todos os lançamentos do período e o resultado por categoria.")
+        subtitle.setObjectName("windowSubtitle")
+        subtitle.setWordWrap(True)
+        title_layout.addWidget(title)
+        title_layout.addWidget(subtitle)
+        root.addWidget(title_bar)
+
+        form = QFormLayout()
+        form.setSpacing(12)
+        self.period = QComboBox()
+        self.period.addItems(list(reports.REPORT_PERIODS))
+        self.period.setCurrentText(initial_period if initial_period in reports.REPORT_PERIODS else "Este mês")
+        form.addRow("Período", self.period)
+        range_row = QHBoxLayout()
+        self.start = make_date_edit(QDate.currentDate().addDays(1 - QDate.currentDate().day()))
+        self.end = make_date_edit(QDate.currentDate())
+        range_row.addWidget(self.start, 1)
+        range_row.addWidget(QLabel("até"))
+        range_row.addWidget(self.end, 1)
+        self.range_host = QWidget()
+        self.range_host.setLayout(range_row)
+        range_row.setContentsMargins(0, 0, 0, 0)
+        form.addRow("De", self.range_host)
+        self.range_hint = QLabel("")
+        self.range_hint.setObjectName("muted")
+        form.addRow("", self.range_hint)
+
+        formats = QHBoxLayout()
+        self.pdf = QRadioButton("PDF (para imprimir ou enviar)")
+        self.xlsx = QRadioButton("Planilha Excel (.xlsx)")
+        self.pdf.setChecked(True)
+        group = QButtonGroup(self)
+        group.addButton(self.pdf)
+        group.addButton(self.xlsx)
+        formats.addWidget(self.pdf)
+        formats.addWidget(self.xlsx)
+        formats.addStretch(1)
+        form.addRow("Formato", formats)
+        self.include_cancelled = QCheckBox("Incluir lançamentos cancelados")
+        form.addRow("", self.include_cancelled)
+        root.addLayout(form)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Gerar relatório")
+        buttons.accepted.connect(self._validate)
+        buttons.rejected.connect(self.reject)
+        root.addWidget(buttons)
+        self.period.currentIndexChanged.connect(self._sync)
+        self.start.dateChanged.connect(self._sync)
+        self.end.dateChanged.connect(self._sync)
+        self._sync()
+
+    def bounds(self) -> tuple[date | None, date | None]:
+        return reports.period_bounds(self.period.currentText(), custom_start=self.start.date().toPython(),
+                                     custom_end=self.end.date().toPython())
+
+    def _sync(self, *_args: object) -> None:
+        custom = self.period.currentText() == "Personalizado"
+        self.range_host.setEnabled(custom)
+        start, end = self.bounds()
+        if not custom and start and end:
+            self.start.blockSignals(True)
+            self.end.blockSignals(True)
+            self.start.setDate(QDate(start.year, start.month, start.day))
+            self.end.setDate(QDate(end.year, end.month, end.day))
+            self.start.blockSignals(False)
+            self.end.blockSignals(False)
+        days = (end - start).days + 1 if start and end else 0
+        self.range_hint.setText(f"{days} dia(s) no relatório." if days else "")
+
+    def _validate(self) -> None:
+        if self.start.date() > self.end.date():
+            QMessageBox.warning(self, "Período inválido", "A data inicial deve ser anterior à data final.")
+            return
+        self.accept()
+
+    def extension(self) -> str:
+        return "xlsx" if self.xlsx.isChecked() else "pdf"
+
+
 class FinancePage(QDialog):
     """Organization-scoped finance workspace backed by Supabase."""
 
@@ -157,18 +250,10 @@ class FinancePage(QDialog):
         self.setWindowTitle("Financeiro — Ótica Linda Fashion")
         self.resize(1280, 820)
         self.setMinimumSize(1000, 680)
-        self._client = None
-        self._organization_id: str | None = None
+        self._ctx: OrganizationContext | None = None if preview_mode else current_organization("O módulo Financeiro")
+        self._client = self._ctx.client if self._ctx else None
+        self._organization_id: str | None = self._ctx.organization_id if self._ctx else None
         self._entries: list[dict[str, Any]] = []
-        if not preview_mode:
-            if not session_manager.is_authenticated or not get_settings().supabase_configured:
-                raise ConfigurationError("O módulo Financeiro exige login e configuração do Supabase.")
-            self._client = get_supabase_client()
-            session = session_manager.current
-            memberships = self._client.table("organization_members").select("organization_id").eq("user_id", session.user_id).eq("active", True).limit(1).execute().data or []
-            if not memberships:
-                raise ConfigurationError("Seu usuário não possui vínculo ativo com uma organização.")
-            self._organization_id = str(memberships[0]["organization_id"])
 
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 22, 24, 22)
@@ -181,7 +266,7 @@ class FinancePage(QDialog):
         title_layout.setSpacing(4)
         title = QLabel("Financeiro")
         title.setObjectName("windowTitle")
-        subtitle = QLabel("Fluxo de caixa, contas a pagar e receber e vendas por período.")
+        subtitle = QLabel("Fluxo de caixa, contas a pagar e receber, vendas por período e relatórios para a contabilidade.")
         subtitle.setObjectName("windowSubtitle")
         subtitle.setWordWrap(True)
         title_layout.addWidget(title)
@@ -194,10 +279,16 @@ class FinancePage(QDialog):
         period_label = QLabel("Período")
         period_label.setObjectName("filterLabel")
         self.period = QComboBox()
-        self.period.addItems(["Este mês", "Últimos 7 dias", "Últimos 30 dias", "Este ano", "Todo o período"])
-        self.period.setMinimumWidth(190)
-        self.period.setToolTip("Filtra indicadores e tabelas pelo período selecionado.")
-        self.period.currentIndexChanged.connect(self._render)
+        self.period.addItems(list(reports.PERIODS))
+        self.period.setCurrentText("Este mês")
+        self.period.setMinimumWidth(170)
+        self.period.setToolTip("Filtra indicadores e tabelas. Pagos contam pela data do pagamento; em aberto, pelo vencimento.")
+        self.period.currentIndexChanged.connect(self._period_changed)
+        self.custom_start = make_date_edit(QDate.currentDate().addDays(1 - QDate.currentDate().day()))
+        self.custom_end = make_date_edit(QDate.currentDate())
+        self.custom_until = QLabel("até")
+        for widget in (self.custom_start, self.custom_end):
+            widget.dateChanged.connect(self._render)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Buscar descrição, categoria, cliente ou referência…")
         self.search.setClearButtonEnabled(True)
@@ -205,10 +296,17 @@ class FinancePage(QDialog):
         self.search.textChanged.connect(self._render)
         filters.addWidget(period_label)
         filters.addWidget(self.period)
+        filters.addWidget(self.custom_start)
+        filters.addWidget(self.custom_until)
+        filters.addWidget(self.custom_end)
         filters.addWidget(self.search, 1)
         self.refresh_button = make_button("Atualizar", "fa5s.sync-alt", "secondaryButton")
         self.refresh_button.clicked.connect(self._load)
         filters.addWidget(self.refresh_button)
+        self.export_button = make_button("Exportar relatório", "fa5s.file-export", "secondaryButton")
+        self.export_button.setToolTip("Relatório por período em PDF ou planilha Excel para a contabilidade")
+        self.export_button.clicked.connect(self._export_report)
+        filters.addWidget(self.export_button)
         self.new_button = make_button("Novo lançamento", "fa5s.plus", "primaryButton")
         self.new_button.clicked.connect(self._new_entry)
         filters.addWidget(self.new_button)
@@ -224,14 +322,20 @@ class FinancePage(QDialog):
             metrics.addWidget(tile, 1)
         root.addLayout(metrics)
 
+        # Same pattern in every tab: text columns share the free width, short columns fit their content.
         self.tabs = QTabWidget()
-        self._reference_column_width: int | None = None
-        self.cash_table = self._table(["Vencimento", "Tipo", "Descrição", "Categoria", "Cliente / fornecedor", "Valor", "Situação", "Forma", "Referência"])
-        # The last column must not stretch/shrink when period filtering changes the row content.
-        self.cash_table.horizontalHeader().setStretchLastSection(False)
-        self.payables_table = self._table(["Vencimento", "Descrição", "Fornecedor / favorecido", "Categoria", "Valor", "Situação"])
-        self.receivables_table = self._table(["Vencimento", "Descrição", "Cliente", "Categoria", "Valor", "Situação"])
-        self.sales_table = self._table(["Data", "Venda / descrição", "Cliente", "Forma de pagamento", "Valor", "Situação", "Referência"])
+        self.cash_table = self._table(
+            ["Data", "Tipo", "Descrição", "Categoria", "Cliente / fornecedor", "Valor", "Situação", "Forma", "Referência"],
+            stretch=(2, 3, 4, 8))
+        self.payables_table = self._table(
+            ["Vencimento", "Descrição", "Fornecedor / favorecido", "Categoria", "Forma", "Valor", "Situação"],
+            stretch=(1, 2, 3))
+        self.receivables_table = self._table(
+            ["Vencimento", "Descrição", "Cliente", "Categoria", "Forma", "Valor", "Situação"],
+            stretch=(1, 2, 3))
+        self.sales_table = self._table(
+            ["Data", "Venda / descrição", "Cliente", "Forma de pagamento", "Valor", "Situação", "Referência"],
+            stretch=(1, 2, 6))
         for table, tab_name in [
             (self.cash_table, "Entradas e saídas"),
             (self.payables_table, "Contas a pagar"),
@@ -254,6 +358,7 @@ class FinancePage(QDialog):
         actions.addStretch()
         actions.addWidget(self.cancel_button)
         root.addLayout(actions)
+        self._period_changed()
         if preview_mode:
             root.addWidget(notice("PRÉ-VISUALIZAÇÃO • lançamentos financeiros reais exigem Supabase configurado e usuário autenticado."))
             for button in (self.new_button, self.edit_button, self.settle_button, self.cancel_button):
@@ -264,7 +369,7 @@ class FinancePage(QDialog):
             self._load()
 
     @staticmethod
-    def _table(headers: list[str]) -> QTableWidget:
+    def _table(headers: list[str], stretch: tuple[int, ...]) -> QTableWidget:
         table = QTableWidget(0, len(headers))
         table.setHorizontalHeaderLabels(headers)
         table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -273,18 +378,24 @@ class FinancePage(QDialog):
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
         table.verticalHeader().setDefaultSectionSize(42)
-        table.horizontalHeader().setStretchLastSection(True)
         table.setWordWrap(False)
         table.setHorizontalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
+        header = table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(70)
+        for column in range(len(headers)):
+            mode = QHeaderView.ResizeMode.Stretch if column in stretch else QHeaderView.ResizeMode.ResizeToContents
+            header.setSectionResizeMode(column, mode)
         return table
 
     @staticmethod
     def _preview_entries() -> list[dict[str, Any]]:
         today = date.today()
         return [
-            {"id": "demo-1", "direction": "entrada", "category": "Venda", "description": "Venda de armação premium", "amount": 489.90, "due_date": today.isoformat(), "status": "pago", "payment_method": "Pix", "counterparty": "Cliente demonstração", "reference": "VEN-0001", "notes": "", "paid_at": today.isoformat()},
+            {"id": "demo-1", "direction": "entrada", "category": "Vendas", "description": "Venda V-0001", "amount": 489.90, "due_date": today.isoformat(), "status": "pago", "payment_method": "Pix", "counterparty": "Cliente demonstração", "reference": "VEN-0001", "notes": "", "paid_at": today.isoformat(), "sales_order_id": "s1"},
             {"id": "demo-2", "direction": "saida", "category": "Fornecedor", "description": "Reposição de armações", "amount": 1250.00, "due_date": (today + timedelta(days=3)).isoformat(), "status": "pendente", "payment_method": "Boleto", "counterparty": "Fornecedor demonstração", "reference": "CP-0001", "notes": "", "paid_at": None},
-            {"id": "demo-3", "direction": "entrada", "category": "Venda", "description": "Venda de lentes", "amount": 799.00, "due_date": (today - timedelta(days=5)).isoformat(), "status": "pago", "payment_method": "Cartão de crédito", "counterparty": "Cliente demonstração", "reference": "VEN-0002", "notes": "", "paid_at": today.isoformat()},
+            {"id": "demo-3", "direction": "entrada", "category": "Vendas", "description": "Venda V-0002 — parcela 2/3", "amount": 266.33, "due_date": (today + timedelta(days=12)).isoformat(), "status": "pendente", "payment_method": "Crediário", "counterparty": "Cliente demonstração", "reference": "VEN-0002", "notes": "", "paid_at": None, "sales_order_id": "s2"},
+            {"id": "demo-4", "direction": "saida", "category": "Aluguel", "description": "Aluguel da loja", "amount": 2800.00, "due_date": (today - timedelta(days=2)).isoformat(), "status": "pendente", "payment_method": "Transferência", "counterparty": "Imobiliária", "reference": "", "notes": "", "paid_at": None},
         ]
 
     def _load(self) -> None:
@@ -297,134 +408,102 @@ class FinancePage(QDialog):
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao carregar financeiro", f"{exc}\n\nConfirme se a migration 202610240006_finance_module.sql foi aplicada no Supabase.")
 
+    def _period_changed(self, *_args: object) -> None:
+        custom = self.period.currentText() == "Personalizado"
+        for widget in (self.custom_start, self.custom_until, self.custom_end):
+            widget.setVisible(custom)
+        self._render()
+
     def _period_bounds(self) -> tuple[date | None, date | None]:
-        today = date.today()
-        choice = self.period.currentText()
-        if choice == "Este mês":
-            return today.replace(day=1), today
-        if choice == "Últimos 7 dias":
-            return today - timedelta(days=6), today
-        if choice == "Últimos 30 dias":
-            return today - timedelta(days=29), today
-        if choice == "Este ano":
-            return today.replace(month=1, day=1), today
-        return None, None
+        return reports.period_bounds(self.period.currentText(), custom_start=self.custom_start.date().toPython(),
+                                     custom_end=self.custom_end.date().toPython())
 
     def _filtered(self) -> list[dict[str, Any]]:
         start, end = self._period_bounds()
         term = self.search.text().strip().casefold()
-        result = []
-        for entry in self._entries:
-            due = _date(entry.get("paid_at") if entry.get("status") == "pago" else entry.get("due_date"))
-            if start and due:
-                try:
-                    parsed = date.fromisoformat(due)
-                except ValueError:
-                    continue
-                if parsed < start or parsed > end:
-                    continue
-            if term and not any(term in str(entry.get(key) or "").casefold() for key in ("description", "category", "counterparty", "reference")):
-                continue
-            result.append(entry)
-        return result
+        return [
+            entry for entry in self._entries
+            if reports.in_period(entry, start, end)
+            and (not term or any(term in str(entry.get(key) or "").casefold() for key in ("description", "category", "counterparty", "reference")))
+        ]
 
     def _render(self, *_args: object) -> None:
+        if not hasattr(self, "sales_table"):
+            return
         entries = self._filtered()
         paid_income = sum(float(e.get("amount") or 0) for e in entries if e.get("direction") == "entrada" and e.get("status") == "pago")
         paid_expense = sum(float(e.get("amount") or 0) for e in entries if e.get("direction") == "saida" and e.get("status") == "pago")
         open_total = sum(float(e.get("amount") or 0) for e in entries if e.get("status") == "pendente")
-        self.income_metric.set_value(_money(paid_income))
-        self.expense_metric.set_value(_money(paid_expense))
-        self.balance_metric.set_value(_money(paid_income - paid_expense))
-        self.pending_metric.set_value(_money(open_total))
-        self._populate(self.cash_table, entries, ["due_date", "direction", "description", "category", "counterparty", "amount", "status", "payment_method", "reference"])
-        self._populate(self.payables_table, [e for e in entries if e.get("direction") == "saida"], ["due_date", "description", "counterparty", "category", "amount", "status"])
-        self._populate(self.receivables_table, [e for e in entries if e.get("direction") == "entrada" and e.get("status") != "pago"], ["due_date", "description", "counterparty", "category", "amount", "status"])
-        self._populate(self.sales_table, [e for e in entries if e.get("direction") == "entrada" and str(e.get("category") or "").casefold() in ("venda", "vendas")], ["due_date", "description", "counterparty", "payment_method", "amount", "status", "reference"])
-
-    @staticmethod
-    def _bold_font():
-        from PySide6.QtGui import QFont
-        font = QFont()
-        font.setBold(True)
-        return font
+        self.income_metric.set_value(reports.money(paid_income))
+        self.expense_metric.set_value(reports.money(paid_expense))
+        self.balance_metric.set_value(reports.money(paid_income - paid_expense))
+        self.pending_metric.set_value(reports.money(open_total))
+        pending = [e for e in entries if e.get("status") == "pendente"]
+        self._populate(self.cash_table, entries, ["entry_day", "direction", "description", "category", "counterparty", "amount", "status", "payment_method", "reference"])
+        self._populate(self.payables_table, [e for e in pending if e.get("direction") == "saida"], ["due_date", "description", "counterparty", "category", "payment_method", "amount", "status"])
+        self._populate(self.receivables_table, [e for e in pending if e.get("direction") == "entrada"], ["due_date", "description", "counterparty", "category", "payment_method", "amount", "status"])
+        sales = [e for e in entries if e.get("direction") == "entrada"
+                 and (e.get("sales_order_id") or str(e.get("category") or "").casefold() in SALES_CATEGORIES)]
+        self._populate(self.sales_table, sales, ["entry_day", "description", "counterparty", "payment_method", "amount", "status", "reference"])
 
     def _populate(self, table: QTableWidget, rows: list[dict[str, Any]], fields: list[str]) -> None:
         table.setRowCount(len(rows))
+        is_receivable = table is self.receivables_table
+        is_payable = table is self.payables_table
         for row_index, entry in enumerate(rows):
+            is_income = entry.get("direction") == "entrada"
             for column, field in enumerate(fields):
-                if field == "due_date":
-                    value = _date(entry.get(field)) or "—"
+                if field == "entry_day":
+                    day = reports.entry_day(entry)
+                    value = day.strftime("%d/%m/%Y") if day else "—"
+                elif field == "due_date":
+                    value = reports.br_date(entry.get(field))
                 elif field == "direction":
-                    value = "Entrada" if entry.get(field) == "entrada" else "Saída"
+                    value = "Entrada" if is_income else "Saída"
                 elif field == "amount":
-                    value = _money(entry.get(field))
+                    value = reports.money(entry.get(field))
                 elif field == "status":
-                    value = {"pendente": "Pendente", "pago": "Pago/Recebido", "cancelado": "Cancelado"}.get(str(entry.get(field)), str(entry.get(field) or "—"))
-                    if entry.get("status") == "pendente" and _date(entry.get("due_date")) and _date(entry.get("due_date")) < date.today().isoformat():
-                        value = "Atrasado"
-                elif field == "payment_method":
-                    value = entry.get(field) or "—"
+                    value = reports.status_label(entry)
                 else:
                     value = str(entry.get(field) or "—")
-                item = QTableWidgetItem(str(value))
-                item.setToolTip(str(value))
+                item = QTableWidgetItem(value)
+                item.setToolTip(value)
                 item.setData(Qt.ItemDataRole.UserRole, entry.get("id"))
                 if field == "amount":
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                # Apply restrained semantic colors to reinforce income and expense meaning.
-                is_receivable = table is self.receivables_table
-                is_payable = table is self.payables_table
-                is_income = entry.get("direction") == "entrada"
-                if field == "amount":
                     if is_receivable or (not is_payable and is_income):
                         item.setForeground(QColor("#0E8A5B"))
-                        item.setFont(self._bold_font())
-                    elif is_payable or (table is self.cash_table and not is_income):
+                        item.setFont(_bold())
+                    elif is_payable or not is_income:
                         item.setForeground(QColor("#C03030"))
-                        item.setFont(self._bold_font())
+                        item.setFont(_bold())
                 if field == "status":
                     if entry.get("status") == "pago":
                         item.setForeground(QColor("#0E8A5B"))
                     elif value == "Atrasado":
                         item.setForeground(QColor("#C03030"))
-                        item.setFont(self._bold_font())
+                        item.setFont(_bold())
                     elif entry.get("status") == "pendente":
                         item.setForeground(QColor("#9A6200"))
                     elif entry.get("status") == "cancelado":
                         item.setForeground(QColor("#8A97AB"))
                 table.setItem(row_index, column, item)
-        # Calculate widths on the first render, then preserve the Reference column exactly.
-        if table is self.cash_table and self._reference_column_width is not None:
-            table.horizontalHeader().setStretchLastSection(False)
-            table.resizeColumnsToContents()
-            table.setColumnWidth(len(fields) - 1, self._reference_column_width)
-        else:
-            if table is self.cash_table:
-                table.horizontalHeader().setStretchLastSection(False)
-            table.resizeColumnsToContents()
-            if table is self.cash_table:
-                self._reference_column_width = table.columnWidth(len(fields) - 1)
-        if table is not self.cash_table:
-            table.horizontalHeader().setStretchLastSection(True)
+
+    def _current_table(self) -> QTableWidget:
+        return [self.cash_table, self.payables_table, self.receivables_table, self.sales_table][self.tabs.currentIndex()]
 
     def _selected_entry(self) -> dict[str, Any] | None:
-        table = [self.cash_table, self.payables_table, self.receivables_table, self.sales_table][self.tabs.currentIndex()]
+        table = self._current_table()
         row = table.currentRow()
-        if row < 0:
+        if row < 0 or table.item(row, 0) is None:
             QMessageBox.information(self, "Selecione um lançamento", "Selecione um registro na tabela.")
             return None
         entry_id = table.item(row, 0).data(Qt.ItemDataRole.UserRole)
-        for entry in self._filtered():
-            if str(entry.get("id")) == str(entry_id):
-                return entry
-        return None
+        return next((entry for entry in self._entries if str(entry.get("id")) == str(entry_id)), None)
 
     def _edit_selected(self) -> None:
         entry = self._selected_entry()
-        if not entry:
-            return
-        if self._preview_mode:
+        if not entry or self._preview_mode:
             return
         dialog = FinancialEntryDialog(entry, self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -448,14 +527,10 @@ class FinancePage(QDialog):
             record["organization_id"] = self._organization_id
             record["created_by"] = session_manager.current.user_id if session_manager.current else None
             result = self._client.table("financial_entries").insert(record).execute()
-            if not result.data:
-                # PostgREST may omit representations depending on client configuration; reload confirms persistence.
-                self._load()
-                if any(e.get("description") == record["description"] and float(e.get("amount") or 0) == record["amount"] for e in self._entries):
-                    QMessageBox.information(self, "Lançamento salvo", "O lançamento foi registrado.")
-                    return
-                raise RuntimeError("O Supabase não confirmou o novo lançamento.")
             self._load()
+            if not result.data and not any(
+                    e.get("description") == record["description"] and float(e.get("amount") or 0) == record["amount"] for e in self._entries):
+                raise RuntimeError("O Supabase não confirmou o novo lançamento.")
         except Exception as exc:
             QMessageBox.critical(self, "Falha ao salvar lançamento", str(exc))
 
@@ -463,15 +538,13 @@ class FinancePage(QDialog):
         entry = self._selected_entry()
         if not entry or self._preview_mode:
             return
-        if entry.get("status") == "pago":
-            QMessageBox.information(self, "Já liquidado", "Este lançamento já está marcado como pago/recebido.")
+        if entry.get("status") != "pendente":
+            QMessageBox.information(self, "Lançamento não está em aberto",
+                                    "Só lançamentos pendentes podem ser marcados como pagos/recebidos.")
             return
         try:
-            result = self._client.table("financial_entries").update({"status": "pago", "paid_at": date.today().isoformat()}).eq("id", entry["id"]).eq("organization_id", self._organization_id).execute()
-            if not result.data:
-                self._load()
-            else:
-                self._load()
+            self._client.table("financial_entries").update({"status": "pago", "paid_at": date.today().isoformat()}).eq("id", entry["id"]).eq("organization_id", self._organization_id).execute()
+            self._load()
         except Exception as exc:
             QMessageBox.critical(self, "Falha ao liquidar lançamento", str(exc))
 
@@ -489,3 +562,43 @@ class FinancePage(QDialog):
             self._load()
         except Exception as exc:
             QMessageBox.critical(self, "Falha ao cancelar lançamento", str(exc))
+
+    # ------------------------------------------------------------------ reports
+    def _export_report(self) -> None:
+        dialog = ReportExportDialog(self.period.currentText(), self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        start, end = dialog.bounds()
+        store = store_display_name(self._ctx, load_store_settings(self._ctx)) if self._ctx else "Ótica Linda Fashion"
+        report = reports.build_report(self._entries, store, dialog.period.currentText(), start, end,
+                                      include_cancelled=dialog.include_cancelled.isChecked())
+        extension = dialog.extension()
+        documents = Path.home() / "Documents"
+        suggested = str((documents if documents.is_dir() else Path.home()) / reports.default_filename(report, extension))
+        filter_text = "Planilha Excel (*.xlsx)" if extension == "xlsx" else "Documento PDF (*.pdf)"
+        path, _selected = QFileDialog.getSaveFileName(self, "Salvar relatório financeiro", suggested, filter_text)
+        if not path:
+            return
+        if not path.lower().endswith(f".{extension}"):
+            path += f".{extension}"
+        try:
+            (reports.export_xlsx if extension == "xlsx" else reports.export_pdf)(report, path)
+        except PermissionError:
+            QMessageBox.critical(self, "Arquivo em uso", "Feche o arquivo no Excel ou no leitor de PDF e tente novamente.")
+            return
+        except Exception as exc:
+            QMessageBox.critical(self, "Falha ao gerar relatório", str(exc))
+            return
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setWindowTitle("Relatório gerado")
+        box.setText(f"Relatório salvo com {len(report.rows)} lançamento(s) de {report.range_text}.")
+        box.setInformativeText(path)
+        open_button = box.addButton("Abrir arquivo", QMessageBox.ButtonRole.AcceptRole)
+        folder_button = box.addButton("Abrir pasta", QMessageBox.ButtonRole.ActionRole)
+        box.addButton("Fechar", QMessageBox.ButtonRole.RejectRole)
+        box.exec()
+        if box.clickedButton() is open_button:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+        elif box.clickedButton() is folder_button:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(path).parent)))

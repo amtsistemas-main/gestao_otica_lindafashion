@@ -16,6 +16,7 @@ from core.organization import OrganizationContext, current_organization
 from modules.lab_orders import statuses
 from modules.lab_orders.repository import LabOrderRepository
 from modules.prescriptions.repository import PrescriptionRepository
+from ui.components.calendar import make_date_edit
 from ui.components.ui_kit import make_button, notice
 
 FRAME_FIELDS = [("ponte", "Ponte"), ("horiz", "Horizontal"), ("vert", "Vertical"), ("diag_maior", "Diag. maior"), ("diametro", "Diâmetro")]
@@ -201,12 +202,8 @@ class LabOrderDialog(QDialog):
 
     @staticmethod
     def _date_field(value: object, default_days: int) -> QDateEdit:
-        field = QDateEdit()
-        field.setCalendarPopup(True)
-        field.setDisplayFormat("dd/MM/yyyy")
         parsed = _parse_date(value)
-        field.setDate(QDate(parsed.year, parsed.month, parsed.day) if parsed else QDate.currentDate().addDays(default_days))
-        return field
+        return make_date_edit(parsed or QDate.currentDate().addDays(default_days))
 
     def _load_prescriptions(self, *_args: object) -> None:
         self.prescription.clear()

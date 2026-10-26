@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from modules.prescriptions.models import SOURCES, Prescription
 from modules.prescriptions.repository import PrescriptionRepository
 from modules.prescriptions.widgets import PrescriptionEditor
+from ui.components.calendar import make_date_edit
 from ui.components.ui_kit import make_button, notice
 
 
@@ -67,13 +68,8 @@ class PrescriptionDialog(QDialog):
         info_grid.setContentsMargins(18, 14, 18, 14)
         info_grid.setHorizontalSpacing(16)
         info_grid.setVerticalSpacing(10)
-        self.prescribed_at = QDateEdit()
-        self.prescribed_at.setCalendarPopup(True)
-        self.prescribed_at.setDisplayFormat("dd/MM/yyyy")
-        self.prescribed_at.setDate(QDate.currentDate())
-        self.expires_at = QDateEdit()
-        self.expires_at.setCalendarPopup(True)
-        self.expires_at.setDisplayFormat("dd/MM/yyyy")
+        self.prescribed_at = make_date_edit(QDate.currentDate())
+        self.expires_at = make_date_edit()
         self.source = QComboBox()
         for code, label in SOURCES.items():
             self.source.addItem(label, code)
