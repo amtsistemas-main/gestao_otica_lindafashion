@@ -9,6 +9,7 @@ env/
 build/
 dist/
 *.spec
+!packaging/*.spec
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -25,3 +26,8 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+
+node_modules/
+
+# Configurações pessoais do Claude Code
+.claude/settings.local.json
