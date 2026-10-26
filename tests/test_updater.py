@@ -12,6 +12,7 @@ def _payload(**overrides):
         "prerelease": False,
         "body": "Novidades",
         "assets": [
+            {"name": "OticaLindaFashion-Setup.exe", "browser_download_url": "https://x/fixed.exe"},
             {"name": "OticaLindaFashion-Setup-1.2.0.exe", "browser_download_url": "https://x/setup.exe"},
             {"name": "OticaLindaFashion-Setup-1.2.0.exe.sha256", "browser_download_url": "https://x/setup.sha256"},
         ],
@@ -33,7 +34,7 @@ def test_release_requires_installer_and_hash():
     assert release.version == "1.2.0"
     assert release.installer_url == "https://x/setup.exe"
     assert release.sha256_url == "https://x/setup.sha256"
-    assert updater.release_from_payload(_payload(assets=_payload()["assets"][:1])) is None
+    assert updater.release_from_payload(_payload(assets=_payload()["assets"][:2])) is None
     assert updater.release_from_payload(_payload(draft=True)) is None
     assert updater.release_from_payload(_payload(prerelease=True)) is None
 

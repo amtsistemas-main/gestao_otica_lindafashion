@@ -113,6 +113,12 @@ Para lançar uma versão nova:
 3. Publique: `powershell -ExecutionPolicy Bypass -File packaging\publish.ps1`. O script usa a credencial do GitHub já salva no Git, cria a release `v1.0.1` com o instalador, o `.sha256` e as novidades do CHANGELOG, e só a torna visível depois do envio completo.
 4. Faça o commit e crie a tag `v1.0.1` no repositório do código.
 
+### Página de download (rota oculta no site)
+
+Cada publicação também envia uma cópia com nome fixo, então o link permanente sempre entrega a versão mais recente: `https://github.com/amtsistemas-main/oticalindafashion-releases/releases/latest/download/OticaLindaFashion-Setup.exe`.
+
+A página de instalação para o cliente é gerada por `python packaging/site/build_site.py <rota>`, que cria `dist/site/<rota>/` (página com `noindex` e `.htaccess`) e um `.zip` para enviar ao `public_html` do site. **A rota não é gravada no repositório**, que é público. Guarde-a fora do Git.
+
 ## Segurança e integridade
 
 - Nunca configure `service_role` ou qualquer segredo privilegiado do Supabase no cliente desktop.

@@ -57,8 +57,11 @@ if (-not $notes) { $notes = "Versão $version." }
 $release = Invoke-GitHub Post "https://api.github.com/repos/$repo/releases" @{
     tag_name = "v$version"; name = "Ótica Linda Fashion $version"; body = $notes; draft = $true
 }
-foreach ($file in @($setup, $hashFile)) {
-    $assetName = Split-Path $file -Leaf
+# The fixed-name copy keeps the site's link permanent:
+# https://github.com/<repo>/releases/latest/download/OticaLindaFashion-Setup.exe
+$assets = @(@($setup, $name), @($hashFile, "$name.sha256"), @($setup, "OticaLindaFashion-Setup.exe"))
+foreach ($asset in $assets) {
+    $file, $assetName = $asset
     Write-Host "Enviando $assetName" -ForegroundColor Cyan
     Invoke-RestMethod -Method Post -Uri "https://uploads.github.com/repos/$repo/releases/$($release.id)/assets?name=$assetName" `
         -Headers $headers -InFile $file -ContentType "application/octet-stream" | Out-Null

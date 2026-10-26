@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Instalar o sistema — Ótica Linda Fashion</title>
+<style>
+  :root {
+    --navy: #102957; --blue: #2165F5; --blue-dark: #1A52CC; --ink: #1E2B42; --slate: #4A5A75;
+    --muted: #7A889E; --line: #DCE3EE; --soft: #F5F7FB; --tint: #EAF0FC; --amber: #B7791F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; color: var(--ink);
+    background: radial-gradient(1200px 600px at 85% -10%, #2D5BC9 0%, transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, #1B3E8A 0%, transparent 55%), var(--navy);
+    padding: 40px 16px;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  .card { background: #fff; border-radius: 20px; box-shadow: 0 24px 60px rgba(4, 16, 45, .35); overflow: hidden; }
+  .hero { padding: 36px 40px 30px; text-align: center; border-bottom: 1px solid var(--line); }
+  .hero img { width: 240px; max-width: 70%; height: auto; }
+  h1 { margin: 22px 0 6px; font-size: 26px; color: var(--navy); }
+  .lead { margin: 0; color: var(--slate); font-size: 15px; }
+  .download { margin: 26px auto 0; display: inline-flex; align-items: center; gap: 12px; padding: 16px 30px;
+    background: var(--blue); color: #fff; text-decoration: none; font-weight: bold; font-size: 17px;
+    border-radius: 12px; box-shadow: 0 10px 24px rgba(33, 101, 245, .35); transition: background .15s, transform .15s; }
+  .download:hover { background: var(--blue-dark); transform: translateY(-1px); }
+  .download:focus-visible { outline: 3px solid #9DBBFB; outline-offset: 3px; }
+  .download svg { width: 22px; height: 22px; flex: none; }
+  .meta { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+  .notice { display: none; margin: 18px auto 0; max-width: 520px; padding: 12px 16px; border-radius: 10px;
+    background: #FFF7E6; color: #7A4E0E; font-size: 14px; border: 1px solid #F3D9A6; }
+  .content { padding: 30px 40px 34px; }
+  h2 { margin: 0 0 16px; font-size: 17px; color: var(--navy); }
+  ol.steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  ol.steps li { counter-increment: step; position: relative; padding: 0 0 18px 50px; font-size: 15px; line-height: 1.5; }
+  ol.steps li::before { content: counter(step); position: absolute; left: 0; top: -2px; width: 32px; height: 32px;
+    border-radius: 50%; background: var(--tint); color: var(--blue); font-weight: bold; display: grid; place-items: center; }
+  ol.steps li strong { color: var(--navy); }
+  .smartscreen { margin-top: 8px; padding: 12px 14px; border-left: 4px solid var(--amber); background: var(--soft);
+    border-radius: 0 8px 8px 0; font-size: 14px; color: var(--slate); }
+  .key { display: inline-block; padding: 1px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+    font-size: 13px; color: var(--ink); white-space: nowrap; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 10px; }
+  .fact { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); font-size: 14px; line-height: 1.45; }
+  .fact b { display: block; margin-bottom: 4px; color: var(--navy); }
+  footer { margin-top: 22px; text-align: center; color: #B9C6DE; font-size: 13px; }
+  footer a { color: #fff; }
+  @media (max-width: 560px) {
+    body { padding: 20px 16px; }
+    .hero, .content { padding-left: 22px; padding-right: 22px; }
+    h1 { font-size: 22px; }
+    .download { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <section class="hero">
+      <img src="{{LOGO}}" alt="Ótica Linda Fashion">
+      <h1>Instalar o sistema de gestão</h1>
+      <p class="lead">Para computadores com Windows 10 ou 11.</p>
+      <a class="download" id="download" href="{{DOWNLOAD_URL}}" rel="noreferrer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        Baixar o instalador
+      </a>
+      <p class="meta" id="meta">Versão mais recente · cerca de 55 MB</p>
+      <p class="notice" id="notice">Você está em um celular ou em outro sistema. Abra esta página no computador com Windows onde o sistema será instalado.</p>
+    </section>
+    <section class="content">
+      <h2>Como instalar</h2>
+      <ol class="steps">
+        <li><strong>Baixe o instalador</strong> pelo botão acima. O arquivo se chama <span class="key">OticaLindaFashion-Setup.exe</span>.</li>
+        <li><strong>Abra o arquivo baixado.</strong>
+          <div class="smartscreen">Se aparecer a tela azul <b>“O Windows protegeu o computador”</b>, clique em
+            <span class="key">Mais informações</span> e depois em <span class="key">Executar assim mesmo</span>.
+            Isso só acontece na primeira instalação.</div>
+        </li>
+        <li><strong>Siga as telas do instalador</strong> e clique em <span class="key">Instalar</span>. Não é preciso senha de administrador do Windows.</li>
+        <li><strong>Entre no sistema</strong> com o usuário e a senha fornecidos pelo administrador da loja.</li>
+      </ol>
+      <div class="facts">
+        <div class="fact"><b>Atualizações automáticas</b>O sistema se atualiza sozinho. Não é preciso baixar de novo.</div>
+        <div class="fact"><b>Requisitos</b>Windows 10 ou 11 (64 bits) e conexão com a internet.</div>
+        <div class="fact"><b>Seus dados</b>Ficam na nuvem: trocar ou formatar o computador não apaga nada.</div>
+      </div>
+    </section>
+  </div>
+  <footer>Desenvolvido por AMT Sistemas &amp; Soluções · <a href="https://www.amtsistemas.com.br" rel="noreferrer">www.amtsistemas.com.br</a></footer>
+</main>
+<script>
+  (function () {
+    var ua = navigator.userAgent || "";
+    if (!/Windows NT/i.test(ua)) document.getElementById("notice").style.display = "block";
+    // Versão e tamanho da última publicação; sem conexão com a API, o texto padrão permanece.
+    fetch("https://api.github.com/repos/{{REPO}}/releases/latest", { referrerPolicy: "no-referrer" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (release) {
+        if (!release) return;
+        var asset = (release.assets || []).filter(function (a) { return a.name === "OticaLindaFashion-Setup.exe"; })[0];
+        var parts = ["Versão " + String(release.tag_name || "").replace(/^v/i, "")];
+        if (asset) parts.push(Math.round(asset.size / 1048576) + " MB");
+        if (release.published_at) parts.push("publicada em " + new Date(release.published_at).toLocaleDateString("pt-BR"));
+        document.getElementById("meta").textContent = parts.join(" · ");
+      })
+      .catch(function () {});
+  })();
+</script>
+</body>
+</html>
