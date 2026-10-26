@@ -26,7 +26,7 @@ from config.branding import APP_NAME, WINDOW_TITLE
 from config.version import APP_VERSION
 from core.auth_service import AuthService
 from core.organization import OrganizationContext, current_organization
-from core.permissions import ROLE_LABELS
+from core.permissions import ROLE_LABELS, module_enabled
 from core.session_manager import session_manager
 from core.usernames import username_from_email
 from modules.products.page import ProductsPage
@@ -59,6 +59,7 @@ NAV_ITEMS = [
     ("Análises", "fa5s.chart-line", "Análises"),
     ("Configurações", "fa5s.cog", "Configurações"),
 ]
+NAV_ITEMS = [item for item in NAV_ITEMS if module_enabled(item[2])]
 
 # First screen of each module, shown inside the workspace (in place of the overview).
 # Each receives preview_mode and parent; secondary screens keep opening as windows.
@@ -359,6 +360,8 @@ class MainWindow(QMainWindow):
         if module == "Pedidos":
             # Pedidos is part of Vendas / PDV.
             module, tab = "Vendas", SalesHubPage.TAB_ORDERS
+        if not module_enabled(module):
+            return
         if not self._can_open(module):
             QMessageBox.information(self, "Acesso não liberado",
                                     f"Seu usuário não tem acesso ao módulo {module}. Fale com o administrador da loja.")

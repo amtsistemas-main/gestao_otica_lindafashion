@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (
 
 from core.edge_functions import EdgeFunctionError, invoke_edge_function
 from core.organization import OrganizationContext
-from core.permissions import DEFAULT_MEMBER_MODULES, MODULES, ROLE_LABELS, modules_summary
+from core.permissions import (AVAILABLE_MODULES, DEFAULT_MEMBER_MODULES, DISABLED_MODULES, MODULES, ROLE_LABELS,
+                              modules_summary)
 from core.usernames import USERNAME_RULES, is_valid_username, normalize_username, username_from_email
 from ui.components.ui_kit import make_button, notice
 
@@ -121,7 +122,9 @@ class UserFormDialog(QDialog):
         current = (member or {}).get("allowed_modules")
         selected = set(DEFAULT_MEMBER_MODULES if member is None else (current if current is not None else [k for k, _l, _n in MODULES]))
         self._checks: dict[str, QCheckBox] = {}
-        for index, (key, label, _nav) in enumerate(MODULES):
+        # Access to a temporarily disabled module is kept as it was when saving.
+        self._kept_modules = [key for key in selected if key in DISABLED_MODULES]
+        for index, (key, label, _nav) in enumerate(AVAILABLE_MODULES):
             check = QCheckBox(label)
             check.setChecked(key in selected)
             self._checks[key] = check
@@ -162,7 +165,7 @@ class UserFormDialog(QDialog):
             "username": normalize_username(self.username.text()),
             "password": self.password.text(),
             "role": role,
-            "allowed_modules": None if role == "admin" else [key for key, check in self._checks.items() if check.isChecked()],
+            "allowed_modules": None if role == "admin" else [key for key, check in self._checks.items() if check.isChecked()] + self._kept_modules,
         }
 
     def _accept(self) -> None:
