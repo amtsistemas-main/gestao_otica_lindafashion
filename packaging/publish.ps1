@@ -15,7 +15,11 @@ $setup = "dist\installer\$name"
 $hashFile = "$setup.sha256"
 if (-not (Test-Path $setup) -or -not (Test-Path $hashFile)) { throw "Instalador $version não encontrado: execute packaging\build.ps1 antes." }
 
-$credential = "protocol=https`nhost=github.com`n`n" | git credential fill
+# Windows PowerShell pipes text to native programs in a way git rejects; feed the request from a file.
+$request = [IO.Path]::GetTempFileName()
+[IO.File]::WriteAllText($request, "protocol=https`nhost=github.com`n`n")
+$credential = cmd /c "git credential fill < `"$request`""
+Remove-Item $request
 $token = ($credential | Where-Object { $_ -like "password=*" }) -replace "^password=", ""
 if (-not $token) { throw "Credencial do GitHub não encontrada: faça um git push antes para salvar o login." }
 $headers = @{ Authorization = "Bearer $token"; Accept = "application/vnd.github+json"; "User-Agent" = "OticaLindaFashion-Publisher" }
