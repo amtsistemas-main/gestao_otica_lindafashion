@@ -11,7 +11,8 @@ Primeira versão de produção.
 - Relacionamento (CRM): segmentos de recompra, tarefas com calendário (atalhos e dias já agendados) e mensagens sugeridas.
 - Módulo Análises desativado nesta versão (permanece no código para ser liberado depois).
 - **Vendedor em cada venda** (usuários cadastrados pelo administrador), exibido na lista de vendas e no PDF, para o repasse de comissões.
-- **Financeiro**: valor digitado pelos centavos, filtros por dia, semana, mês, ano ou período personalizado, abas com as mesmas regras e tabelas ocupando a tela.
+- **Valores em dinheiro** digitados pelos centavos no lançamento financeiro e no pagamento do PDV (o valor sugerido é substituído ao digitar).
+- **Financeiro**: filtros por dia, semana, mês, ano ou período personalizado, abas com as mesmas regras e tabelas ocupando a tela.
 - **Relatórios financeiros** por período em PDF e planilha Excel para a contabilidade (resumo, lançamentos e resultado por categoria).
 - **Fornecedores por planilha XLSX**: baixar a planilha (com os cadastrados ou um exemplo), preencher e importar — cria novos e atualiza os existentes.
 

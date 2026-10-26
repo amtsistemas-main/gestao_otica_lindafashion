@@ -97,3 +97,20 @@ def test_money_edit_types_through_cents(qapp):
     assert field.text() == "R$ 1.234,50"
     field._paste("2.345,67")
     assert field.value() == 2345.67
+
+
+def test_money_edit_replaces_suggested_value(qapp):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+
+    from ui.components.money import MoneyEdit
+
+    field = MoneyEdit()
+    field.setValue(489.90)  # saldo sugerido pelo PDV
+    QTest.keyClicks(field, "5000")
+    assert field.value() == 50.0  # substitui, não soma dígitos ao saldo
+    field.setValue(489.90)
+    QTest.keyClick(field, Qt.Key.Key_Backspace)
+    assert field.value() == 48.99  # Backspace corrige o valor existente
+    QTest.keyClicks(field, "5")
+    assert field.value() == 489.95

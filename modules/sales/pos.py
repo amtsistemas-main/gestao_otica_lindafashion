@@ -29,6 +29,7 @@ from modules.sales.payments import (
 from modules.settings.service import StoreSettings
 from core.sellers import load_sellers, seller_label
 from ui.components.calendar import make_date_edit
+from ui.components.money import MoneyEdit
 from ui.components.ui_kit import make_button, notice
 
 SERVICE_ORDER_MARKER = "[[LF_OS_DATA]]"
@@ -344,10 +345,8 @@ class PosDialog(QDialog):
         for code, label in PAYMENT_METHODS.items():
             self.method.addItem(label, code)
         self.method.currentIndexChanged.connect(self._sync_payment_fields)
-        self.amount = QDoubleSpinBox()
-        self.amount.setRange(0, 9_999_999)
-        self.amount.setDecimals(2)
-        self.amount.setPrefix("R$ ")
+        # Typed through the cents (1, 2, 5, 0 -> R$ 12,50), like the finance entry value.
+        self.amount = MoneyEdit(maximum=9_999_999)
         self.amount.valueChanged.connect(self._sync_change)
         self.installments = QSpinBox()
         self.installments.setRange(1, 24)
