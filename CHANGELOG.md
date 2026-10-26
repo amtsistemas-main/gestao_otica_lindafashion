@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.0.1 — 26/10/2026
+
+- PDV voltou a abrir (erro introduzido no campo Vendedor da 1.0.0).
+- Leitor de código de barras: o Enter enviado após cada leitura não aciona mais botões da janela. No PDV a leitura só adiciona o item; no cadastro de produto pula para o próximo campo; nas buscas de Produtos e Vendas só pesquisa.
+- Verificação automática do instalador passa a abrir todas as telas principais antes de publicar.
+
 ## 1.0.0 — 26/10/2026
 
 Primeira versão de produção.

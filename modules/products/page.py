@@ -64,6 +64,8 @@ class ProductFormDialog(QDialog):
         self.barcode = QLineEdit()
         self.barcode.setPlaceholderText("Bipe o produto ou digite o código")
         self.barcode.setClearButtonEnabled(True)
+        # The reader's Enter jumps to the next field instead of saving the form.
+        self.barcode.returnPressed.connect(self.focusNextChild)
         self.sku = QLineEdit()
         self.sku.setPlaceholderText("Código interno (opcional)")
         self.name = QLineEdit()

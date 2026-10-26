@@ -29,6 +29,7 @@ from modules.sales.payments import (
 from modules.settings.service import StoreSettings
 from core.sellers import load_sellers, seller_label
 from ui.components.calendar import make_date_edit
+from ui.components.enter_guard import without_default_button
 from ui.components.money import MoneyEdit
 from ui.components.ui_kit import make_button, notice
 
@@ -92,6 +93,8 @@ class PosDialog(QDialog):
         self.setWindowTitle("Converter orçamento em venda" if quote else "PDV — nova venda")
         self.setMinimumSize(1180, 720)
         self.setWindowState(self.windowState() | Qt.WindowState.WindowMaximized)
+        # Each scan ends with Enter: it adds the item and never presses another button.
+        without_default_button(self)
 
         self._products, self._customers = self._load_catalog()
         self._sellers = load_sellers(ctx)
@@ -180,9 +183,9 @@ class PosDialog(QDialog):
         completer.setFilterMode(Qt.MatchFlag.MatchContains)
         completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.customer.currentIndexChanged.connect(self._customer_changed)
-        customer_label = _field_label("Cliente")
-        customer_label.setMinimumWidth(72)
-        row.addWidget(customer_label)
+        customer_caption = _field_label("Cliente")
+        customer_caption.setMinimumWidth(72)
+        row.addWidget(customer_caption)
         row.addWidget(self.customer, 1)
         self.prescription_button = make_button("Receitas", "fa5s.eye", "secondaryButton")
         self.prescription_button.setToolTip("Selecionar ou cadastrar a receita usada nesta venda")
@@ -197,9 +200,9 @@ class PosDialog(QDialog):
             self.seller.addItem(seller_label(seller), seller["user_id"])
         current_user = self._ctx.user_id if self._ctx else None
         self.seller.setCurrentIndex(max(0, self.seller.findData(current_user)))
-        seller_label = _field_label("Vendedor")
-        seller_label.setMinimumWidth(72)
-        seller_row.addWidget(seller_label)
+        seller_caption = _field_label("Vendedor")
+        seller_caption.setMinimumWidth(72)
+        seller_row.addWidget(seller_caption)
         seller_row.addWidget(self.seller, 1)
         layout.addLayout(seller_row)
         self.prescription_summary = QLabel("Selecione o cliente para sugerir a receita mais recente.")

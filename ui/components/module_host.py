@@ -6,6 +6,8 @@ from typing import Callable
 from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtWidgets import QDialog, QFrame, QScrollArea, QWidget
 
+from ui.components.enter_guard import without_default_button
+
 
 class _EscapeBlocker(QObject):
     """An embedded QDialog would hide itself on Esc; inside the main window that is never wanted."""
@@ -30,6 +32,7 @@ def embed_dialog(page: QDialog, on_finished: Callable[[], None] | None = None) -
     page.setMinimumSize(0, 0)
     page.setSizeGripEnabled(False)
     page.installEventFilter(_ESCAPE_BLOCKER)
+    without_default_button(page)
 
     def finished(_result: int) -> None:
         page.setVisible(True)

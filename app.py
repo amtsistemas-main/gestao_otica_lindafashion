@@ -55,21 +55,18 @@ def set_windows_app_id() -> None:
 
 
 def smoke_test(app: QApplication) -> int:
-    """Opens the main windows off-screen and exits: validates a packaged build."""
-    from PySide6.QtCore import Qt
-
+    """Opens every main screen off-screen and exits: validates a packaged build."""
     problems = []
     if not APP_ICON.is_file():
         problems.append("ícone ausente")
     if not get_settings().supabase_configured:
         problems.append("configuração do Supabase ausente")
-    for factory in (LoginWindow, lambda: MainWindow(preview_mode=True)):
-        window = factory()
-        window.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
-        window.show()
-        app.processEvents()
-        window.close()
-    print(f"smoke-test {APP_VERSION}: " + ("OK" if not problems else "FALHA - " + ", ".join(problems)))
+    from ui.smoke import check_screens
+
+    problems += check_screens(app)
+    for problem in problems:
+        logging.getLogger(__name__).error("smoke-test: %s", problem)
+    print(f"smoke-test {APP_VERSION}: " + ("OK" if not problems else "FALHA - " + " | ".join(problems)))
     return 0 if not problems else 1
 
 

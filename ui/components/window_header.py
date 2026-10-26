@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
     QPlainTextEdit, QPushButton, QScrollArea, QSpinBox, QTableWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
+from ui.components.enter_guard import install_enter_guard
+
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "images" / "logootica.png"
 
 _ACCEPT_ROLES = {
@@ -306,3 +308,4 @@ def install_window_headers(app: QApplication) -> None:
     installer = WindowHeaderInstaller(app)
     app.installEventFilter(installer)
     app.setProperty("_window_header_installer", installer)
+    install_enter_guard(app)
