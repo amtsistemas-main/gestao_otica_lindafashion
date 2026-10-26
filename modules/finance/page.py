@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 from core.organization import OrganizationContext, current_organization
 from core.session_manager import session_manager
 from modules.finance import reports
+from modules.sales.document_pdf import store_identity
 from modules.settings.service import load_store_settings, store_display_name
 from ui.components.calendar import make_date_edit
 from ui.components.money import MoneyEdit
@@ -569,7 +570,9 @@ class FinancePage(QDialog):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         start, end = dialog.bounds()
-        store = store_display_name(self._ctx, load_store_settings(self._ctx)) if self._ctx else "Ótica Linda Fashion"
+        settings = load_store_settings(self._ctx)
+        store = store_display_name(self._ctx, settings) if self._ctx else "Ótica Linda Fashion"
+        identity = store_identity(store, settings)
         report = reports.build_report(self._entries, store, dialog.period.currentText(), start, end,
                                       include_cancelled=dialog.include_cancelled.isChecked())
         extension = dialog.extension()
@@ -582,7 +585,10 @@ class FinancePage(QDialog):
         if not path.lower().endswith(f".{extension}"):
             path += f".{extension}"
         try:
-            (reports.export_xlsx if extension == "xlsx" else reports.export_pdf)(report, path)
+            if extension == "xlsx":
+                reports.export_xlsx(report, path)
+            else:
+                reports.export_pdf(report, path, identity)
         except PermissionError:
             QMessageBox.critical(self, "Arquivo em uso", "Feche o arquivo no Excel ou no leitor de PDF e tente novamente.")
             return

@@ -20,7 +20,7 @@ from core.organization import OrganizationContext, current_organization
 from core.phone import format_br_phone, normalize_br_whatsapp
 from modules.lab_orders import statuses as order_statuses
 from modules.prescriptions.repository import PrescriptionRepository
-from modules.sales.document_pdf import SalesDocument, StoreIdentity, build_sales_pdf
+from modules.sales.document_pdf import SalesDocument, build_sales_pdf, store_identity
 from modules.sales.pos import SERVICE_ORDER_MARKER, PosDialog
 from modules.settings.service import load_store_settings, store_display_name
 from core.sellers import load_sellers, seller_name
@@ -394,12 +394,7 @@ class SalesPage(QDialog):
 
         settings = load_store_settings(self._ctx)
         store_name = store_display_name(self._ctx, settings)
-        store = StoreIdentity(
-            name=store_name, document=settings.store_document, phone=settings.store_phone,
-            whatsapp=settings.store_whatsapp, email=settings.store_email, address=settings.store_address,
-            website=settings.store_website, terms=settings.document_terms,
-            quote_validity_days=settings.quote_validity_days,
-        )
+        store = store_identity(store_name, settings)
         return SalesDocument(
             order=order, customer=order.get("customers") or {}, items=list(items), payments=payments,
             receivables=receivables, prescription=prescription, legacy_prescription=legacy,

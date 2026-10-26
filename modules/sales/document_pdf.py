@@ -97,6 +97,16 @@ class StoreIdentity:
     quote_validity_days: int = 7
 
 
+def store_identity(name: str, settings: Any) -> StoreIdentity:
+    """Identity printed on every document, from the store settings (Configurações)."""
+    return StoreIdentity(
+        name=name, document=settings.store_document, phone=settings.store_phone,
+        whatsapp=settings.store_whatsapp, email=settings.store_email, address=settings.store_address,
+        website=settings.store_website, terms=settings.document_terms,
+        quote_validity_days=settings.quote_validity_days,
+    )
+
+
 @dataclass(slots=True)
 class SalesDocument:
     order: dict
@@ -257,6 +267,96 @@ class _NumberedCanvas(pdf_canvas.Canvas):
         super().save()
 
 
+# --------------------------------------------------------------------------- shared page chrome
+def spaced(text: str, markup: bool = False) -> str:
+    """Small-caps style letter spacing that keeps the gap between words visible.
+
+    Paragraph markup collapses repeated spaces, so word gaps use &nbsp; there.
+    """
+    gap = " &nbsp;&nbsp;" if markup else "   "
+    return gap.join(" ".join(word) for word in text.split())
+
+
+def paint_store_header(c: pdf_canvas.Canvas, store: StoreIdentity, regular: str, bold: str, *, page_w: float,
+                       page_h: float, margin_x: float, header_h: float, kind: str, title: str, issued: str,
+                       badge: tuple[str, colors.Color] | None = None) -> None:
+    """Store header shared by every document: logo, store identity, document kind/number/date and badge."""
+    c.saveState()
+    c.setFillColor(NAVY)
+    c.rect(0, page_h - 4.5, page_w, 4.5, stroke=0, fill=1)
+    c.setFillColor(BLUE)
+    c.rect(0, page_h - 6, page_w * 0.34, 1.5, stroke=0, fill=1)
+
+    top = page_h - 18
+    logo_h = 34
+    if LOGO_PATH.is_file():
+        reader = ImageReader(str(LOGO_PATH))
+        iw, ih = reader.getSize()
+        c.drawImage(reader, margin_x, top - logo_h, width=logo_h * iw / ih, height=logo_h, mask="auto")
+    else:
+        c.setFont(bold, 16)
+        c.setFillColor(NAVY)
+        c.drawString(margin_x, top - 22, store.name.upper())
+    lines = [
+        (bold, _join(store.name if store.document else "", f"CNPJ {store.document}" if store.document else "")),
+        (regular, _join(store.phone, f"WhatsApp {store.whatsapp}" if store.whatsapp else "", store.email, store.website)),
+        (regular, store.address),
+    ]
+    y = top - logo_h - 9.5
+    c.setFillColor(SLATE)
+    for font, text in lines:
+        if text:
+            c.setFont(font, 6.7)
+            c.drawString(margin_x, y, text[:150])
+            y -= 8.4
+
+    right = page_w - margin_x
+    c.setFont(bold, 7.2)
+    c.setFillColor(BLUE)
+    c.drawRightString(right, top - 5, spaced(kind))
+    c.setFont(bold, 15.5)
+    c.setFillColor(NAVY)
+    c.drawRightString(right, top - 23, title)
+    c.setFont(regular, 7)
+    c.setFillColor(SLATE)
+    c.drawRightString(right, top - 34, issued)
+    if badge is not None:
+        label, tone = badge
+        c.setFont(bold, 6.4)
+        badge_w = pdfmetrics.stringWidth(label, bold, 6.4) + 14
+        c.setFillColor(tone)
+        c.roundRect(right - badge_w, top - 50, badge_w, 11.5, 5.7, stroke=0, fill=1)
+        c.setFillColor(colors.white)
+        c.drawCentredString(right - badge_w / 2, top - 46.2, label)
+
+    c.setStrokeColor(LINE)
+    c.setLineWidth(0.6)
+    c.line(margin_x, page_h - header_h + 5, right, page_h - header_h + 5)
+    c.restoreState()
+
+
+def paint_store_footer(c: pdf_canvas.Canvas, store: StoreIdentity, regular: str, bold: str, *, page_w: float,
+                       margin_x: float, footer_h: float, generated: datetime, total_pages: int,
+                       note: str = "Documento sem valor fiscal") -> None:
+    c.saveState()
+    right = page_w - margin_x
+    c.setStrokeColor(LINE)
+    c.setLineWidth(0.6)
+    c.line(margin_x, footer_h - 4, right, footer_h - 4)
+    c.setFont(regular, 6.3)
+    c.setFillColor(MUTED)
+    c.drawString(margin_x, footer_h - 13, _join(
+        store.name, f"CNPJ {store.document}" if store.document else "", note,
+        "Gerado em " + generated.strftime("%d/%m/%Y %H:%M"),
+    ))
+    c.setFont(bold, 6.6)
+    c.setFillColor(NAVY)
+    c.drawRightString(right, footer_h - 13, f"Página {c.getPageNumber()} de {total_pages}")
+    c.restoreState()
+
+
+
+
 class _DashedCut(Flowable):
     """Tear-off line for the customer stub."""
 
@@ -316,57 +416,12 @@ class _Builder:
     def paint_page(self, c: pdf_canvas.Canvas, total_pages: int) -> None:
         self.total_pages = total_pages
         doc, s, store = self.doc, self.s, self.doc.store
-        c.saveState()
-        c.setFillColor(NAVY)
-        c.rect(0, PAGE_H - 4.5, PAGE_W, 4.5, stroke=0, fill=1)
-        c.setFillColor(BLUE)
-        c.rect(0, PAGE_H - 6, PAGE_W * 0.34, 1.5, stroke=0, fill=1)
-
-        top = PAGE_H - 18
-        logo_h = 34
-        if LOGO_PATH.is_file():
-            reader = ImageReader(str(LOGO_PATH))
-            iw, ih = reader.getSize()
-            c.drawImage(reader, MARGIN_X, top - logo_h, width=logo_h * iw / ih, height=logo_h, mask="auto")
-        else:
-            c.setFont(s.bold, 16)
-            c.setFillColor(NAVY)
-            c.drawString(MARGIN_X, top - 22, store.name.upper())
-        lines = [
-            (s.bold, _join(store.name if store.document else "", f"CNPJ {store.document}" if store.document else "")),
-            (s.regular, _join(store.phone, f"WhatsApp {store.whatsapp}" if store.whatsapp else "", store.email, store.website)),
-            (s.regular, store.address),
-        ]
-        y = top - logo_h - 9.5
-        c.setFillColor(SLATE)
-        for font, text in lines:
-            if text:
-                c.setFont(font, 6.7)
-                c.drawString(MARGIN_X, y, text[:150])
-                y -= 8.4
-
-        right = PAGE_W - MARGIN_X
-        c.setFont(s.bold, 7.2)
-        c.setFillColor(BLUE)
-        c.drawRightString(right, top - 5, self._spaced(doc.kind))
-        c.setFont(s.bold, 15.5)
-        c.setFillColor(NAVY)
-        c.drawRightString(right, top - 23, str(doc.order.get("order_number") or "—"))
-        c.setFont(s.regular, 7)
-        c.setFillColor(SLATE)
-        c.drawRightString(right, top - 34, "Emitido em " + self.created.strftime("%d/%m/%Y às %H:%M"))
         label, tone = self._status_badge()
-        c.setFont(s.bold, 6.4)
-        badge_w = pdfmetrics.stringWidth(label, s.bold, 6.4) + 14
-        c.setFillColor(tone)
-        c.roundRect(right - badge_w, top - 50, badge_w, 11.5, 5.7, stroke=0, fill=1)
-        c.setFillColor(colors.white)
-        c.drawCentredString(right - badge_w / 2, top - 46.2, label)
-
-        c.setStrokeColor(LINE)
-        c.setLineWidth(0.6)
-        c.line(MARGIN_X, PAGE_H - HEADER_H + 5, right, PAGE_H - HEADER_H + 5)
-
+        paint_store_header(
+            c, store, s.regular, s.bold, page_w=PAGE_W, page_h=PAGE_H, margin_x=MARGIN_X, header_h=HEADER_H,
+            kind=doc.kind, title=str(doc.order.get("order_number") or "—"),
+            issued="Emitido em " + self.created.strftime("%d/%m/%Y às %H:%M"), badge=(label, tone),
+        )
         if doc.is_cancelled:
             c.saveState()
             c.setFillColor(colors.Color(0.75, 0.19, 0.19, alpha=0.09))
@@ -375,28 +430,12 @@ class _Builder:
             c.rotate(32)
             c.drawCentredString(0, 0, "CANCELADA")
             c.restoreState()
-
-        c.setStrokeColor(LINE)
-        c.line(MARGIN_X, FOOTER_H - 4, right, FOOTER_H - 4)
-        c.setFont(s.regular, 6.3)
-        c.setFillColor(MUTED)
-        c.drawString(MARGIN_X, FOOTER_H - 13, _join(
-            store.name, f"CNPJ {store.document}" if store.document else "", "Documento sem valor fiscal",
-            "Gerado em " + self.generated.strftime("%d/%m/%Y %H:%M"),
-        ))
-        c.setFont(s.bold, 6.6)
-        c.setFillColor(NAVY)
-        c.drawRightString(right, FOOTER_H - 13, f"Página {c.getPageNumber()} de {total_pages}")
-        c.restoreState()
+        paint_store_footer(c, store, s.regular, s.bold, page_w=PAGE_W, margin_x=MARGIN_X, footer_h=FOOTER_H,
+                           generated=self.generated, total_pages=total_pages)
 
     @staticmethod
     def _spaced(text: str, markup: bool = False) -> str:
-        """Small-caps style letter spacing that keeps the gap between words visible.
-
-        Paragraph markup collapses repeated spaces, so word gaps use &nbsp; there.
-        """
-        gap = " &nbsp;&nbsp;" if markup else "   "
-        return gap.join(" ".join(word) for word in text.split())
+        return spaced(text, markup)
 
     def _status_badge(self) -> tuple[str, colors.Color]:
         status = self.doc.status

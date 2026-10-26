@@ -246,14 +246,16 @@ def export_xlsx(report: FinanceReport, path: str | Path) -> Path:
 
 
 # --------------------------------------------------------------------------- PDF
-def export_pdf(report: FinanceReport, path: str | Path) -> Path:
+def export_pdf(report: FinanceReport, path: str | Path, identity: Any = None) -> Path:
+    """``identity`` is the store StoreIdentity (same header as the sales document)."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-    from modules.sales.document_pdf import _register_fonts
+    from modules.sales.document_pdf import (FOOTER_H, HEADER_H, StoreIdentity, _NumberedCanvas, _register_fonts,
+                                            paint_store_footer, paint_store_header)
 
     regular, bold = _register_fonts()
     navy, blue, ink, slate, line, soft = (colors.HexColor(c) for c in ("#102957", "#2165F5", "#1E2B42", "#4A5A75", "#DCE3EE", "#F5F7FB"))
@@ -271,21 +273,21 @@ def export_pdf(report: FinanceReport, path: str | Path) -> Path:
     def esc(text: Any) -> str:
         return str(text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-    def decorate(canvas, doc) -> None:
-        canvas.saveState()
-        canvas.setFillColor(navy)
-        canvas.rect(0, page[1] - 22 * mm, page[0], 22 * mm, stroke=0, fill=1)
-        canvas.setFillColor(colors.white)
-        canvas.setFont(bold, 14)
-        canvas.drawString(margin, page[1] - 11 * mm, "Relatório financeiro")
-        canvas.setFont(regular, 9)
-        canvas.drawString(margin, page[1] - 17 * mm, f"{report.store}  •  {report.period_label}: {report.range_text}")
-        canvas.drawRightString(page[0] - margin, page[1] - 11 * mm, f"Gerado em {report.generated_at.strftime('%d/%m/%Y %H:%M')}")
-        canvas.setFillColor(slate)
-        canvas.setFont(regular, 7.5)
-        canvas.drawString(margin, 7 * mm, "Valores de entradas e saídas pagas consideram a data do pagamento; em aberto, a data de vencimento.")
-        canvas.drawRightString(page[0] - margin, 7 * mm, f"Página {doc.page}")
-        canvas.restoreState()
+    store = identity or StoreIdentity(name=report.store)
+
+    def paint(canvas, total_pages: int) -> None:
+        paint_store_header(
+            canvas, store, regular, bold, page_w=page[0], page_h=page[1], margin_x=margin, header_h=HEADER_H,
+            kind="RELATÓRIO FINANCEIRO", title=report.range_text,
+            issued="Gerado em " + report.generated_at.strftime("%d/%m/%Y às %H:%M"),
+            badge=(report.period_label.upper(), blue),
+        )
+        paint_store_footer(canvas, store, regular, bold, page_w=page[0], margin_x=margin, footer_h=FOOTER_H,
+                           generated=report.generated_at, total_pages=total_pages,
+                           note="Pagos pela data do pagamento; em aberto, pelo vencimento")
+
+    def decorate(canvas, _doc) -> None:
+        canvas.lf_page_painter = paint
 
     story: list[Any] = []
     cards = [("Entradas recebidas", report.income_paid, green), ("Saídas pagas", report.expense_paid, red),
@@ -349,7 +351,7 @@ def export_pdf(report: FinanceReport, path: str | Path) -> Path:
 
     path = Path(path)
     doc = SimpleDocTemplate(str(path), pagesize=page, leftMargin=margin, rightMargin=margin,
-                            topMargin=27 * mm, bottomMargin=14 * mm, title=f"Relatório financeiro — {report.store}",
+                            topMargin=HEADER_H, bottomMargin=FOOTER_H + 4, title=f"Relatório financeiro — {report.store}",
                             author="AMT Sistemas & Soluções")
-    doc.build(story, onFirstPage=decorate, onLaterPages=decorate)
+    doc.build(story, onFirstPage=decorate, onLaterPages=decorate, canvasmaker=_NumberedCanvas)
     return path
