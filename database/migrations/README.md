@@ -34,6 +34,7 @@ Pré-requisito: as migrations anteriores (`202610240001` a `202610241730`, nesta
 | 14 | `202610250014_username_login.sql` | Login por nome de usuário: coluna `organization_members.username` (única), e-mail interno `<usuario>@usuarios.local` no Supabase Auth. |
 | 15 | `202610250015_sales_order_status.sql` | Venda vinculada ao pedido: `finalize_sales_order_v2` recebe o status atual do pedido (`p_order_status`), modelos de mensagem para "aguardando envio" e "enviado ao laboratório" e variável `{{loja}}` nas mensagens de WhatsApp. |
 | 16 | `202610260016_order_whatsapp_every_change.sql` | Corrige mensagens de status descartadas: a chave de deduplicação passa a ser por mudança de status (inclui a transação), então um pedido que volta a uma etapa já avisada gera nova mensagem. |
+| 17 | `202610260017_sales_seller.sql` | Vendedor em cada venda (comissões): `finalize_sales_order_v2` recebe `p_seller_id`, validado como usuário ativo da organização; sem escolha, fica quem registra. |
 
 As catorze migrations foram aplicadas no projeto conectado em 25/10/2026 e registradas em `supabase_migrations.schema_migrations`. O fluxo completo (venda com sinal e crediário, idempotência, pipeline do laboratório, pós-venda, orçamento, cancelamento com estorno, bloqueios por papel, RLS, acesso por módulo e fila do WhatsApp) foi validado como usuário autenticado, em transação revertida.
 

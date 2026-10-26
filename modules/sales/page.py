@@ -23,6 +23,7 @@ from modules.prescriptions.repository import PrescriptionRepository
 from modules.sales.document_pdf import SalesDocument, StoreIdentity, build_sales_pdf
 from modules.sales.pos import SERVICE_ORDER_MARKER, PosDialog
 from modules.settings.service import load_store_settings, store_display_name
+from core.sellers import load_sellers, seller_name
 from modules.whatsapp.service import WhatsAppDocumentSender, WhatsAppService, describe_result
 from ui.components.pdf_viewer import PdfViewerDialog
 from ui.components.ui_kit import make_button, notice
@@ -84,7 +85,7 @@ class SalesPage(QDialog):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(10)
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Filtrar por número do pedido ou cliente…")
+        self.search.setPlaceholderText("Filtrar por número do pedido, cliente ou vendedor…")
         self.search.setClearButtonEnabled(True)
         self.search.addAction(qta.icon("fa5s.search", color="#8A97AB"), QLineEdit.ActionPosition.LeadingPosition)
         self.search.textChanged.connect(self._filter_orders)
@@ -106,17 +107,20 @@ class SalesPage(QDialog):
         root.addLayout(toolbar)
         if preview_mode:
             root.addWidget(notice("PRÉ-VISUALIZAÇÃO • o PDV abre com catálogo demonstrativo; o histórico de vendas exige conexão com o Supabase."))
-        self.table = QTableWidget(0, 8)
+        self.table = QTableWidget(0, 9)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setDefaultSectionSize(50)
-        self.table.setHorizontalHeaderLabels(["Venda", "Data", "Cliente", "Situação", "Status do pedido", "Pagamento", "Total", "Ações"])
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        for col in (0, 1, 3, 4, 5, 6):
+        self.table.setHorizontalHeaderLabels(["Venda", "Data", "Cliente", "Vendedor", "Situação", "Status do pedido", "Pagamento", "Total", "Ações"])
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        for col in (2, 3):  # cliente e vendedor dividem o espaço livre
+            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
+        for col in (0, 1, 4, 5, 6, 7):
             self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         # ResizeToContents ignores cell widgets: the actions column gets the buttons' width when rows load.
-        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)
         self.table.itemSelectionChanged.connect(self._sync_actions)
         root.addWidget(self.table, 1)
 
@@ -144,28 +148,34 @@ class SalesPage(QDialog):
             return
         try:
             orders = self._client.table("sales_orders").select(
-                "id,order_number,status,total,created_at,customer_id,payment_method,quoted_at,customers(full_name,whatsapp,whatsapp_consent),customer_orders(id,status)"
+                "id,order_number,status,total,created_at,customer_id,payment_method,quoted_at,seller_id,created_by,customers(full_name,whatsapp,whatsapp_consent),customer_orders(id,status)"
             ).eq("organization_id", self._organization_id).order("created_at", desc=True).limit(500).execute().data or []
         except Exception as exc:
             QMessageBox.critical(self, "Erro ao carregar vendas", f"{exc}\n\nConfirme se a migration 202610250004 foi aplicada.")
             orders = []
         self._orders = list(orders)
+        try:
+            seller_names = {seller["user_id"]: seller["name"] for seller in load_sellers(self._ctx, include_inactive=True)}
+        except Exception:
+            seller_names = {}
         for order in orders:
             customer = order.get("customers") or {}
             row = self.table.rowCount(); self.table.insertRow(row)
             status_code = str(order.get("status") or "")
             linked = self._linked_order(order)
             order_status = str(linked.get("status") or "") if linked else ""
-            values = [order.get("order_number",""), str(order.get("created_at",""))[:16].replace("T"," "), (customer.get("full_name") or "Venda avulsa"), STATUS_LABELS.get(status_code, status_code or "—"),
+            seller = seller_names.get(str(order.get("seller_id") or order.get("created_by") or ""), "—")
+            values = [order.get("order_number",""), str(order.get("created_at",""))[:16].replace("T"," "), (customer.get("full_name") or "Venda avulsa"), seller, STATUS_LABELS.get(status_code, status_code or "—"),
                       order_statuses.label(order_status) if linked else "—", order.get("payment_method") or "—", _money(order.get("total"))]
             for col, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
+                item.setToolTip(str(value))
                 item.setData(Qt.ItemDataRole.UserRole, order.get("id"))
-                if col == 3 and status_code in STATUS_COLORS:
+                if col == 4 and status_code in STATUS_COLORS:
                     item.setForeground(QColor(STATUS_COLORS[status_code]))
-                if col == 4 and linked:
+                if col == 5 and linked:
                     item.setForeground(QColor(order_statuses.color(order_status)))
-                if col == 6:
+                if col == 7:
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.table.setItem(row, col, item)
             actions = QWidget()
@@ -183,9 +193,9 @@ class SalesPage(QDialog):
                 _fix_button_size(button)
                 actions_layout.addWidget(button)
             actions_layout.addStretch(1)
-            self.table.setCellWidget(row, 7, actions)
+            self.table.setCellWidget(row, 8, actions)
             # Slack for the cell padding the table style adds around cell widgets.
-            self.table.setColumnWidth(7, max(self.table.columnWidth(7), actions.sizeHint().width() + 28))
+            self.table.setColumnWidth(8, max(self.table.columnWidth(8), actions.sizeHint().width() + 28))
         self._filter_orders()
 
     def _filter_orders(self, *_args: object) -> None:
@@ -194,7 +204,7 @@ class SalesPage(QDialog):
         for row in range(self.table.rowCount()):
             haystack = " ".join(
                 (self.table.item(row, col).text() if self.table.item(row, col) else "")
-                for col in (0, 2)
+                for col in (0, 2, 3)
             ).casefold()
             order = self._order_at(row)
             hidden = (bool(term) and term not in haystack) or (bool(kind) and (order or {}).get("status") != kind)
@@ -369,7 +379,7 @@ class SalesPage(QDialog):
                 prescription = None
         seller_id = order.get("seller_id") or order.get("created_by")
         seller_rows = self._optional_rows(
-            client.table("organization_members").select("display_name").eq("organization_id", org).eq("user_id", seller_id).limit(1)
+            client.table("organization_members").select("display_name,username,email").eq("organization_id", org).eq("user_id", seller_id).limit(1)
         ) if seller_id else []
 
         notes_text, legacy = str(order.get("notes") or ""), {}
@@ -394,7 +404,7 @@ class SalesPage(QDialog):
             order=order, customer=order.get("customers") or {}, items=list(items), payments=payments,
             receivables=receivables, prescription=prescription, legacy_prescription=legacy,
             frame=frame if isinstance(frame, dict) else {}, lab_order=lab_rows[0] if lab_rows else None,
-            seller_name=str((seller_rows[0].get("display_name") if seller_rows else "") or ""),
+            seller_name=seller_name(seller_rows[0]) if seller_rows else "",
             notes=notes_text, store=store,
         )
 

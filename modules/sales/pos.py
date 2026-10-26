@@ -27,6 +27,7 @@ from modules.sales.payments import (
     discount_check, installment_schedule, money, remaining_amount, validate_sale,
 )
 from modules.settings.service import StoreSettings
+from core.sellers import load_sellers, seller_label
 from ui.components.calendar import make_date_edit
 from ui.components.ui_kit import make_button, notice
 
@@ -92,6 +93,7 @@ class PosDialog(QDialog):
         self.setWindowState(self.windowState() | Qt.WindowState.WindowMaximized)
 
         self._products, self._customers = self._load_catalog()
+        self._sellers = load_sellers(ctx)
         self._products_by_id = {str(row["id"]): row for row in self._products}
 
         root = QVBoxLayout(self)
@@ -177,13 +179,28 @@ class PosDialog(QDialog):
         completer.setFilterMode(Qt.MatchFlag.MatchContains)
         completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.customer.currentIndexChanged.connect(self._customer_changed)
-        row.addWidget(_field_label("Cliente"))
+        customer_label = _field_label("Cliente")
+        customer_label.setMinimumWidth(72)
+        row.addWidget(customer_label)
         row.addWidget(self.customer, 1)
         self.prescription_button = make_button("Receitas", "fa5s.eye", "secondaryButton")
         self.prescription_button.setToolTip("Selecionar ou cadastrar a receita usada nesta venda")
         self.prescription_button.clicked.connect(self._choose_prescription)
         row.addWidget(self.prescription_button)
         layout.addLayout(row)
+        seller_row = QHBoxLayout()
+        seller_row.setSpacing(8)
+        self.seller = QComboBox()
+        self.seller.setToolTip("Quem fez a venda: base para o repasse de comissões. Usuários são cadastrados pelo administrador.")
+        for seller in self._sellers:
+            self.seller.addItem(seller_label(seller), seller["user_id"])
+        current_user = self._ctx.user_id if self._ctx else None
+        self.seller.setCurrentIndex(max(0, self.seller.findData(current_user)))
+        seller_label = _field_label("Vendedor")
+        seller_label.setMinimumWidth(72)
+        seller_row.addWidget(seller_label)
+        seller_row.addWidget(self.seller, 1)
+        layout.addLayout(seller_row)
         self.prescription_summary = QLabel("Selecione o cliente para sugerir a receita mais recente.")
         self.prescription_summary.setObjectName("emptyState")
         self.prescription_summary.setWordWrap(True)
@@ -667,6 +684,8 @@ class PosDialog(QDialog):
     def _load_quote(self, quote: dict, items: list[dict]) -> None:
         if quote.get("customer_id"):
             self.customer.setCurrentIndex(max(0, self.customer.findData(quote.get("customer_id"))))
+        if quote.get("seller_id") and self.seller.findData(str(quote["seller_id"])) >= 0:
+            self.seller.setCurrentIndex(self.seller.findData(str(quote["seller_id"])))
         for item in items:
             product = self._products_by_id.get(str(item.get("product_id")), {})
             self._lines.append(CartLine(
@@ -735,6 +754,7 @@ class PosDialog(QDialog):
             "p_order_status": str(self.order_status.currentData() or "aguardando_envio"),
             "p_lab_expected_at": self.lab_expected.date().toPython().isoformat(),
             "p_lens_description": self.lens_description.text().strip(),
+            "p_seller_id": self.seller.currentData() if self._ctx else None,
         }
         if self._ctx is None:
             kind = "Orçamento" if as_quote else "Venda"

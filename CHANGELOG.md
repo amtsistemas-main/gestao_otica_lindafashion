@@ -10,6 +10,10 @@ Primeira versão de produção.
 - Documento de venda em PDF premium, sempre em uma página A4, com visualizador nativo para imprimir, salvar ou enviar pelo WhatsApp.
 - Relacionamento (CRM): segmentos de recompra, tarefas com calendário (atalhos e dias já agendados) e mensagens sugeridas.
 - Módulo Análises desativado nesta versão (permanece no código para ser liberado depois).
+- **Vendedor em cada venda** (usuários cadastrados pelo administrador), exibido na lista de vendas e no PDF, para o repasse de comissões.
+- **Financeiro**: valor digitado pelos centavos, filtros por dia, semana, mês, ano ou período personalizado, abas com as mesmas regras e tabelas ocupando a tela.
+- **Relatórios financeiros** por período em PDF e planilha Excel para a contabilidade (resumo, lançamentos e resultado por categoria).
+- **Fornecedores por planilha XLSX**: baixar a planilha (com os cadastrados ou um exemplo), preencher e importar — cria novos e atualiza os existentes.
 
 ### Acesso
 - Sistema fechado com login por nome de usuário; o administrador cria os logins e libera os módulos de cada usuário (com proteção também no banco).
@@ -21,9 +25,10 @@ Primeira versão de produção.
 
 ### Interface
 - Primeira tela de cada módulo dentro da janela principal; nenhuma janela ultrapassa a área útil da tela.
+- Calendário próprio em todos os campos de data e data de nascimento com máscara DD/MM/AAAA.
 - Fonte Arial, ícone da ótica na barra de tarefas, sidebar azul com logo em fundo branco e versão no rodapé.
 
 ### Distribuição
 - Instalador para Windows (Inno Setup) com executável PyInstaller, configuração pública embutida, verificação `--smoke-test` e log local.
 - Atualizações automáticas pelas GitHub Releases: download em segundo plano, conferência SHA-256 e instalação silenciosa (agora ou ao fechar o sistema).
-- Banco: migrations `202610240001` a `202610260016` aplicadas no Supabase.
+- Banco: migrations `202610240001` a `202610260017` aplicadas no Supabase.
