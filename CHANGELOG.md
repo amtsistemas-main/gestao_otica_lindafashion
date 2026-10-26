@@ -4,6 +4,7 @@
 
 - Vendas / PDV: botão do WhatsApp em verde, com tamanho fixo para ícone e texto aparecerem por inteiro.
 - Coluna "Ações" das vendas com largura calculada pelos botões: nada fica cortado.
+- WhatsApp: a mensagem de status volta a ser enviada quando o pedido retorna a uma etapa já avisada (migration 016, aplicada no banco).
 
 ## 1.0.0 — 25/10/2026
 
