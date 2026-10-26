@@ -90,6 +90,21 @@ A lógica de negócio dessas frentes tem testes em `tests/test_optical_business_
 - **Multilogin** (Configurações → Usuários e acessos): sistema fechado com login por **nome de usuário**; o dono ou administrador cria os logins e escolhe os módulos de cada usuário; o menu e os atalhos mostram apenas os módulos liberados. A criação de logins usa a Edge Function `admin-users` (chave privilegiada somente no servidor), e o Financeiro também é protegido por módulo no banco.
 - **WhatsApp da loja** (Configurações → WhatsApp da loja): o cliente conecta o WhatsApp da loja por QR Code (gateway Evolution API hospedado pela AMT, uma instância por loja). Mensagens de status de pedido, PDFs de venda e contatos do CRM passam a ser enviados automaticamente pela fila do banco; sem conexão, o envio manual continua. Detalhes e implantação do servidor: `docs/whatsapp-evolution.md`.
 
+## Leitor de código de barras
+
+Leitores USB ou sem fio (com receptor USB) que funcionam como teclado são compatíveis, sem driver. Configuração recomendada, feita lendo os códigos de configuração do manual do leitor:
+
+| Configuração | Valor | Por quê |
+| --- | --- | --- |
+| Modo de comunicação | Teclado USB (HID Keyboard) | O sistema recebe a leitura como digitação |
+| Sufixo | Enter (CR) | Confirma a leitura: adiciona o item no PDV, pesquisa nas buscas, pula de campo no cadastro |
+| Prefixo | Nenhum | Caracteres extras impedem localizar o produto |
+| Idioma do teclado | O mesmo do Windows (Português Brasil ABNT2 ou EUA) | Evita letras e o hífen trocados no código do canhoto das vendas |
+| Simbologias | EAN-13, EAN-8, UPC-A e Code 128 | Produtos usam EAN/UPC; o canhoto do PDF usa Code 128 |
+| Maiúsculas/minúsculas | Sem conversão | O código é enviado como está |
+
+Onde ler: busca do PDV (adiciona o item; leituras repetidas somam a quantidade), busca de Produtos (localiza ou oferece cadastrar um código novo), campo Código de barras do cadastro de produto (pula para o próximo campo) e busca de Vendas (localiza a venda pelo canhoto). O Enter da leitura nunca aciona botões da janela.
+
 ## Instalador para Windows
 
 Gerado com PyInstaller (executável em pasta) e Inno Setup (instalador em português, atalhos no menu Iniciar e na área de trabalho, desinstalador). Requisitos na máquina de build: as dependências do `requirements.txt`, `pip install pyinstaller` e `winget install JRSoftware.InnoSetup`.
