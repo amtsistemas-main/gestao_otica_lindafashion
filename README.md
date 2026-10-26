@@ -4,7 +4,7 @@ Aplicativo desktop de gestão para ótica, desenvolvido em Python e PySide6 para
 
 ## Estado do projeto
 
-A interface inicial e o módulo Produtos estão em desenvolvimento. A autenticação online usa Supabase Auth; os dados do catálogo são isolados por organização e protegidos por políticas RLS. Nenhuma chave privilegiada do Supabase deve ser distribuída dentro do aplicativo desktop.
+Versão **1.0.0** (veja `CHANGELOG.md`). A versão é definida em `config/version.py` e usada pelo aplicativo, pelo executável e pelo instalador. A autenticação online usa Supabase Auth; os dados do catálogo são isolados por organização e protegidos por políticas RLS. Nenhuma chave privilegiada do Supabase deve ser distribuída dentro do aplicativo desktop.
 
 ## Requisitos
 
@@ -71,7 +71,7 @@ No cadastro de Produtos, o campo **Fornecedor principal** vincula o produto a um
 
 ## Gestão óptica de alto padrão
 
-Seis frentes integradas. As migrations e a ordem de aplicação estão em `database/migrations/README.md` (arquivos `202610250001` a `202610250014`, já aplicados no projeto Supabase conectado).
+Seis frentes integradas. As migrations e a ordem de aplicação estão em `database/migrations/README.md` (arquivos `202610250001` a `202610250015`, já aplicados no projeto Supabase conectado).
 
 1. **Produtos ópticos** (`modules/products/`): tipo de produto com campos próprios (armação, lente oftálmica, lente de contato, solar, acessório, serviço), modelo, cor, tamanho, material, índice e tratamentos de lente, ponto e quantidade de reposição, serviços sem controle de estoque e filtro por tipo.
 2. **Receitas** (`modules/prescriptions/`): OD/OE estruturado (esférico, cilíndrico, eixo, adição, DNP longe/perto, altura, prisma), passos de 0,25 D, eixo obrigatório com cilindro, alertas de digitação (anisometropia, DNP de perto maior que a de longe, receita vencida), histórico por cliente e vínculo com a venda e o pedido.
@@ -89,6 +89,18 @@ A lógica de negócio dessas frentes tem testes em `tests/test_optical_business_
 - **Documento de venda em PDF** (`modules/sales/document_pdf.py`): ordem de serviço, orçamento ou comprovante com identidade da loja (Configurações), itens, pagamentos e parcelas, receita OD/OE, medidas da armação, laboratório, condições, assinaturas e canhoto com código de barras. O documento cabe em uma única página A4: a densidade é reduzida automaticamente quando necessário.
 - **Multilogin** (Configurações → Usuários e acessos): sistema fechado com login por **nome de usuário**; o dono ou administrador cria os logins e escolhe os módulos de cada usuário; o menu e os atalhos mostram apenas os módulos liberados. A criação de logins usa a Edge Function `admin-users` (chave privilegiada somente no servidor), e o Financeiro também é protegido por módulo no banco.
 - **WhatsApp da loja** (Configurações → WhatsApp da loja): o cliente conecta o WhatsApp da loja por QR Code (gateway Evolution API hospedado pela AMT, uma instância por loja). Mensagens de status de pedido, PDFs de venda e contatos do CRM passam a ser enviados automaticamente pela fila do banco; sem conexão, o envio manual continua. Detalhes e implantação do servidor: `docs/whatsapp-evolution.md`.
+
+## Instalador para Windows
+
+Gerado com PyInstaller (executável em pasta) e Inno Setup (instalador em português, atalhos no menu Iniciar e na área de trabalho, desinstalador). Requisitos na máquina de build: as dependências do `requirements.txt`, `pip install pyinstaller` e `winget install JRSoftware.InnoSetup`.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File packaging\build.ps1
+```
+
+O script lê a versão de `config/version.py`, copia do `.env` **somente** `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY` para o pacote, gera `dist\OticaLindaFashion\`, executa `OticaLindaFashion.exe --smoke-test` e cria `dist\installer\OticaLindaFashion-Setup-<versão>.exe`. A instalação é por usuário (sem exigir administrador).
+
+Na máquina do cliente, um arquivo `%APPDATA%\OticaLindaFashion\.env` substitui a configuração embutida, se necessário. O log do aplicativo fica em `%LOCALAPPDATA%\OticaLindaFashion\logs\app.log`.
 
 ## Segurança e integridade
 

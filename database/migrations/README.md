@@ -32,6 +32,7 @@ Pré-requisito: as migrations anteriores (`202610240001` a `202610241730`, nesta
 | 12 | `202610250012_whatsapp_worker_schedule.sql` | Envio validado pelo cadastro do cliente (limite por usuário) e worker agendado no `pg_cron` (chama a Edge Function só quando há mensagens; URL e segredo no Vault). |
 | 13 | `202610250013_service_role_grants.sql` | Privilégios do `service_role` (somente servidor) nas tabelas, inclusive futuras. Sem eles as Edge Functions não liam os vínculos e respondiam "sem vínculo". |
 | 14 | `202610250014_username_login.sql` | Login por nome de usuário: coluna `organization_members.username` (única), e-mail interno `<usuario>@usuarios.local` no Supabase Auth. |
+| 15 | `202610250015_sales_order_status.sql` | Venda vinculada ao pedido: `finalize_sales_order_v2` recebe o status atual do pedido (`p_order_status`), modelos de mensagem para "aguardando envio" e "enviado ao laboratório" e variável `{{loja}}` nas mensagens de WhatsApp. |
 
 As catorze migrations foram aplicadas no projeto conectado em 25/10/2026 e registradas em `supabase_migrations.schema_migrations`. O fluxo completo (venda com sinal e crediário, idempotência, pipeline do laboratório, pós-venda, orçamento, cancelamento com estorno, bloqueios por papel, RLS, acesso por módulo e fila do WhatsApp) foi validado como usuário autenticado, em transação revertida.
 

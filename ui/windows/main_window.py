@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from config.branding import APP_NAME, WINDOW_TITLE
+from config.version import APP_VERSION
 from core.auth_service import AuthService
 from core.organization import OrganizationContext, current_organization
 from core.permissions import ROLE_LABELS
@@ -264,7 +265,7 @@ class MainWindow(QMainWindow):
         workspace_layout.addWidget(self._stack, 1)
 
         side_footer = QLabel(
-            "Desenvolvido por<br>AMT Sistemas &amp; Soluções<br>"
+            f"Versão {APP_VERSION}<br>Desenvolvido por<br>AMT Sistemas &amp; Soluções<br>"
             "<a href='https://www.amtsistemas.com.br' style='color:#8FB4FF; text-decoration:none;'>"
             "https://www.amtsistemas.com.br</a>"
         )
